@@ -12,47 +12,47 @@
 
 namespace plaincloud::Log {
 
-namespace Fmt {
 #ifdef __cpp_lib_format
 using std::format;
-using std::format_string;
-using std::wformat_string;
+template<typename T, typename... Args>
+using BasicFormatString = std::basic_format_string<T, Args...>;
 #else
 using fmt::format;
-using fmt::format_string;
-using fmt::wformat_string;
+template<typename T, typename... Args>
+using BasicFormatString = fmt::basic_format_string<T, Args...>;
 #endif
-} // namespace Fmt
 
-template<typename Fmt, typename... Args>
+template<typename CharT, typename... Args>
 struct BasicFormat {
+public:
     template<typename T>
-        requires std::convertible_to<T, Fmt>
+        requires std::convertible_to<T, BasicFormatString<CharT, Args...>>
+    // NOLINTNEXTLINE(hicpp-explicit-conversions)
     consteval BasicFormat(const T& fmt, const Location& loc = Location::current())
         : m_fmt(fmt)
         , m_loc(loc)
     {
     }
 
-    [[nodiscard]] constexpr auto fmt() const noexcept -> const Fmt&
+    [[nodiscard]] constexpr auto fmt() const noexcept -> const auto&
     {
         return m_fmt;
     }
 
-    [[nodiscard]] constexpr auto loc() const noexcept -> const Location&
+    [[nodiscard]] constexpr auto loc() const noexcept -> const auto&
     {
         return m_loc;
     }
 
 private:
-    Fmt m_fmt;
+    BasicFormatString<CharT, Args...> m_fmt;
     Location m_loc;
 };
 
 template<typename... Args>
-using Format = BasicFormat<Fmt::format_string<std::type_identity_t<Args>...>>;
+using Format = BasicFormat<char, std::type_identity_t<Args>...>;
 
 template<typename... Args>
-using WideFormat = BasicFormat<Fmt::wformat_string<std::type_identity_t<Args>...>>;
+using WideFormat = BasicFormat<wchar_t, std::type_identity_t<Args>...>;
 
 } // namespace plaincloud::Log
