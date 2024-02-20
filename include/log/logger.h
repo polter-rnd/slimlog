@@ -30,18 +30,22 @@ public:
     class Sink {
     public:
         Sink() = default;
+        Sink(Sink const&) = default;
+        Sink(Sink&&) = default;
+        auto operator=(Sink const&) -> Sink& = default;
+        auto operator=(Sink&&) -> Sink& = default;
         virtual ~Sink() = default;
+
         virtual auto
-        emit(const Log::Level level, const Log::Location& location, const StringT& message) const
-            -> void
+        emit(Log::Level level, const Log::Location& location, const StringT& message) const -> void
             = 0;
         virtual auto flush() -> void = 0;
     };
 
     Logger(Logger const&) = delete;
     Logger(Logger&&) = delete;
-    Logger& operator=(Logger const&) = delete;
-    Logger& operator=(Logger&&) = delete;
+    auto operator=(Logger const&) -> Logger& = delete;
+    auto operator=(Logger&&) -> Logger& = delete;
     ~Logger() = default;
 
     explicit Logger(
@@ -87,9 +91,9 @@ public:
         const T& callback,
         const Log::Location& location = Log::Location::current()) const -> void
     {
-        for (const auto& h : m_sinks) {
+        for (const auto& sink : m_sinks) {
             if (m_level >= level) {
-                h.first->emit(level, location, callback());
+                sink.first->emit(level, location, callback());
             }
         }
     }
@@ -108,25 +112,32 @@ public:
         const T& message,
         const Log::Location& location = Log::Location::current()) const -> void
     {
-        auto callback = [&message]() { return message; };
+        auto callback = [&message]() {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay, \
+                              hicpp-no-array-decay)
+            return message;
+        };
         emit(level, callback, location);
     }
 
     template<typename... Args>
+    // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
     inline void emit(Log::Level level, const Log::Format<Args...>& fmt, Args&&... args) const
     {
-        auto callback = [&fmt, &args...]() {
-            return Log::Fmt::format(fmt.fmt(), std::forward<Args>(args)...);
-        };
+        // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays, \
+                          hicpp-avoid-c-arrays, \
+                          modernize-avoid-c-arrays)
+        auto callback
+            = [&fmt, &args...]() { return Log::format(fmt.fmt(), std::forward<Args>(args)...); };
         emit(level, callback, fmt.loc());
     }
 
     template<typename... Args>
+    // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
     inline void emit(Log::Level level, const Log::WideFormat<Args...>& fmt, Args&&... args) const
     {
-        auto callback = [&fmt, &args...]() {
-            return Log::Fmt::format(fmt.fmt(), std::forward<Args>(args)...);
-        };
+        auto callback
+            = [&fmt, &args...]() { return Log::format(fmt.fmt(), std::forward<Args>(args)...); };
         emit(level, callback, fmt.loc());
     }
 
@@ -158,6 +169,7 @@ private:
 };
 
 template<typename T, size_t N>
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
 Logger(const T (&)[N], Log::Level = Log::Level::Info) -> Logger<std::basic_string_view<T>>;
 
 } // namespace plaincloud::Log

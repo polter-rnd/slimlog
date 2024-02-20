@@ -42,8 +42,8 @@ public:
     }
 
 private:
-    const char* m_file{"unknown"};
-    const char* m_function{"unknown"};
+    const char* m_file{""};
+    const char* m_function{""};
     int m_line{};
 };
 #endif

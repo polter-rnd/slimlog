@@ -20,7 +20,7 @@ private:
     std::locale m_old_locale;
 };
 
-int main(int argc, char* argv[])
+auto main(int argc, char* argv[]) -> int
 {
     // Log::Logger::setGlobalLevel(Log::Level::Trace);q
     //  Log::Logger::addGlobalHandler(hndlr);
@@ -49,6 +49,8 @@ int main(int argc, char* argv[])
     log.emit(Log::Level::Info, kk);
     log.info("Pipkanoid {}!", 123);
     log.info("Lalka pipka");
+    constexpr std::format_string<std::string_view> ee{"Hello {}"};
+    log.info(ee, std::string_view("pip"));
 
     /*log2.info(L"Pipkanoid {}!", 123);
     log2.info(L"Lalka pipka");
