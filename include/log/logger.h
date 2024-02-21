@@ -17,10 +17,14 @@
 // CLang 15+
 // libfmt 9.1.0+
 
+namespace PlainCloud::Log {
+// Forward declaration of namespace to make IWYU happy
+}
+
 #include "format.h"
 #include "location.h"
 
-namespace plaincloud::Log {
+namespace PlainCloud::Log {
 
 enum class Level { Fatal, Error, Warning, Info, Debug, Trace };
 
@@ -113,9 +117,8 @@ public:
         const Log::Location& location = Log::Location::current()) const -> void
     {
         auto callback = [&message]() {
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-array-to-pointer-decay, \
-                              hicpp-no-array-decay)
-            return message;
+            return message; // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay, \
+                                      hicpp-no-array-decay)
         };
         emit(level, callback, location);
     }
@@ -124,11 +127,11 @@ public:
     // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
     inline void emit(Log::Level level, const Log::Format<Args...>& fmt, Args&&... args) const
     {
-        // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays, \
-                          hicpp-avoid-c-arrays, \
-                          modernize-avoid-c-arrays)
-        auto callback
-            = [&fmt, &args...]() { return Log::format(fmt.fmt(), std::forward<Args>(args)...); };
+        auto callback = [&fmt, &args...]() { // NOLINT(cppcoreguidelines-avoid-c-arrays, \
+                                                       hicpp-avoid-c-arrays, \
+                                                       modernize-avoid-c-arrays)
+            return Log::format(fmt.fmt(), std::forward<Args>(args)...);
+        };
         emit(level, callback, fmt.loc());
     }
 
@@ -136,8 +139,11 @@ public:
     // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
     inline void emit(Log::Level level, const Log::WideFormat<Args...>& fmt, Args&&... args) const
     {
-        auto callback
-            = [&fmt, &args...]() { return Log::format(fmt.fmt(), std::forward<Args>(args)...); };
+        auto callback = [&fmt, &args...]() { // NOLINT(cppcoreguidelines-avoid-c-arrays, \
+                                                       hicpp-avoid-c-arrays, \
+                                                       modernize-avoid-c-arrays)
+            return Log::format(fmt.fmt(), std::forward<Args>(args)...);
+        };
         emit(level, callback, fmt.loc());
     }
 
@@ -172,4 +178,4 @@ template<typename T, size_t N>
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
 Logger(const T (&)[N], Log::Level = Log::Level::Info) -> Logger<std::basic_string_view<T>>;
 
-} // namespace plaincloud::Log
+} // namespace PlainCloud::Log

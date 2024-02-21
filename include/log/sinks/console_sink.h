@@ -4,29 +4,7 @@
 
 #include <iostream>
 
-namespace plaincloud::Log {
-
-namespace {
-template<typename StringT, typename CharT>
-consteval auto IsCharTypeEqual() -> bool
-{
-    return (std::is_array_v<std::remove_cvref_t<StringT>>
-            && std::is_same_v<std::remove_all_extents<StringT>, CharT>)
-        || std::is_same_v<CharT, typename std::remove_cvref_t<StringT>::value_type>;
-}
-
-template<typename StringT>
-consteval auto IsRegularString() -> bool
-{
-    return IsCharTypeEqual<StringT, char>();
-}
-
-template<typename StringT>
-consteval auto IsWideString() -> bool
-{
-    return IsCharTypeEqual<StringT, wchar_t>();
-}
-} // namespace
+namespace PlainCloud::Log {
 
 template<typename StringT>
 class ConsoleSink : public Logger<StringT>::Sink {
@@ -34,55 +12,55 @@ public:
     void
     emit(const Log::Level level, const Log::Location& caller, const StringT& message) const override
     {
-        if constexpr (IsRegularString<StringT>()) {
-            std::string_view levelString;
+        if constexpr (char_type_equal<char>()) {
+            std::string_view level_string;
             switch (level) {
             case Log::Level::Fatal:
-                levelString = "FATAL";
+                level_string = "FATAL";
                 break;
             case Log::Level::Error:
-                levelString = "ERROR";
+                level_string = "ERROR";
                 break;
             case Log::Level::Warning:
-                levelString = "WARN ";
+                level_string = "WARN ";
                 break;
             case Log::Level::Info:
-                levelString = "INFO ";
+                level_string = "INFO ";
                 break;
             case Log::Level::Debug:
-                levelString = "DEBUG";
+                level_string = "DEBUG";
                 break;
             case Log::Level::Trace:
-                levelString = "TRACE";
+                level_string = "TRACE";
                 break;
             }
 
-            std::cout << "[" << levelString << "] <" << caller.file_name() << "|"
+            std::cout << "[" << level_string << "] <" << caller.file_name() << "|"
                       << caller.function_name() << ":" << caller.line() << "> " << message
                       << std::endl;
-        } else if constexpr (IsWideString<StringT>()) {
-            std::wstring_view levelString;
+        } else if constexpr (char_type_equal<wchar_t>()) {
+            std::wstring_view level_string;
             switch (level) {
             case Log::Level::Fatal:
-                levelString = L"FATAL";
+                level_string = L"FATAL";
                 break;
             case Log::Level::Error:
-                levelString = L"ERROR";
+                level_string = L"ERROR";
                 break;
             case Log::Level::Warning:
-                levelString = L"WARN ";
+                level_string = L"WARN ";
                 break;
             case Log::Level::Info:
-                levelString = L"INFO ";
+                level_string = L"INFO ";
                 break;
             case Log::Level::Debug:
-                levelString = L"DEBUG";
+                level_string = L"DEBUG";
                 break;
             case Log::Level::Trace:
-                levelString = L"TRACE";
+                level_string = L"TRACE";
                 break;
             }
-            std::wcout << "w [" << levelString << "] <" << caller.file_name() << "|"
+            std::wcout << "w [" << level_string << "] <" << caller.file_name() << "|"
                        << caller.function_name() << ":" << caller.line() << "> " << message
                        << std::endl;
         }
@@ -91,5 +69,14 @@ public:
     auto flush() -> void override
     {
     }
+
+protected:
+    template<typename CharT>
+    static consteval auto char_type_equal() -> bool
+    {
+        return (std::is_array_v<std::remove_cvref_t<StringT>>
+                && std::is_same_v<std::remove_all_extents<StringT>, CharT>)
+            || std::is_same_v<CharT, typename std::remove_cvref_t<StringT>::value_type>;
+    };
 };
-} // namespace plaincloud::Log
+} // namespace PlainCloud::Log

@@ -10,7 +10,7 @@
 
 #include "location.h"
 
-namespace plaincloud::Log {
+namespace PlainCloud::Log {
 
 #ifdef __cpp_lib_format
 using std::format;
@@ -55,4 +55,4 @@ using Format = BasicFormat<char, std::type_identity_t<Args>...>;
 template<typename... Args>
 using WideFormat = BasicFormat<wchar_t, std::type_identity_t<Args>...>;
 
-} // namespace plaincloud::Log
+} // namespace PlainCloud::Log

@@ -20,17 +20,17 @@ CheckOptions:
   - key: readability-identifier-naming.ConstexprVariableCase
     value: CamelCase
   - key: readability-identifier-naming.PrivateMemberCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.PrivateMemberPrefix
     value: m_
   - key: readability-identifier-naming.ProtectedMemberCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.ProtectedMemberPrefix
     value: m_
   - key: readability-identifier-naming.PublicMemberCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.ClassConstantCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.ClassConstantPrefix
     value: s_
   - key: readability-identifier-naming.ClassMemberPrefix
@@ -38,19 +38,19 @@ CheckOptions:
   - key: readability-identifier-naming.GlobalConstantCase
     value: CamelCase
   - key: readability-identifier-naming.GlobalVariableCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.GlobalVariablePrefix
     value: g_
   - key: readability-identifier-naming.LocalConstantCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.LocalVariableCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.StaticConstantCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.StaticVariableCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.ParameterCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.StructCase
     value: CamelCase
   - key: readability-identifier-naming.ClassCase
@@ -60,9 +60,9 @@ CheckOptions:
   - key: readability-identifier-naming.EnumCase
     value: CamelCase
   - key: readability-identifier-naming.FunctionCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.MethodCase
-    value: camelBack
+    value: lower_case
   - key: readability-identifier-naming.TypedefCase
     value: CamelCase
   - key: readability-identifier-naming.TypeAliasCase
