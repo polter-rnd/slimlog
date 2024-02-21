@@ -4,7 +4,7 @@
 #include <source_location>
 #endif
 
-namespace plaincloud::Log {
+namespace PlainCloud::Log {
 
 #ifdef __cpp_lib_source_location
 using Location = std::source_location;
@@ -47,4 +47,4 @@ private:
     int m_line{};
 };
 #endif
-} // namespace plaincloud::Log
+} // namespace PlainCloud::Log
