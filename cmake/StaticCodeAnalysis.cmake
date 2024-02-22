@@ -37,7 +37,7 @@ find_package_switchable(
     PURPOSE "Clang-based analysis and linting of C/C++ code"
 )
 find_package_switchable(
-    IWYU
+    Iwyu
     OPTION ENABLE_IWYU
     PURPOSE "Analyze includes in C and C++ source files"
 )
@@ -49,16 +49,17 @@ find_package_switchable(
 #
 # @param TARGET                      Which target to analyze (mandatory)
 # @param ANALYSIS_TARGET             Name of global analysis target (mandatory)
-# @param CPPCHECK_FLAGS              Additional flags for `cppcheck`
+# @param CPPCHECK_EXTRA_ARGS         Additional flags for `cppcheck`
 # @param CPPCHECK_SUPPRESSIONS_LISTS Suppression lists for `cppcheck`
 # @param CLANG_TIDY_EXTRA_ARGS       Additional arguments for `clang-tidy`
 # @param CLANG_TIDY_HEADER_FILTER    Header filter for `clang-tidy` (default: `.*`)
+# @param IWYU_EXTRA_ARGS             Additional arguments for `include-what-you-use`
 # @param IWYU_MAPPING_FILES_ARGS     Mapping files for `include-what-you-use`
 # [/cmake_documentation]
 function(add_static_analysis_targets)
     set(options "")
     set(oneValueArgs TARGET ANALYSIS_TARGET)
-    set(multipleValueArgs CPPCHECK_FLAGS CPPCHECK_SUPPRESSIONS_LISTS CLANG_TIDY_EXTRA_ARGS
+    set(multipleValueArgs CPPCHECK_EXTRA_ARGS CPPCHECK_SUPPRESSIONS_LISTS CLANG_TIDY_EXTRA_ARGS
                           CLANG_TIDY_HEADER_FILTER IWYU_MAPPING_FILES_ARGS
     )
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multipleValueArgs}" ${ARGN})
@@ -71,11 +72,20 @@ function(add_static_analysis_targets)
         message(FATAL_ERROR "StaticCodeAnalysis target name is not specified!")
     endif()
 
+    get_target_property(target_source_dir ${ARG_TARGET} SOURCE_DIR)
     get_target_property(target_sources ${ARG_TARGET} SOURCES)
-    # Include only cpp files
-    list(FILTER target_sources INCLUDE REGEX ".*\.cpp")
 
-    add_custom_target(${ARG_ANALYSIS_TARGET})
+    # Include only cpp files and convert to absolute path
+    set(target_sources_absolute "")
+    list(FILTER target_sources INCLUDE REGEX ".*\.cpp")
+    foreach(source IN LISTS target_sources)
+        get_filename_component(source_absolute "${source}" REALPATH BASE_DIR "${target_source_dir}")
+        list(APPEND target_sources_absolute "${source_absolute}")
+    endforeach()
+
+    if(NOT TARGET ${ARG_ANALYSIS_TARGET})
+        add_custom_target(${ARG_ANALYSIS_TARGET})
+    endif()
 
     if(ENABLE_CPPCHECK)
         find_package(Cppcheck REQUIRED)
@@ -89,7 +99,7 @@ function(add_static_analysis_targets)
         add_custom_target(
             ${ARG_TARGET}-cppcheck
             COMMAND
-                ${Cppcheck_EXECUTABLE} ${ARG_CPPCHECK_FLAGS}
+                ${Cppcheck_EXECUTABLE}
                 --enable=warning,performance,portability,information,missingInclude
                 # Cppcheck does not need standard library headers to get proper results
                 --suppress=missingIncludeSystem
@@ -100,8 +110,10 @@ function(add_static_analysis_targets)
                 # Suppress warnings in some specific files
                 ${cppcheck_args_suppressions_list}
                 --project=${CMAKE_BINARY_DIR}/compile_commands.json
+                # User-specified args
+                ${ARG_CPPCHECK_EXTRA_ARGS}
                 # Find all source files from the root of the repo
-                ${target_sources}
+                $<LIST:TRANSFORM,${target_sources_absolute},PREPEND,--file-filter=>
             USES_TERMINAL
             COMMENT "Analyzing code by 'cppcheck'"
         )
@@ -117,7 +129,7 @@ function(add_static_analysis_targets)
         if(ARG_CLANG_TIDY_EXTRA_ARGS)
             set(clang_tidy_extra_args "")
             foreach(extra_arg ${ARG_CLANG_TIDY_EXTRA_ARGS})
-                list(APPEND clang_tidy_extra_args "-extra-arg=${extra_argar}")
+                list(APPEND clang_tidy_extra_args "-extra-arg=${extra_arg}")
             endforeach()
         endif()
         # if no override is specified, set default: '-header-filter=.*'
@@ -127,9 +139,9 @@ function(add_static_analysis_targets)
         add_custom_target(
             ${ARG_TARGET}-clangtidy
             COMMAND
-                ${RunClangTidy_EXECUTABLE} ${target_sources} ${clang_tidy_extra_args} -quiet
-                -warnings-as-errors='*' -header-filter=${ARG_CLANG_TIDY_HEADER_FILTER}
-                -p=${CMAKE_BINARY_DIR}
+                ${RunClangTidy_EXECUTABLE} -quiet -p=${CMAKE_BINARY_DIR}
+                -header-filter=${ARG_CLANG_TIDY_HEADER_FILTER} ${clang_tidy_extra_args}
+                ${target_sources_absolute}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             USES_TERMINAL
             COMMENT "Analyzing code by 'clang-tidy'"
@@ -141,16 +153,23 @@ function(add_static_analysis_targets)
         find_program(IwyuTool_EXECUTABLE iwyu_tool.py iwyu_tool REQUIRED)
         if(ARG_IWYU_MAPPING_FILES_ARGS)
             set(iwyu_mapping_files_args "")
-            foreach(ar ${ARG_IWYU_MAPPING_FILES_ARGS})
-                list(APPEND iwyu_mapping_files_args "-Xiwyu --mapping_file=${ar}")
+            foreach(mapping_file ${ARG_IWYU_MAPPING_FILES_ARGS})
+                list(APPEND iwyu_mapping_files_args "-Xiwyu --mapping_file=${mapping_file}")
+            endforeach()
+        endif()
+        if(ARG_IWYU_EXTRA_ARGS)
+            set(iwyu_extra_args "")
+            foreach(extra_arg ${ARG_IWYU_EXTRA_ARGS})
+                list(APPEND iwyu_extra_args "-Xiwyu ${extra_arg}")
             endforeach()
         endif()
         add_custom_target(
             ${ARG_TARGET}-iwyu
             COMMAND
-                ${IwyuTool_EXECUTABLE} -p ${CMAKE_BINARY_DIR}/compile_commands.json
-                ${target_sources} -- -Xiwyu --quoted_includes_first -Xiwyu --cxx17ns -Xiwyu
-                --no_fwd_decls ${iwyu_mapping_files_args}
+                ${CMAKE_COMMAND} -E env IWYU_BINARY=${Iwyu_EXECUTABLE} ${IwyuTool_EXECUTABLE} -p
+                ${CMAKE_BINARY_DIR}/compile_commands.json ${target_sources_absolute} -- -Xiwyu
+                --quoted_includes_first -Xiwyu --cxx17ns -Xiwyu --no_fwd_decls
+                ${iwyu_mapping_files_args} ${iwyu_extra_args}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             USES_TERMINAL
             COMMENT "Analyzing code by 'include-what-you-use'"

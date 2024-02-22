@@ -96,7 +96,9 @@ endfunction()
 # [/cmake_documentation]
 function(add_gcovr_coverage_target)
     set(options HTML COBERTURA COVERALLS SONARQUBE)
-    set(oneValueArgs COVERAGE_TARGET COVERAGE_INIT_TARGET CHECK_TARGET OUTPUT_DIRECTORY GCOV_EXECUTABLE)
+    set(oneValueArgs COVERAGE_TARGET COVERAGE_INIT_TARGET CHECK_TARGET OUTPUT_DIRECTORY
+                     GCOV_EXECUTABLE
+    )
     set(multiValueArgs GCOVR_EXCLUDE GCOVR_FILTER ARG_GCOVR_OPTIONS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 

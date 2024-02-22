@@ -100,11 +100,13 @@ function(target_enable_sanitizers targetName)
         )
 
         # The object size sanitizer has no effect at -O0
-        if(NOT CMAKE_BUILD_TYPE STREQUAL "Coverage" AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-            target_compile_options(
-                ${targetName}
-                PRIVATE -fsanitize=object-size
-            )
+        if(CMAKE_BUILD_TYPE
+           AND NOT CMAKE_BUILD_TYPE STREQUAL "Coverage"
+           AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
+        )
+            target_compile_options(${targetName} PRIVATE -fsanitize=object-size)
+        else()
+            message(STATUS "Not enabling -fsanitize=object-size for ${targetName}")
         endif()
 
         target_link_libraries(${targetName} PUBLIC -fsanitize=undefined)
