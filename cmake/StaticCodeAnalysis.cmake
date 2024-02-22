@@ -20,9 +20,12 @@
 # - `codeanalysis`:    calls all targets above
 #
 # Uses the following parameters:
-# @arg __ENABLE_CPPCHECK__:   Enable basic static analysis of C/C++ code
-# @arg __ENABLE_CLANG_TIDY__: Enable clang-based analysis and linting of C/C++ code
-# @arg __ENABLE_IWYU__:       Enable include file analysis in C and C++ source files
+# @arg __ENABLE_CPPCHECK__:        Enable basic static analysis of C/C++ code
+# @arg __CPPCHECK_MIN_VERSION__:   Minimum required version for `cppcheck`
+# @arg __ENABLE_CLANG_TIDY__:      Enable clang-based analysis and linting of C/C++ code
+# @arg __CLANG_TIDY_MIN_VERSION__: Minimum required version for `clang-tidy`
+# @arg __ENABLE_IWYU__:            Enable include file analysis in C and C++ source files
+# @arg __IWYU_MIN_VERSION__:       Minimum required version for `include-what-you-use`
 # [/cmake_documentation]
 
 include(Helpers)
@@ -30,16 +33,19 @@ find_package_switchable(
     Cppcheck
     OPTION ENABLE_CPPCHECK
     PURPOSE "Basic static analysis of C/C++ code"
+    MIN_VERSION ${CPPCHECK_MIN_VERSION}
 )
 find_package_switchable(
     ClangTidy
     OPTION ENABLE_CLANG_TIDY
     PURPOSE "Clang-based analysis and linting of C/C++ code"
+    MIN_VERSION ${CLANG_TIDY_MIN_VERSION}
 )
 find_package_switchable(
     Iwyu
     OPTION ENABLE_IWYU
     PURPOSE "Analyze includes in C and C++ source files"
+    MIN_VERSION ${IWYU_MIN_VERSION}
 )
 
 # [cmake_documentation] add_static_analysis_targets()
@@ -88,7 +94,7 @@ function(add_static_analysis_targets)
     endif()
 
     if(ENABLE_CPPCHECK)
-        find_package(Cppcheck REQUIRED)
+        find_program(Cppcheck_EXECUTABLE NAMES cppcheck REQUIRED)
         if(ARG_CPPCHECK_SUPPRESSIONS_LISTS)
             set(cppcheck_args_suppressions_list "")
             foreach(suppression ${ARG_CPPCHECK_SUPPRESSIONS_LISTS})
@@ -168,7 +174,7 @@ function(add_static_analysis_targets)
             COMMAND
                 ${CMAKE_COMMAND} -E env IWYU_BINARY=${Iwyu_EXECUTABLE} ${IwyuTool_EXECUTABLE} -p
                 ${CMAKE_BINARY_DIR}/compile_commands.json ${target_sources_absolute} -- -Xiwyu
-                --quoted_includes_first -Xiwyu --cxx17ns -Xiwyu --no_fwd_decls
+                --quoted_includes_first -Xiwyu --cxx17ns -Xiwyu --no_fwd_decls -Xiwyu --error=1
                 ${iwyu_mapping_files_args} ${iwyu_extra_args}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             USES_TERMINAL

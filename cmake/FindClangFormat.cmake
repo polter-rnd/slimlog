@@ -57,6 +57,8 @@ if(ClangFormat_EXECUTABLE)
         string(REGEX REPLACE "[0-9]+\\.[0-9]+\\.([0-9]+)" "\\1" ClangFormat_VERSION_PATCH
                              ${ClangFormat_VERSION_STRING}
         )
+    else()
+        set(ClangFormat_VERSION_STRING "")
     endif()
 endif()
 

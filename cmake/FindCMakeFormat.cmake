@@ -38,6 +38,8 @@ if(CMakeFormat_EXECUTABLE)
         string(REGEX REPLACE "[0-9]+\\.[0-9]+\\.([0-9]+)" "\\1" CMakeFormat_VERSION_PATCH
                              ${CMakeFormat_VERSION_STRING}
         )
+    else()
+        set(CMakeFormat_VERSION_STRING "")
     endif()
 endif()
 
