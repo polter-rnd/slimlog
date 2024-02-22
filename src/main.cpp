@@ -1,13 +1,15 @@
-#include <log/logger.h>
-#include <log/sinks/console_sink.h>
-#include <util.h>
+#include "log/format.h"
+#include "log/logger.h"
+#include "log/sinks/console_sink.h"
+#include "util.h"
 
 #include <exception>
-#include <format>
+#include <initializer_list>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int
 {
@@ -41,7 +43,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
         log.info("Pipkanoid {}!", 123);
         log.info("Lalka pipka");
-        constexpr std::format_string<std::string_view> Eeee{"Hello {}"};
+        constexpr Log::BasicFormatString<char, std::string_view> Eeee{"Hello {}"};
         log.info(Eeee, std::string_view("pip"));
 
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
@@ -52,7 +54,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         log2.emit(Log::Level::Info, L"Привет, {}", 24);
         log2.emit(Log::Level::Info, L"Привет");
         log2.info([]() { return L"Hello from lambda!!!11"; });
-        constexpr std::wformat_string<std::wstring_view> Eeee2{L"Hello {}"};
+        constexpr Log::BasicFormatString<wchar_t, std::wstring_view> Eeee2{L"Hello {}"};
         log2.info(Eeee2, std::wstring_view(L"pip"));
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << '\n';

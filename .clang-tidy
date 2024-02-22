@@ -8,7 +8,7 @@ Checks: '*,
         -zircon-*,
 '
 
-WarningsAsErrors: ''
+WarningsAsErrors: '*'
 HeaderFilterRegex: ''
 CheckOptions:
   - key: readability-identifier-naming.InlineNamespaceCase
@@ -69,3 +69,6 @@ CheckOptions:
     value: CamelCase
   - key: readability-identifier-naming.TemplateParameterCase
     value: CamelCase
+  # Workaround for https://github.com/llvm/llvm-project/issues/46097
+  - key: readability-identifier-naming.TypeTemplateParameterIgnoredRegexp
+    value: expr-type

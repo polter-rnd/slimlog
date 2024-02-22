@@ -17,6 +17,9 @@
 // CLang 15+
 // libfmt 9.1.0+
 
+// cppcheck 2.10+
+// iwyu 0.19+
+
 namespace PlainCloud::Log {
 // Forward declaration of namespace to make IWYU happy
 }
@@ -35,9 +38,9 @@ public:
     public:
         Sink() = default;
         Sink(Sink const&) = default;
-        Sink(Sink&&) = default;
+        Sink(Sink&&) noexcept = default;
         auto operator=(Sink const&) -> Sink& = default;
-        auto operator=(Sink&&) -> Sink& = default;
+        auto operator=(Sink&&) noexcept -> Sink& = default;
         virtual ~Sink() = default;
 
         virtual auto
@@ -117,6 +120,7 @@ public:
         const Log::Location& location = Log::Location::current()) const -> void
     {
         auto callback = [&message]() {
+            // cppcheck-suppress syntaxError
             return message; // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay, \
                                       hicpp-no-array-decay)
         };
@@ -127,6 +131,7 @@ public:
     // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
     inline void emit(Log::Level level, const Log::Format<Args...>& fmt, Args&&... args) const
     {
+        // cppcheck-suppress syntaxError
         auto callback = [&fmt, &args...]() { // NOLINT(cppcoreguidelines-avoid-c-arrays, \
                                                        hicpp-avoid-c-arrays, \
                                                        modernize-avoid-c-arrays)
@@ -139,6 +144,7 @@ public:
     // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
     inline void emit(Log::Level level, const Log::WideFormat<Args...>& fmt, Args&&... args) const
     {
+        // cppcheck-suppress syntaxError
         auto callback = [&fmt, &args...]() { // NOLINT(cppcoreguidelines-avoid-c-arrays, \
                                                        hicpp-avoid-c-arrays, \
                                                        modernize-avoid-c-arrays)
