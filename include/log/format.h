@@ -1,12 +1,12 @@
 #pragma once
 
 #if __has_include(<format>)
-#include <format> // IWYU pragma: export
+#include <format>
 #endif
 
 #ifndef __cpp_lib_format
-#include <fmt/core.h> // IWYU pragma: export
-#include <fmt/format.h> // IWYU pragma: export
+#include <fmt/core.h>
+#include <fmt/format.h>
 #include <fmt/xchar.h>
 #endif
 
