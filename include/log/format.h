@@ -32,7 +32,8 @@ template<typename CharT, typename... Args>
 struct BasicFormat {
 public:
     template<typename T>
-        requires std::convertible_to<T, BasicFormatString<CharT, Args...>>
+        requires(std::convertible_to<T, BasicFormatString<CharT, Args...>>
+                 || std::convertible_to<T, std::basic_string_view<CharT>>)
     // NOLINTNEXTLINE(hicpp-explicit-conversions)
     consteval BasicFormat(const T& fmt, const Location& loc = Location::current())
         : m_fmt(fmt)
