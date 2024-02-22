@@ -36,6 +36,8 @@ if(ClangTidy_EXECUTABLE)
         string(REGEX REPLACE "[0-9]+\\.[0-9]+\\.([0-9]+)" "\\1" ClangTidy_VERSION_PATCH
                              ${ClangTidy_VERSION_STRING}
         )
+    else()
+        set(ClangTidy_VERSION_STRING "")
     endif()
 endif()
 

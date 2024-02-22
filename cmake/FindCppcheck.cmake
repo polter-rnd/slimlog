@@ -33,6 +33,11 @@ if(Cppcheck_EXECUTABLE)
         string(REGEX REPLACE "[0-9]+\\.([0-9]+)" "\\1" Cppcheck_VERSION_MINOR
                              ${Cppcheck_VERSION_STRING}
         )
+        if(Cppcheck_VERSION_STRING MATCHES "[0-9]+\\.[0-9]+\\.([0-9]+)")
+            set(Cppcheck_VERSION_PATCH "${CMAKE_MATCH_1}")
+        endif()
+    else()
+        set(Cppcheck_VERSION_STRING "")
     endif()
 endif()
 

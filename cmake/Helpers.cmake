@@ -38,12 +38,13 @@
 #
 # @param OPTION      Name of the flag to toggle feature on/off, i.e. `ENABLE_MYPKG`
 # @param DEFAULT     Default feature state if switch option is not specified
+# @param MIN_VERSION Minimum requireed package version
 # @param PURPOSE     Which features this package enables in the project
 # @param DESCRIPTION A short description of package
 # [/cmake_documentation]
 function(find_package_switchable package)
     set(options "")
-    set(oneValueArgs OPTION DEFAULT PURPOSE DESCRIPTION)
+    set(oneValueArgs OPTION DEFAULT PURPOSE DESCRIPTION MIN_VERSION)
     set(multipleValueArgs "")
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multipleValueArgs}" ${ARGN})
 
@@ -67,7 +68,7 @@ function(find_package_switchable package)
     # cmake-format: on
 
     if(NOT DEFINED ${ARG_OPTION})
-        find_package(${package})
+        find_package(${package} ${ARG_MIN_VERSION})
         if(${${package}_FOUND} AND ${ARG_DEFAULT})
             set(${ARG_OPTION}
                 ON
@@ -81,7 +82,7 @@ function(find_package_switchable package)
         endif()
     else()
         if(${${ARG_OPTION}})
-            find_package(${package} REQUIRED)
+            find_package(${package} ${ARG_MIN_VERSION} REQUIRED)
         endif()
         option(${ARG_OPTION} ${ARG_PURPOSE} ${${ARG_OPTION}})
     endif()
