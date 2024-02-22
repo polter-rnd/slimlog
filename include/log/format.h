@@ -1,12 +1,16 @@
 #pragma once
 
 #if __has_include(<format>) and defined(__cpp_lib_format)
-#include <format>
+#include <format> // IWYU pragma: export
 #else
-#include <fmt/core.h>
-#include <fmt/format.h>
+#include <fmt/core.h> // IWYU pragma: export
+#include <fmt/format.h> // IWYU pragma: export
 #include <fmt/xchar.h>
 #endif
+
+namespace PlainCloud::Log {
+// Forward declaration of namespace to make IWYU happy
+}
 
 #include "location.h"
 

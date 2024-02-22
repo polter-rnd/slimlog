@@ -65,8 +65,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
         include(GcovrCodeCoverage)
         add_gcovr_coverage_target(
             HTML COBERTURA COVERALLS SONARQUBE
-            COVERAGE_TARGET coverage
-            COVERAGE_INIT_TARGET coverage-clean
+            COVERAGE_TARGET coverage COVERAGE_INIT_TARGET coverage-clean
             OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/coverage
         )
     endif()
