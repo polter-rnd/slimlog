@@ -14,14 +14,14 @@ if(NOT HAS_CXX20_LIBFORMAT)
     target_link_libraries(${TARGET} PRIVATE fmt::fmt-header-only)
 endif()
 
-if(ENABLE_CODE_ANALYSIS)
+if(ENABLE_CODE_ANALYSIS AND COMMAND add_static_analysis_targets)
     add_static_analysis_targets(TARGET ${TARGET} ANALYSIS_TARGET codeanalysis)
 endif()
 
-if(ENABLE_SANITIZERS)
+if(ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
     target_enable_sanitizers(${TARGET})
 endif()
 
-if(ENABLE_COVERAGE)
+if(ENABLE_COVERAGE AND COMMAND target_enable_coverage)
     target_enable_coverage(${TARGET})
 endif()
