@@ -1,6 +1,6 @@
 #pragma once
 
-#if __has_include(<source_location>) and defined(__cpp_lib_source_location)
+#if __has_include(<source_location>)
 #include <source_location>
 #endif
 

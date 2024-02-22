@@ -4,12 +4,10 @@
 #include "util.h"
 
 #include <exception>
-#include <initializer_list>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int
 {
