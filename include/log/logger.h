@@ -131,7 +131,6 @@ public:
     // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
     inline void emit(Log::Level level, const Log::Format<Args...>& fmt, Args&&... args) const
     {
-        // cppcheck-suppress syntaxError
         auto callback = [&fmt, &args...]() { // NOLINT(cppcoreguidelines-avoid-c-arrays, \
                                                        hicpp-avoid-c-arrays, \
                                                        modernize-avoid-c-arrays)
@@ -144,7 +143,6 @@ public:
     // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
     inline void emit(Log::Level level, const Log::WideFormat<Args...>& fmt, Args&&... args) const
     {
-        // cppcheck-suppress syntaxError
         auto callback = [&fmt, &args...]() { // NOLINT(cppcoreguidelines-avoid-c-arrays, \
                                                        hicpp-avoid-c-arrays, \
                                                        modernize-avoid-c-arrays)
@@ -181,7 +179,9 @@ private:
 };
 
 template<typename T, size_t N>
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
-Logger(const T (&)[N], Log::Level = Log::Level::Info) -> Logger<std::basic_string_view<T>>;
+Logger(
+    const T (&)[N], // NOLINT(cppcoreguidelines-avoid-c-arrays, \
+                              hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
+    Log::Level = Log::Level::Info) -> Logger<std::basic_string_view<T>>;
 
 } // namespace PlainCloud::Log
