@@ -29,8 +29,19 @@ if(Gcovr_EXECUTABLE)
 
         string(REGEX REPLACE "([0-9]+)\\.[0-9]+" "\\1" Gcovr_VERSION_MAJOR ${Gcovr_VERSION_STRING})
         string(REGEX REPLACE "[0-9]+\\.([0-9]+)" "\\1" Gcovr_VERSION_MINOR ${Gcovr_VERSION_STRING})
-    else()
-        set(Gcovr_VERSION_STRING "")
+
+        set(Gcovr_VERSION_STRING
+            ${Gcovr_VERSION_STRING}
+            PARENT_SCOPE
+        )
+        set(Gcovr_VERSION_MAJOR
+            ${Gcovr_VERSION_MAJOR}
+            PARENT_SCOPE
+        )
+        set(Gcovr_VERSION_MINOR
+            ${Gcovr_VERSION_MINOR}
+            PARENT_SCOPE
+        )
     endif()
 endif()
 

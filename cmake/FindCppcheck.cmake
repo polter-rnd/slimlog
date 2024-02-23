@@ -34,10 +34,24 @@ if(Cppcheck_EXECUTABLE)
                              ${Cppcheck_VERSION_STRING}
         )
         if(Cppcheck_VERSION_STRING MATCHES "[0-9]+\\.[0-9]+\\.([0-9]+)")
-            set(Cppcheck_VERSION_PATCH "${CMAKE_MATCH_1}")
+            set(Cppcheck_VERSION_PATCH
+                "${CMAKE_MATCH_1}"
+                PARENT_SCOPE
+            )
         endif()
-    else()
-        set(Cppcheck_VERSION_STRING "")
+
+        set(Cppcheck_VERSION_STRING
+            ${Cppcheck_VERSION_STRING}
+            PARENT_SCOPE
+        )
+        set(Cppcheck_VERSION_MAJOR
+            ${Cppcheck_VERSION_MAJOR}
+            PARENT_SCOPE
+        )
+        set(Cppcheck_VERSION_MINOR
+            ${Cppcheck_VERSION_MINOR}
+            PARENT_SCOPE
+        )
     endif()
 endif()
 

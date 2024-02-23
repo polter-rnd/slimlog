@@ -121,6 +121,10 @@ additional_commands = {
         "pargs": {"flags": [], "nargs": "*"},
     },
     "dump_option_variables": {"pargs": {"nargs": 1}},
+    "set_directory_hints": {
+        "kwargs": {"HINTS": "*"},
+        "pargs": {"nargs": 1}
+    },
     "enable_coverage": {"pargs": {"nargs": 0}},
     "find_package_switchable": {
         "kwargs": {"DEFAULT": 1, "DESCRIPTION": 1, "OPTION": 1, "PURPOSE": 1, "MIN_VERSION": 1},

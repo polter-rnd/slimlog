@@ -130,3 +130,49 @@ function(dump_option_variables filter)
         message(" * ${_VAR_NAME}=${${_VAR_NAME}}")
     endforeach()
 endfunction()
+
+# [cmake_documentation] set_directory_hints(package)
+#
+# Iterates over hint variable names passed by `HINTS` option
+# and checks if there is environment or CMake variable with that name
+# and if it is a valid directory, then writes it to `package_HINTS`.
+#
+# Finally you get a list of hint directories set to `package_HINTS`. Example:
+#
+# ~~~
+# set_directory_hints(ClangFormat HINTS LLVM_DIR LLVM_ROOT)
+# message("HINTS: ${ClangFormat_HINTS}")
+# ~~~
+#
+# Optional arguments:
+# @arg __filter__: Regular expression to filter variables
+# [/cmake_documentation]
+function(set_directory_hints package)
+    set(options "")
+    set(oneValueArgs "")
+    set(multipleValueArgs HINTS)
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multipleValueArgs}" ${ARGN})
+
+    set(${package}_HINTS
+        ""
+        PARENT_SCOPE
+    )
+    foreach(hint ${ARG_HINTS})
+        if(DEFINED ${hint})
+            if((EXISTS "${${hint}}") AND (IS_DIRECTORY "${${hint}}"))
+                set(${package}_HINTS
+                    ${${package}_HINTS} "${${hint}}"
+                    PARENT_SCOPE
+                )
+            endif()
+        endif()
+        if(DEFINED ENV{${hint}})
+            if((EXISTS "$ENV{${hint}}") AND (IS_DIRECTORY "$ENV{${hint}}"))
+                set(${package}_HINTS
+                    ${${package}_HINTS} "$ENV{${hint}}"
+                    PARENT_SCOPE
+                )
+            endif()
+        endif()
+    endforeach()
+endfunction()
