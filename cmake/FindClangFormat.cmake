@@ -14,23 +14,11 @@
 # [/cmake_documentation]
 
 # Hints where to look for ClangFormat executable Environment and user variables
-set(ClangFormat_HINTS "")
-foreach(hint LLVM_DIR LLVM_ROOT)
-    if(DEFINED ${hint})
-        if((EXISTS "${${hint}}") AND (IS_DIRECTORY "${${hint}}"))
-            list(APPEND ClangFormat_HINTS "${${hint}}")
-        endif()
-    endif()
-    if(DEFINED ENV{${hint}})
-        if((EXISTS "$ENV{${hint}}") AND (IS_DIRECTORY "$ENV{${hint}}"))
-            list(APPEND ClangFormat_HINTS "$ENV{${hint}}")
-        endif()
-    endif()
-endforeach()
 
+set_directory_hints(ClangFormat HINTS LLVM_DIR LLVM_ROOT)
 find_program(
     ClangFormat_EXECUTABLE
-    NAMES clang-format clang-format-8 clang-format-7 clang-format-6.0
+    NAMES clang-format
     HINTS ${ClangFormat_HINTS}
     DOC "clang-format executable"
 )
@@ -57,8 +45,23 @@ if(ClangFormat_EXECUTABLE)
         string(REGEX REPLACE "[0-9]+\\.[0-9]+\\.([0-9]+)" "\\1" ClangFormat_VERSION_PATCH
                              ${ClangFormat_VERSION_STRING}
         )
-    else()
-        set(ClangFormat_VERSION_STRING "")
+
+        set(ClangFormat_VERSION_STRING
+            ${ClangFormat_VERSION_STRING}
+            PARENT_SCOPE
+        )
+        set(ClangFormat_VERSION_MAJOR
+            ${ClangFormat_VERSION_MAJOR}
+            PARENT_SCOPE
+        )
+        set(ClangFormat_VERSION_MINOR
+            ${ClangFormat_VERSION_MINOR}
+            PARENT_SCOPE
+        )
+        set(ClangFormat_VERSION_PATCH
+            ${ClangFormat_VERSION_PATCH}
+            PARENT_SCOPE
+        )
     endif()
 endif()
 

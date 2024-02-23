@@ -30,10 +30,24 @@ if(Iwyu_EXECUTABLE)
         string(REGEX REPLACE "([0-9]+)\\.[0-9]+" "\\1" Iwyu_VERSION_MAJOR ${Iwyu_VERSION_STRING})
         string(REGEX REPLACE "[0-9]+\\.([0-9]+)" "\\1" Iwyu_VERSION_MINOR ${Iwyu_VERSION_STRING})
         if(Iwyu_VERSION_STRING MATCHES "[0-9]+\\.[0-9]+\\.([0-9]+)")
-            set(Iwyu_VERSION_PATCH "${CMAKE_MATCH_1}")
+            set(Iwyu_VERSION_PATCH
+                "${CMAKE_MATCH_1}"
+                PARENT_SCOPE
+            )
         endif()
-    else()
-        set(Iwyu_VERSION_STRING "")
+
+        set(Iwyu_VERSION_STRING
+            ${Iwyu_VERSION_STRING}
+            PARENT_SCOPE
+        )
+        set(Iwyu_VERSION_MAJOR
+            ${Iwyu_VERSION_MAJOR}
+            PARENT_SCOPE
+        )
+        set(Iwyu_VERSION_MINOR
+            ${Iwyu_VERSION_MINOR}
+            PARENT_SCOPE
+        )
     endif()
 endif()
 

@@ -9,9 +9,11 @@
 # @arg __FindClangTidy_VERSION_PATCH__: The clang-format patch version
 # [/cmake_documentation]
 
+set_directory_hints(ClangTidy HINTS LLVM_DIR LLVM_ROOT)
 find_program(
     ClangTidy_EXECUTABLE
-    NAMES clang-tidy clang-tidy-8 clang-tidy-7 clang-tidy-6.0
+    NAMES clang-tidy
+    HINTS ${ClangTidy_HINTS}
     DOC "clang-tidy executable"
 )
 
@@ -36,8 +38,23 @@ if(ClangTidy_EXECUTABLE)
         string(REGEX REPLACE "[0-9]+\\.[0-9]+\\.([0-9]+)" "\\1" ClangTidy_VERSION_PATCH
                              ${ClangTidy_VERSION_STRING}
         )
-    else()
-        set(ClangTidy_VERSION_STRING "")
+
+        set(ClangTidy_VERSION_STRING
+            ${ClangTidy_VERSION_STRING}
+            PARENT_SCOPE
+        )
+        set(ClangTidy_VERSION_MAJOR
+            ${ClangTidy_VERSION_MAJOR}
+            PARENT_SCOPE
+        )
+        set(ClangTidy_VERSION_MINOR
+            ${ClangTidy_VERSION_MINOR}
+            PARENT_SCOPE
+        )
+        set(ClangTidy_VERSION_PATCH
+            ${ClangTidy_VERSION_PATCH}
+            PARENT_SCOPE
+        )
     endif()
 endif()
 
