@@ -17,9 +17,6 @@
 // CLang 15+
 // libfmt 9.1.0+
 
-// cppcheck 2.10+
-// iwyu 0.19+
-
 namespace PlainCloud::Log {
 // Forward declaration of namespace to make IWYU happy
 }
