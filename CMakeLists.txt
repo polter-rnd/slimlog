@@ -52,9 +52,9 @@ endif()
 
 # Option for enabling / disabling sanitizers
 option(ENABLE_SANITIZERS "Code sanitizers" OFF)
-add_feature_info("CodeSanitizers" ENABLE_SANITIZERS "address/leak/UB/thread sanitizers")
+add_feature_info("CodeSanitizing" ENABLE_SANITIZERS "address/leak/UB/thread sanitizers")
 if(ENABLE_SANITIZERS)
-    include(CodeSanitizer)
+    include(CodeSanitizing)
 endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -63,14 +63,16 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
         OPTION ENABLE_COVERAGE
         PURPOSE "Code coverage reports by gcovr"
     )
+    add_feature_info("GcovrCodeCoverage" ENABLE_COVERAGE "code test coverage")
+
     if(ENABLE_COVERAGE)
-        # Generate code coverage counters and HTML report
         include(GcovrCodeCoverage)
+        # cmake-format: off
         add_gcovr_coverage_target(
             HTML COBERTURA COVERALLS SONARQUBE
-            COVERAGE_TARGET coverage COVERAGE_INIT_TARGET coverage-clean
-            OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/coverage
+            COVERAGE_TARGET coverage COVERAGE_INIT_TARGET coverage-init
         )
+        # cmake-format: on
     endif()
 endif()
 
@@ -83,6 +85,7 @@ find_package_switchable(
     DEFAULT OFF
     PURPOSE "Build Doxygen documentation"
 )
+add_feature_info("DoxygenDocumentation" BUILD_DOCS "build documentation")
 
 if(BUILD_DOCS)
     include(DoxygenDocumentation)
@@ -101,5 +104,5 @@ feature_summary(WHAT ALL)
 # Summary of available options
 message(STATUS "Options summary:")
 message("")
-dump_option_variables("^ENABLE_|^BUILD_")
+dump_option_variables("^ENABLE_|^BUILD_|^SANITIZE_")
 message("")
