@@ -1,25 +1,33 @@
 # [cmake_documentation] FindTSan.cmake
 #
 # The module defines the following variables:
-# @arg __TSan_LIBRARY__: Path to libtsan library
 # @arg __TSan_FOUND__: `TRUE` if the libtsan library was found
 # [/cmake_documentation]
 
-find_library(
-    TSan_LIBRARY
-    NAMES libtsan.so
-          libtsan.so.2
-          libtsan.so.2.0.0
-          libtsan.so.1
-          libtsan.so.1.0.0
-          libtsan.so.0
-          libtsan.so.0.0.0
-    PATHS /usr/lib64 /usr/lib /usr/lib/x86_64-linux-gnu /usr/local/lib64 /usr/local/lib
-          ${CMAKE_PREFIX_PATH}/lib
-    DOC "libtsan library"
+set(FLAG_CANDIDATES
+    # MSVC uses
+    "/fsanitize=thread"
+    # GNU/Clang
+    "-g -fsanitize=thread"
 )
 
-mark_as_advanced(TSan_LIBRARY)
+include(SanitizeHelpers)
+
+  if (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Linux" AND
+      NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+        message(WARNING "ThreadSanitizer disabled for target ${TARGET} because "
+          "ThreadSanitizer is supported for Linux systems and macOS only.")
+    elseif (NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
+        message(WARNING "ThreadSanitizer disabled for target ${TARGET} because "
+            "ThreadSanitizer is supported for 64bit systems only.")
+    else ()
+        sanitizer_check_compiler_flags("${FLAG_CANDIDATES}" "ThreadSanitizer"
+            "TSan")
+    endif ()
+
+if (TSan_FLAG_DETECTED)
+    set(TSan_SUPPORTED "ThreadSanitizer is supported by compiler")
+endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(TSan DEFAULT_MSG TSan_LIBRARY)
+find_package_handle_standard_args(TSan DEFAULT_MSG TSan_SUPPORTED)

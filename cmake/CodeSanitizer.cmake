@@ -49,15 +49,15 @@ if((ENABLE_ASAN OR ENABLE_LSAN) AND ENABLE_TSAN)
     )
 endif()
 
-if(NOT CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)" AND NOT CMAKE_CXX_COMPILER_ID MATCHES
-                                                       "(GNU|Clang)"
-)
-    set(ENABLE_ASAN OFF)
-    set(ENABLE_LSAN OFF)
-    set(ENABLE_UBSAN OFF)
-    set(ENABLE_TSAN OFF)
-    message(WARNING "Sanitizers are only supported by GNU GCC and Clang")
-endif()
+#if(NOT CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)" AND NOT CMAKE_CXX_COMPILER_ID MATCHES
+#                                                       "(GNU|Clang)"
+#)
+#    set(ENABLE_ASAN OFF)
+#    set(ENABLE_LSAN OFF)
+#    set(ENABLE_UBSAN OFF)
+#    set(ENABLE_TSAN OFF)
+#    message(WARNING "Sanitizers are only supported by GNU GCC and Clang")
+#endif()
 
 # [cmake_documentation] target_enable_sanitizers(targetName)
 #
@@ -69,58 +69,53 @@ endif()
 #
 # [/cmake_documentation]
 function(target_enable_sanitizers targetName)
+        # Check if this target will be compiled by exactly one compiler. Other-
+        # wise sanitizers can't be used and a warning should be printed once.
+        get_target_property(TARGET_TYPE ${TARGET} TYPE)
+        if (TARGET_TYPE STREQUAL "INTERFACE_LIBRARY")
+            message(WARNING "Can't use any sanitizers for target ${TARGET}, "
+                    "because it is an interface library and cannot be "
+                    "compiled directly.")
+            return()
+        endif ()
+        sanitizer_target_compilers(${TARGET} TARGET_COMPILER)
+        list(LENGTH TARGET_COMPILER NUM_COMPILERS)
+        if (NUM_COMPILERS GREATER 1)
+            message(WARNING "Can't use any sanitizers for target ${TARGET}, "
+                    "because it will be compiled by incompatible compilers. "
+                    "Target will be compiled without sanitizers.")
+            return()
+
+        elseif (NUM_COMPILERS EQUAL 0)
+            # If the target is compiled by no known compiler, give a warning.
+            message(WARNING "Sanitizers for target ${TARGET} may not be"
+                    " usable, because it uses no or an unknown compiler. "
+                    "This is a false warning for targets using only "
+                    "object lib(s) as input.")
+        endif ()
+
     # Enable AddressSanitizer
     if(ENABLE_ASAN)
-        target_compile_options(${targetName} PRIVATE -fsanitize=address)
-        target_link_libraries(${targetName} PUBLIC -fsanitize=address)
+        sanitizer_add_flags(${targetName} "AddressSanitizer" "ASan")
     endif()
 
     # Enable UndefinedBehaviorSanitizer
     if(ENABLE_UBSAN)
-        target_compile_options(
-            ${targetName}
-            PRIVATE -fsanitize=undefined
-                    -fno-sanitize-recover=undefined
-                    -fsanitize=vptr
-                    -fsanitize=enum
-                    -fsanitize=bool
-                    -fsanitize=returns-nonnull-attribute
-                    -fsanitize=nonnull-attribute
-                    -fsanitize=float-cast-overflow
-                    -fsanitize=float-divide-by-zero
-                    -fsanitize=alignment
-                    -fsanitize=bounds
-                    -fsanitize=signed-integer-overflow
-                    -fsanitize=return
-                    -fsanitize=null
-                    -fsanitize=vla-bound
-                    -fsanitize=unreachable
-                    -fsanitize=integer-divide-by-zero
-                    -fsanitize=shift
-        )
-
-        # The object size sanitizer has no effect at -O0
-        if(CMAKE_BUILD_TYPE
-           AND NOT CMAKE_BUILD_TYPE STREQUAL "Coverage"
-           AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug"
-        )
-            target_compile_options(${targetName} PRIVATE -fsanitize=object-size)
-        else()
-            message(STATUS "Not enabling -fsanitize=object-size for ${targetName}")
-        endif()
-
-        target_link_libraries(${targetName} PUBLIC -fsanitize=undefined)
+        sanitizer_add_flags(${targetName} "UndefinedBehaviorSanitizer" "UBSan")
     endif()
 
     # Enable LeakSanitizer
     if(ENABLE_LSAN)
-        target_compile_options(${targetName} PRIVATE -fsanitize=leak)
-        target_link_libraries(${targetName} PUBLIC -fsanitize=leak)
+        sanitizer_add_flags(${targetName} "ThreadSanitizer" "LSan")
+    endif()
+
+    # Enable MemorySanitizer
+    if(ENABLE_LSAN)
+        sanitizer_add_flags(${targetName} "MemorySanitizer" "MSan")
     endif()
 
     # Enable ThreadSanitizer
     if(ENABLE_TSAN)
-        target_compile_options(${targetName} PRIVATE -fsanitize=thread)
-        target_link_libraries(${targetName} PUBLIC -fsanitize=thread)
+        sanitizer_add_flags(${targetName} "ThreadSanitizer" "TSan")
     endif()
 endfunction()

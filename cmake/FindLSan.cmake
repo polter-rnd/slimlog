@@ -5,15 +5,19 @@
 # @arg __LSan_FOUND__: `TRUE` if the liblsan library was found
 # [/cmake_documentation]
 
-find_library(
-    LSan_LIBRARY
-    NAMES liblsan.so liblsan.so.0 liblsan.so.0.0.0
-    PATHS /usr/lib64 /usr/lib /usr/lib/x86_64-linux-gnu /usr/local/lib64 /usr/local/lib
-          ${CMAKE_PREFIX_PATH}/lib
-    DOC "liblsan library"
+set(FLAG_CANDIDATES
+    # MSVC uses
+    "/fsanitize=leak"
+    # GNU/Clang
+    "-g -fsanitize=leak"
 )
 
-mark_as_advanced(LSan_LIBRARY)
+include(SanitizeHelpers)
+sanitizer_check_compiler_flags("${FLAG_CANDIDATES}" "LeakSanitizer" "LSan")
+
+if (LSan_FLAG_DETECTED)
+    set(LSan_SUPPORTED "LeakSanitizer is supported by compiler")
+endif()
 
 include(FindPackageHandleStandardArgs)
-find_package_handle_standard_args(LSan DEFAULT_MSG LSan_LIBRARY)
+find_package_handle_standard_args(LSan DEFAULT_MSG LSan_SUPPORTED)
