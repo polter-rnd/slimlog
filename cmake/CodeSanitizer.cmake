@@ -1,6 +1,6 @@
 # [cmake_documentation] CodeSanitizer.cmake
 #
-# Enables various sanitizers for specified target (libasan, liblsan, libubsan and libtsan).
+# Enables various sanitizers for specified target (libasan, liblsan, libmsa, libubsan and libtsan).
 # Usage example:
 #
 # ~~~{.cmake}
@@ -14,50 +14,106 @@
 # - @ref target_enable_sanitizers
 #
 # Uses the following parameters:
-# @arg __ENABLE_ASAN__:  Enable address sanitizer (`libasan`)
-# @arg __ENABLE_LSAN__:  Enable leak sanitizer (`liblsan`)
-# @arg __ENABLE_UBSAN__: Enable undefined behavior sanitizer (`libubsan`)
-# @arg __ENABLE_TSAN__:  Enable thread sanitizer (`libtsan`)
+# @arg __SANITIZE_ADDRESS__:  Enable address sanitizer (`libasan`)
+# @arg __SANITIZE_LEAK__:  Enable leak sanitizer (`liblsan`)
+# @arg __SANITIZE_MEMORY__:  Enable memory sanitizer (`libmsan`)
+# @arg __SANITIZE_UNDEFINED__: Enable undefined behavior sanitizer (`libubsan`)
+# @arg __SANITIZE_THREAD__:  Enable thread sanitizer (`libtsan`)
 # [/cmake_documentation]
 
 include(Helpers)
+
 find_package_switchable(
     ASan
-    OPTION ENABLE_ASAN
+    OPTION SANITIZE_ADDRESS
     PURPOSE "Address sanitizer"
 )
 find_package_switchable(
     LSan
-    OPTION ENABLE_LSAN
+    OPTION SANITIZE_LEAK
     PURPOSE "Leak sanitizer"
 )
 find_package_switchable(
     UBSan
-    OPTION ENABLE_UBSAN
+    OPTION SANITIZE_UNDEFINED
     PURPOSE "Undefined behavior sanitizer"
 )
 find_package_switchable(
     TSan
-    OPTION ENABLE_TSAN
+    OPTION SANITIZE_THREAD
     DEFAULT OFF
     PURPOSE "Thread sanitizer"
 )
 
-if((ENABLE_ASAN OR ENABLE_LSAN) AND ENABLE_TSAN)
+option(SANITIZE_LINK_STATIC "Try to link static against sanitizers." ON)
+
+if((SANITIZE_LEAK OR SANITIZE_MEMORY) AND SANITIZE_THREAD)
+    message(FATAL_ERROR "ThreadSanitizer is not compatible with MemorySanitizer.")
+endif()
+
+if(SANITIZE_ADDRESS AND (SANITIZE_THREAD OR SANITIZE_MEMORY))
     message(
-        FATAL_ERROR "AddressSanitizer/LeakSanitizer and ThreadSanitizer cannot be enabled together"
+        FATAL_ERROR "AddressSanitizer is not compatible with ThreadSanitizer or MemorySanitizer."
     )
 endif()
 
-#if(NOT CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)" AND NOT CMAKE_CXX_COMPILER_ID MATCHES
-#                                                       "(GNU|Clang)"
-#)
-#    set(ENABLE_ASAN OFF)
-#    set(ENABLE_LSAN OFF)
-#    set(ENABLE_UBSAN OFF)
-#    set(ENABLE_TSAN OFF)
-#    message(WARNING "Sanitizers are only supported by GNU GCC and Clang")
-#endif()
+# [cmake_documentation] sanitizer_add_blacklist_file(fileName)
+#
+# Adds specific file to blacklist for usage in sanitizers.
+#
+# Required arguments:
+# @arg __fileName__: File name to be blackisted (relative to `\${CMAKE_CURRENT_SOURCE_DIR}`)
+#
+# [/cmake_documentation]
+function(sanitizer_add_blacklist_file fileName)
+    if(NOT IS_ABSOLUTE ${fileName})
+        set(fileName "${CMAKE_CURRENT_SOURCE_DIR}/${fileName}")
+    endif()
+    get_filename_component(fileName "${fileName}" REALPATH)
+
+    check_compiler_flags_list("-fsanitize-blacklist=${fileName}" "SanitizerBlacklist" "SanBlist")
+endfunction()
+
+# [cmake_documentation] sanitizer_add_flags(targetName, targetCompiler, targetLang, varPrefix)
+#
+# Helper to assign sanitizer flags for `targetName`.
+#
+# Required arguments:
+# @arg __targetName__: Name of the target
+# @arg __targetCompiler__: Name of the compiler used to build target
+# @arg __targetLang__: Language used for target
+# @arg __varPrefix__: Prefix for resulting variables
+#
+# [/cmake_documentation]
+function(sanitizer_add_flags targetName targetCompiler targetLang varPrefix)
+    # Get list of compilers used by target and check, if sanitizer is available for this target.
+    # Other compiler checks like check for conflicting compilers will be done in add_sanitizers
+    # function.
+    set(sanitizer_flags "${${varPrefix}_${targetCompiler}_FLAGS}")
+    if(sanitizer_flags STREQUAL "")
+        return()
+    endif()
+
+    separate_arguments(
+        flags_list UNIX_COMMAND "${sanitizer_flags} ${SanBlist_${targetCompiler}_FLAGS}"
+    )
+    target_compile_options(${targetName} PUBLIC ${flags_list})
+
+    # If compiler is a GNU compiler, search for static flag, if SANITIZE_LINK_STATIC is enabled.
+    if(SANITIZE_LINK_STATIC AND (${targetCompiler} STREQUAL "GNU"))
+        string(TOLOWER ${varPrefix} varPrefix_lower)
+        set(flags_static "-static-lib${varPrefix_lower} ${sanitizer_flags}")
+
+        check_compiler_flag(${flags_static} ${targetLang} ${varPrefix}_STATIC_FLAG_DETECTED)
+
+        if(${varPrefix}_STATIC_FLAG_DETECTED)
+            set(sanitizer_flags ${flags_static})
+        endif()
+    endif()
+
+    separate_arguments(flags_list UNIX_COMMAND "${sanitizer_flags}")
+    target_link_options(${targetName} PUBLIC ${flags_list})
+endfunction()
 
 # [cmake_documentation] target_enable_sanitizers(targetName)
 #
@@ -69,53 +125,53 @@ endif()
 #
 # [/cmake_documentation]
 function(target_enable_sanitizers targetName)
-        # Check if this target will be compiled by exactly one compiler. Other-
-        # wise sanitizers can't be used and a warning should be printed once.
-        get_target_property(TARGET_TYPE ${TARGET} TYPE)
-        if (TARGET_TYPE STREQUAL "INTERFACE_LIBRARY")
-            message(WARNING "Can't use any sanitizers for target ${TARGET}, "
-                    "because it is an interface library and cannot be "
-                    "compiled directly.")
-            return()
-        endif ()
-        sanitizer_target_compilers(${TARGET} TARGET_COMPILER)
-        list(LENGTH TARGET_COMPILER NUM_COMPILERS)
-        if (NUM_COMPILERS GREATER 1)
-            message(WARNING "Can't use any sanitizers for target ${TARGET}, "
-                    "because it will be compiled by incompatible compilers. "
-                    "Target will be compiled without sanitizers.")
-            return()
-
-        elseif (NUM_COMPILERS EQUAL 0)
-            # If the target is compiled by no known compiler, give a warning.
-            message(WARNING "Sanitizers for target ${TARGET} may not be"
-                    " usable, because it uses no or an unknown compiler. "
-                    "This is a false warning for targets using only "
-                    "object lib(s) as input.")
-        endif ()
+    # Check if this target will be compiled by exactly one compiler. Otherwise sanitizers can't be
+    # used and a warning should be printed once.
+    get_target_property(target_type ${targetName} TYPE)
+    if(target_type STREQUAL "INTERFACE_LIBRARY")
+        message(WARNING "Can't use any sanitizers for target ${fileName}, "
+                        "because it is an interface library and cannot be compiled directly."
+        )
+        return()
+    endif()
+    get_target_compilers(${targetName} target_compiler target_lang)
+    list(LENGTH target_compiler num_compilers)
+    if(num_compilers GREATER 1)
+        message(WARNING "Can't use any sanitizers for target ${targetName}, "
+                        "because it will be compiled by incompatible compilers. "
+                        "Target will be compiled without sanitizers."
+        )
+        return()
+    elseif(num_compilers EQUAL 0)
+        # If the target is compiled by no known compiler, give a warning.
+        message(WARNING "Sanitizers for target ${targetName} may not be "
+                        "usable, because it uses no or an unknown compiler. "
+                        "This is a false warning for targets using only object lib(s) as input."
+        )
+    endif()
 
     # Enable AddressSanitizer
-    if(ENABLE_ASAN)
-        sanitizer_add_flags(${targetName} "AddressSanitizer" "ASan")
+    if(SANITIZE_ADDRESS)
+        sanitizer_add_flags(${targetName} ${target_compiler} ${target_lang} "ASan")
     endif()
 
     # Enable UndefinedBehaviorSanitizer
-    if(ENABLE_UBSAN)
-        sanitizer_add_flags(${targetName} "UndefinedBehaviorSanitizer" "UBSan")
+    if(SANITIZE_UNDEFINED)
+        sanitizer_add_flags(${targetName} ${target_compiler} ${target_lang} "UBSan")
     endif()
 
     # Enable LeakSanitizer
-    if(ENABLE_LSAN)
-        sanitizer_add_flags(${targetName} "ThreadSanitizer" "LSan")
+    if(SANITIZE_LEAK)
+        sanitizer_add_flags(${targetName} ${target_compiler} ${target_lang} "LSan")
     endif()
 
     # Enable MemorySanitizer
-    if(ENABLE_LSAN)
-        sanitizer_add_flags(${targetName} "MemorySanitizer" "MSan")
+    if(SANITIZE_LEAK)
+        sanitizer_add_flags(${targetName} ${target_compiler} ${target_lang} "MSan")
     endif()
 
     # Enable ThreadSanitizer
-    if(ENABLE_TSAN)
-        sanitizer_add_flags(${targetName} "ThreadSanitizer" "TSan")
+    if(SANITIZE_THREAD)
+        sanitizer_add_flags(${targetName} ${target_compiler} ${target_lang} "TSan")
     endif()
 endfunction()

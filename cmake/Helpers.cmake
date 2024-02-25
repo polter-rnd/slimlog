@@ -101,33 +101,32 @@ endfunction()
 # @arg __filter__: Regular expression to filter variables
 # [/cmake_documentation]
 function(dump_option_variables filter)
-    get_cmake_property(_VAR_NAMES VARIABLES)
-    list(SORT _VAR_NAMES)
-    foreach(_VAR_NAME ${_VAR_NAMES})
+    get_cmake_property(_var_names VARIABLES)
+    list(SORT _var_names)
+    foreach(_var_name ${_var_names})
         if(filter)
             # cmake-format: off
-            get_property(_VAR_TYPE CACHE ${_VAR_NAME} PROPERTY TYPE)
-            get_property(_IS_ADVANCED CACHE ${_VAR_NAME} PROPERTY ADVANCED)
+            get_property(_var_type CACHE ${_var_name} PROPERTY TYPE)
+            get_property(_is_advanced CACHE ${_var_name} PROPERTY ADVANCED)
             # cmake-format: on
-            if("${_VAR_TYPE}" STREQUAL "INTERNAL"
-               OR "${_VAR_TYPE}" STREQUAL "UNINITIALIZED"
-               OR _IS_ADVANCED
+            if("${_var_type}" STREQUAL "INTERNAL"
+               OR "${_var_type}" STREQUAL "UNINITIALIZED"
+               OR _is_advanced
             )
                 continue()
             endif()
 
-            unset(MATCHED)
-
             # Case insenstitive match
             string(TOLOWER "${filter}" filter_lower)
-            string(TOLOWER "${_VAR_NAME}" _VAR_NAME_lower)
-            string(REGEX MATCH ${filter_lower} MATCHED ${_VAR_NAME_lower})
+            string(TOLOWER "${_var_name}" _var_name_lower)
 
-            if(NOT MATCHED)
+            unset(MATCHED)
+            string(REGEX MATCH ${filter_lower} matched ${_var_name_lower})
+            if(NOT matched)
                 continue()
             endif()
         endif()
-        message(" * ${_VAR_NAME}=${${_VAR_NAME}}")
+        message(" * ${_var_name}=${${_var_name}}")
     endforeach()
 endfunction()
 
@@ -144,8 +143,10 @@ endfunction()
 # message("HINTS: ${ClangFormat_HINTS}")
 # ~~~
 #
-# Optional arguments:
-# @arg __filter__: Regular expression to filter variables
+# Required arguments:
+# @arg __package__: Package name (result will be stored in `package`_HINTS variable).
+#
+# @param HINTS All available paths to check
 # [/cmake_documentation]
 function(set_directory_hints package)
     set(options "")
@@ -171,6 +172,206 @@ function(set_directory_hints package)
                 set(${package}_HINTS
                     ${${package}_HINTS} "$ENV{${hint}}"
                     PARENT_SCOPE
+                )
+            endif()
+        endif()
+    endforeach()
+endfunction()
+
+# [cmake_documentation] check_compiler_flag(flat, lang, variable)
+#
+# Helper function to check compiler flags for language compiler.
+# It checks if `flag` is supported in the compiler of `lang` language,
+# storing result in `variable`.
+#
+# Currently only `CXX`, `C` and `Fortran` languages are supported.
+#
+# Example:
+#
+# ~~~
+# check_compiler_flag("-fsanitize=address" CXX supported_flag)
+# message("Is address sanitizer supported for C++: ${supported_flag}")
+# ~~~
+# [/cmake_documentation]
+function(check_compiler_flag flag lang variable)
+    set(CMAKE_REQUIRED_FLAGS "${flag}")
+    if(${lang} STREQUAL "C")
+        include(CheckCCompilerFlag)
+        check_c_compiler_flag("${flag}" ${variable})
+    elseif(${lang} STREQUAL "CXX")
+        include(CheckCXXCompilerFlag)
+        check_cxx_compiler_flag("${flag}" ${variable})
+    elseif(${lang} STREQUAL "Fortran")
+        include(CheckFortranCompilerFlag)
+        check_fortran_compiler_flag("${flag}" ${variable})
+    elseif(NOT CMAKE_REQUIRED_QUIET)
+        message(STATUS "Language ${lang} is not supported for checking compiler flags")
+    endif()
+endfunction()
+
+# [cmake_documentation] get_lang_of_source(fileName, variable)
+#
+# Helper function to get the language of a source file based on extension.
+#
+# Example:
+#
+# ~~~
+# get_lang_of_source("main.cpp", main_cpp_lang)
+# message("Language of main.cpp: ${main_cpp_lang}")
+# ~~~
+#
+# Required arguments:
+# @arg __fileName__: Source file name
+# @arg __variable__: Variable name for result
+# [/cmake_documentation]
+function(get_lang_of_source fileName variable)
+    get_filename_component(longest_ext "${fileName}" EXT)
+    # If extension is empty return. This can happen for extensionless headers
+    if("${longest_ext}" STREQUAL "")
+        set(${variable}
+            ""
+            PARENT_SCOPE
+        )
+        return()
+    endif()
+    # Get shortest extension as some files can have dot in their names
+    string(REGEX REPLACE "^.*(\\.[^.]+)$" "\\1" file_ext ${longest_ext})
+    string(TOLOWER "${file_ext}" file_ext)
+    string(SUBSTRING "${file_ext}" 1 -1 file_ext)
+
+    get_property(enabled_languages GLOBAL PROPERTY ENABLED_LANGUAGES)
+    foreach(lang ${enabled_languages})
+        list(FIND CMAKE_${lang}_SOURCE_FILE_EXTENSIONS "${file_ext}" _temp)
+        if(NOT ${_temp} EQUAL -1)
+            set(${variable}
+                "${lang}"
+                PARENT_SCOPE
+            )
+            return()
+        endif()
+    endforeach()
+
+    set(${variable}
+        ""
+        PARENT_SCOPE
+    )
+endfunction()
+
+# [cmake_documentation] get_target_compilers(targetName, compilersVar, langsVar)
+#
+# Helper function to get compilers and languages used by a target.
+#
+# Example:
+#
+# ~~~
+# get_target_compilers("myprogram", compilers_list, langs_list)
+# message("Compilers used in myprogram: ${compilers_list}")
+# message("Languages used in myprogram: ${langs_list}")
+# ~~~
+#
+# Required arguments:
+# @arg __targetName__: Target name
+# @arg __compilersVar__: Variable name for the list of compilers used
+# @arg __langsVar__: Variable name for the list of languages used
+# [/cmake_documentation]
+function(get_target_compilers targetName compilersVar langsVar)
+    set(bufferCompilers "")
+    set(bufferLangs "")
+
+    get_target_property(target_sources ${targetName} SOURCES)
+    foreach(file_name ${target_sources})
+        # If expression was found, file_name is a generator-expression for an object library. Object
+        # libraries will be ignored.
+        string(REGEX MATCH "TARGET_OBJECTS:([^ >]+)" _file ${file_name})
+        if("${_file}" STREQUAL "")
+            get_lang_of_source(${file_name} file_lang)
+            if(file_lang)
+                list(APPEND bufferLangs ${file_lang})
+                list(APPEND bufferCompilers ${CMAKE_${file_lang}_COMPILER_ID})
+            endif()
+        endif()
+    endforeach()
+
+    list(REMOVE_DUPLICATES bufferCompilers)
+    set(${compilersVar}
+        "${bufferCompilers}"
+        PARENT_SCOPE
+    )
+
+    if(DEFINED langsVar)
+        list(REMOVE_DUPLICATES bufferLangs)
+        set(${langsVar}
+            "${bufferLangs}"
+            PARENT_SCOPE
+        )
+    endif()
+endfunction()
+
+# [cmake_documentation] check_compiler_flags_list(flagCandidates, featureName, varPrefix)
+#
+# Helper function to test list of compiler flags.
+# Use it for searching for supported flag combination.
+#
+# For each used compiler, may set the following variables:
+#
+# - `varPrefix`_`compiler`_FLAG_DETECTED (e.g. `ASan_Clang_FLAG_DETECTED`)
+# - `varPrefix`_`compiler`_FLAGS (e.g. `ASan_Clang_FLAGS`)
+#
+# Example:
+#
+# ~~~
+# set(candidates
+#     # GNU/Clang
+#     "-g -fsanitize=address"
+#     # MSVC uses
+#     "/fsanitize=address"
+# )
+# check_compiler_flags_list(${candidates}, Sanitizer, ASan)
+# message("Flags for Clang compiler (if supported): ${ASan_Clang_FLAGS}")
+# message("Flags for GNU compiler (if supported): ${ASan_GNU_FLAGS}")
+# ~~~
+#
+# Required arguments:
+# @arg __flagCandidates__: List of flags to check
+# @arg __featureName__: Feature that is enabled by flags (just for logging)
+# @arg __varPrefix__: Prefix for resulting variables
+# [/cmake_documentation]
+function(check_compiler_flags_list flagCandidates featureName varPrefix)
+    set(CMAKE_REQUIRED_QUIET ${${varPrefix}_FIND_QUIETLY})
+
+    get_property(enabled_languages GLOBAL PROPERTY ENABLED_LANGUAGES)
+    foreach(lang ${enabled_languages})
+        # Sanitizer flags are not dependend on language, but the used compiler. So instead of
+        # searching flags foreach language, search flags foreach compiler used.
+        set(compiler ${CMAKE_${lang}_COMPILER_ID})
+        if(compiler AND NOT DEFINED ${varPrefix}_${compiler}_FLAGS)
+            foreach(flag ${flagCandidates})
+                if(NOT CMAKE_REQUIRED_QUIET)
+                    message(STATUS "Try ${compiler} ${featureName} flag = [${flag}]")
+                endif()
+
+                unset(${varPrefix}_FLAG_DETECTED CACHE)
+                check_compiler_flag("${flag}" ${lang} ${varPrefix}_FLAG_DETECTED)
+                if(${varPrefix}_FLAG_DETECTED)
+                    set(${varPrefix}_${compiler}_FLAGS
+                        "${flag}"
+                        CACHE STRING "${featureName} flags for ${compiler} compiler."
+                    )
+                    mark_as_advanced(${varPrefix}_${compiler}_FLAGS)
+                    break()
+                endif()
+            endforeach()
+
+            if(NOT ${varPrefix}_FLAG_DETECTED)
+                set(${varPrefix}_${compiler}_FLAGS
+                    ""
+                    CACHE STRING "${featureName} flags for ${compiler} compiler."
+                )
+                mark_as_advanced(${varPrefix}_${compiler}_FLAGS)
+
+                message(STATUS "${featureName} is not available for ${compiler} "
+                               "compiler. Targets using this compiler will be "
+                               "compiled without ${featureName}."
                 )
             endif()
         endif()

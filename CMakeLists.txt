@@ -101,5 +101,5 @@ feature_summary(WHAT ALL)
 # Summary of available options
 message(STATUS "Options summary:")
 message("")
-dump_option_variables("^ENABLE_|^BUILD_")
+dump_option_variables("^ENABLE_|^BUILD_|^SANITIZE_")
 message("")
