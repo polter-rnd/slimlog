@@ -298,13 +298,11 @@ function(get_target_compilers targetName compilersVar langsVar)
         PARENT_SCOPE
     )
 
-    if(DEFINED langsVar)
-        list(REMOVE_DUPLICATES bufferLangs)
-        set(${langsVar}
-            "${bufferLangs}"
-            PARENT_SCOPE
-        )
-    endif()
+    list(REMOVE_DUPLICATES bufferLangs)
+    set(${langsVar}
+        "${bufferLangs}"
+        PARENT_SCOPE
+    )
 endfunction()
 
 # [cmake_documentation] check_compiler_flags_list(flagCandidates, featureName, varPrefix)

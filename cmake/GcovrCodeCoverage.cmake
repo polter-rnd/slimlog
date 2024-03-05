@@ -116,6 +116,9 @@ function(add_gcovr_coverage_target)
 
     if(COVERAGE_COMPILER_FLAGS)
         if(NOT ARG_GCOV_EXECUTABLE)
+            include(Helpers)
+            get_target_compilers(${ARG_COVERAGE_TARGET} target_compilers targer_langs)
+
             if(CMAKE_CXX_COMPILER_VERSION)
                 string(REGEX REPLACE "([0-9]+)\\..*" "\\1" COMPILER_VERSION_MAJOR
                                      ${CMAKE_CXX_COMPILER_VERSION}
