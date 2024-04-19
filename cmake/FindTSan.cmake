@@ -4,7 +4,7 @@
 # @arg __TSan_FOUND__: `TRUE` if the compiller supports thread sanitizer
 # [/cmake_documentation]
 
-set(FLAG_CANDIDATES
+set(flag_candidates
     # GNU/Clang
     "-g -fsanitize=thread"
     # MSVC uses
@@ -17,10 +17,10 @@ if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
     )
 else()
     include(Helpers)
-    check_compiler_flags_list("${FLAG_CANDIDATES}" "ThreadSanitizer" "TSan")
+    check_compiler_flags_list("${flag_candidates}" "ThreadSanitizer" "TSan")
 endif()
 
-if(TSan_FLAG_DETECTED)
+if(TSan_DETECTED)
     set(TSan_SUPPORTED "ThreadSanitizer is supported by compiler")
 endif()
 

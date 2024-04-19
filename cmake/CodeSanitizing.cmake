@@ -1,6 +1,6 @@
-# [cmake_documentation] CodeSanitizer.cmake
+# [cmake_documentation] CodeSanitizing.cmake
 #
-# Enables various sanitizers for specified target (libasan, liblsan, libmsa, libubsan and libtsan).
+# Enables various sanitizers for specified target (libasan, liblsan, libmsan, libubsan and libtsan).
 # Usage example:
 #
 # ~~~{.cmake}
@@ -14,11 +14,12 @@
 # - @ref target_enable_sanitizers
 #
 # Uses the following parameters:
-# @arg __SANITIZE_ADDRESS__:  Enable address sanitizer (`libasan`)
-# @arg __SANITIZE_LEAK__:  Enable leak sanitizer (`liblsan`)
-# @arg __SANITIZE_MEMORY__:  Enable memory sanitizer (`libmsan`)
-# @arg __SANITIZE_UNDEFINED__: Enable undefined behavior sanitizer (`libubsan`)
-# @arg __SANITIZE_THREAD__:  Enable thread sanitizer (`libtsan`)
+# @arg __SANITIZE_ADDRESS__:     Enable address sanitizer (`libasan`)
+# @arg __SANITIZE_LEAK__:        Enable leak sanitizer (`liblsan`)
+# @arg __SANITIZE_MEMORY__:      Enable memory sanitizer (`libmsan`)
+# @arg __SANITIZE_UNDEFINED__:   Enable undefined behavior sanitizer (`libubsan`)
+# @arg __SANITIZE_THREAD__:      Enable thread sanitizer (`libtsan`)
+# @arg __SANITIZE_LINK_STATIC__: Try to link static against sanitizers on GCC
 # [/cmake_documentation]
 
 include(Helpers)
@@ -32,6 +33,12 @@ find_package_switchable(
     LSan
     OPTION SANITIZE_LEAK
     PURPOSE "Leak sanitizer"
+)
+find_package_switchable(
+    MSan
+    OPTION SANITIZE_MEMORY
+    DEFAULT OFF
+    PURPOSE "Memory sanitizer"
 )
 find_package_switchable(
     UBSan
@@ -48,7 +55,7 @@ find_package_switchable(
 option(SANITIZE_LINK_STATIC "Try to link static against sanitizers." ON)
 
 if((SANITIZE_LEAK OR SANITIZE_MEMORY) AND SANITIZE_THREAD)
-    message(FATAL_ERROR "ThreadSanitizer is not compatible with MemorySanitizer.")
+    message(FATAL_ERROR "ThreadSanitizer is not compatible with MemorySanitizer or LeakSanitizer.")
 endif()
 
 if(SANITIZE_ADDRESS AND (SANITIZE_THREAD OR SANITIZE_MEMORY))
@@ -94,24 +101,31 @@ function(sanitizer_add_flags targetName targetCompiler targetLang varPrefix)
         return()
     endif()
 
+    # If compiler is a GNU compiler, search for static flag, if SANITIZE_LINK_STATIC is enabled.
+    if(SANITIZE_LINK_STATIC
+       AND (${targetCompiler} STREQUAL "GNU")
+       AND targetLang
+       AND NOT DEFINED ${varPrefix}_STATIC_DETECTED
+    )
+        string(TOLOWER ${varPrefix} varPrefix_lower)
+        set(sanitizer_flags_static "-static-lib${varPrefix_lower} ${sanitizer_flags}")
+
+        check_compiler_flags(${sanitizer_flags_static} ${targetLang} ${varPrefix}_STATIC_DETECTED)
+        if(${varPrefix}_STATIC_DETECTED)
+            set(sanitizer_flags ${sanitizer_flags_static})
+            # Update cached variable to prevent extra checks next time
+            unset(${varPrefix}_${targetCompiler}_FLAGS CACHE)
+            set(${varPrefix}_${targetCompiler}_FLAGS
+                "${sanitizer_flags_static}"
+                CACHE STRING ""
+            )
+        endif()
+    endif()
+
     separate_arguments(
         flags_list UNIX_COMMAND "${sanitizer_flags} ${SanBlist_${targetCompiler}_FLAGS}"
     )
     target_compile_options(${targetName} PUBLIC ${flags_list})
-
-    # If compiler is a GNU compiler, search for static flag, if SANITIZE_LINK_STATIC is enabled.
-    if(SANITIZE_LINK_STATIC AND (${targetCompiler} STREQUAL "GNU"))
-        string(TOLOWER ${varPrefix} varPrefix_lower)
-        set(flags_static "-static-lib${varPrefix_lower} ${sanitizer_flags}")
-
-        check_compiler_flag(${flags_static} ${targetLang} ${varPrefix}_STATIC_FLAG_DETECTED)
-
-        if(${varPrefix}_STATIC_FLAG_DETECTED)
-            set(sanitizer_flags ${flags_static})
-        endif()
-    endif()
-
-    separate_arguments(flags_list UNIX_COMMAND "${sanitizer_flags}")
     target_link_options(${targetName} PUBLIC ${flags_list})
 endfunction()
 
@@ -134,6 +148,7 @@ function(target_enable_sanitizers targetName)
         )
         return()
     endif()
+
     get_target_compilers(${targetName} target_compiler target_lang)
     list(LENGTH target_compiler num_compilers)
     if(num_compilers GREATER 1)
@@ -152,26 +167,26 @@ function(target_enable_sanitizers targetName)
 
     # Enable AddressSanitizer
     if(SANITIZE_ADDRESS)
-        sanitizer_add_flags(${targetName} ${target_compiler} ${target_lang} "ASan")
+        sanitizer_add_flags(${targetName} "${target_compiler}" "${target_lang}" "ASan")
     endif()
 
     # Enable UndefinedBehaviorSanitizer
     if(SANITIZE_UNDEFINED)
-        sanitizer_add_flags(${targetName} ${target_compiler} ${target_lang} "UBSan")
+        sanitizer_add_flags(${targetName} "${target_compiler}" "${target_lang}" "UBSan")
     endif()
 
     # Enable LeakSanitizer
     if(SANITIZE_LEAK)
-        sanitizer_add_flags(${targetName} ${target_compiler} ${target_lang} "LSan")
+        sanitizer_add_flags(${targetName} "${target_compiler}" "${target_lang}" "LSan")
     endif()
 
     # Enable MemorySanitizer
-    if(SANITIZE_LEAK)
-        sanitizer_add_flags(${targetName} ${target_compiler} ${target_lang} "MSan")
+    if(SANITIZE_MEMORY)
+        sanitizer_add_flags(${targetName} "${target_compiler}" "${target_lang}" "MSan")
     endif()
 
     # Enable ThreadSanitizer
     if(SANITIZE_THREAD)
-        sanitizer_add_flags(${targetName} ${target_compiler} ${target_lang} "TSan")
+        sanitizer_add_flags(${targetName} "${target_compiler}" "${target_lang}" "TSan")
     endif()
 endfunction()

@@ -4,7 +4,7 @@
 # @arg __LSan_FOUND__: `TRUE` if the compiler supports leak sanitizer
 # [/cmake_documentation]
 
-set(FLAG_CANDIDATES
+set(flag_candidates
     # GNU/Clang
     "-g -fsanitize=leak"
     # MSVC uses
@@ -12,9 +12,9 @@ set(FLAG_CANDIDATES
 )
 
 include(Helpers)
-check_compiler_flags_list("${FLAG_CANDIDATES}" "LeakSanitizer" "LSan")
+check_compiler_flags_list("${flag_candidates}" "LeakSanitizer" "LSan")
 
-if(LSan_FLAG_DETECTED)
+if(LSan_DETECTED)
     set(LSan_SUPPORTED "LeakSanitizer is supported by compiler")
 endif()
 

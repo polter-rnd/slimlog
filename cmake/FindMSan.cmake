@@ -4,7 +4,7 @@
 # @arg __MSan_FOUND__: `TRUE` if the compiler supports memory sanitizer
 # [/cmake_documentation]
 
-set(FLAG_CANDIDATES
+set(flag_candidates
     # GNU/Clang
     "-g -fsanitize=memory"
     # MSVC uses
@@ -17,10 +17,10 @@ if(NOT ${CMAKE_SIZEOF_VOID_P} EQUAL 8)
     )
 else()
     include(Helpers)
-    check_compiler_flags_list("${FLAG_CANDIDATES}" "MemorySanitizer" "MSan")
+    check_compiler_flags_list("${flag_candidates}" "MemorySanitizer" "MSan")
 endif()
 
-if(MSan_FLAG_DETECTED)
+if(MSan_DETECTED)
     set(MSan_SUPPORTED "MemorySanitizer is supported by compiler")
 endif()
 

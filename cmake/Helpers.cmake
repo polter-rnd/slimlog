@@ -189,21 +189,22 @@ endfunction()
 # Example:
 #
 # ~~~
-# check_compiler_flag("-fsanitize=address" CXX supported_flag)
+# check_compiler_flags("-fsanitize=address" CXX supported_flag)
 # message("Is address sanitizer supported for C++: ${supported_flag}")
 # ~~~
 # [/cmake_documentation]
-function(check_compiler_flag flag lang variable)
+function(check_compiler_flags flag lang variable)
+    unset(${variable} CACHE)
     set(CMAKE_REQUIRED_FLAGS "${flag}")
     if(${lang} STREQUAL "C")
         include(CheckCCompilerFlag)
-        check_c_compiler_flag("${flag}" ${variable})
+        check_c_compiler_flag("" ${variable})
     elseif(${lang} STREQUAL "CXX")
         include(CheckCXXCompilerFlag)
-        check_cxx_compiler_flag("${flag}" ${variable})
+        check_cxx_compiler_flag("" ${variable})
     elseif(${lang} STREQUAL "Fortran")
         include(CheckFortranCompilerFlag)
-        check_fortran_compiler_flag("${flag}" ${variable})
+        check_fortran_compiler_flag("" ${variable})
     elseif(NOT CMAKE_REQUIRED_QUIET)
         message(STATUS "Language ${lang} is not supported for checking compiler flags")
     endif()
@@ -312,7 +313,7 @@ endfunction()
 #
 # For each used compiler, may set the following variables:
 #
-# - `varPrefix`_`compiler`_FLAG_DETECTED (e.g. `ASan_Clang_FLAG_DETECTED`)
+# - `varPrefix`_`compiler`_DETECTED (e.g. `ASan_Clang_DETECTED`)
 # - `varPrefix`_`compiler`_FLAGS (e.g. `ASan_Clang_FLAGS`)
 #
 # Example:
@@ -343,16 +344,15 @@ function(check_compiler_flags_list flagCandidates featureName varPrefix)
         # searching flags foreach language, search flags foreach compiler used.
         set(compiler ${CMAKE_${lang}_COMPILER_ID})
         if(compiler AND NOT DEFINED ${varPrefix}_${compiler}_FLAGS)
-            foreach(flag ${flagCandidates})
+            foreach(flags ${flagCandidates})
                 if(NOT CMAKE_REQUIRED_QUIET)
-                    message(STATUS "Try ${compiler} ${featureName} flag = [${flag}]")
+                    message(STATUS "Try ${compiler} ${featureName} flags = [${flags}]")
                 endif()
 
-                unset(${varPrefix}_FLAG_DETECTED CACHE)
-                check_compiler_flag("${flag}" ${lang} ${varPrefix}_FLAG_DETECTED)
-                if(${varPrefix}_FLAG_DETECTED)
+                check_compiler_flags("${flags}" ${lang} ${varPrefix}_DETECTED)
+                if(${varPrefix}_DETECTED)
                     set(${varPrefix}_${compiler}_FLAGS
-                        "${flag}"
+                        "${flags}"
                         CACHE STRING "${featureName} flags for ${compiler} compiler."
                     )
                     mark_as_advanced(${varPrefix}_${compiler}_FLAGS)
@@ -360,7 +360,7 @@ function(check_compiler_flags_list flagCandidates featureName varPrefix)
                 endif()
             endforeach()
 
-            if(NOT ${varPrefix}_FLAG_DETECTED)
+            if(NOT ${varPrefix}_DETECTED)
                 set(${varPrefix}_${compiler}_FLAGS
                     ""
                     CACHE STRING "${featureName} flags for ${compiler} compiler."

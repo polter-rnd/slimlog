@@ -4,73 +4,24 @@
 #
 # ~~~{.cmake}
 # include(GcovrCodeCoverage)
-# enable_coverage()
 # add_gcovr_coverage_target(
 #     HTML COBERTURA COVERALLS SONARQUBE
+#     COVERAGE_TARGET coverage COVERAGE_INIT_TARGET coverage-init
 # )
+# target_enable_coverage(my_target)
 # ~~~
 #
 # In example above, will be created the following targets:
-# - __coverage-clean__:  Reset coverage counters to zero
-# - __coverage__:        Generate coverage report assuming that tests were already run
+# - __coverage-init__:  Reset coverage counters to zero
+# - __coverage__:       Generate coverage report assuming that tests were already run
 #
 # Defines the following functions:
-# - @ref enable_coverage
-# - @ref target_enable_coverage
 # - @ref add_gcovr_coverage_target
+# - @ref target_enable_coverage
 #
 # The module defines the following variables:
-# @arg __COVERAGE_COMPILER_FLAGS__: Compiler flags to enable code coverage support
+# @arg __COVERAGE_coverage_flags__: Compiler flags to enable code coverage support
 # [/cmake_documentation]
-
-set(COVERAGE_COMPILER_FLAGS
-    "-O0 --coverage"
-    CACHE INTERNAL ""
-)
-if(CMAKE_CXX_COMPILER_ID MATCHES "(GNU|Clang)")
-    include(CheckCXXCompilerFlag)
-    check_cxx_compiler_flag(-fprofile-abs-path HAVE_cxx_fprofile_abs_path)
-    if(HAVE_cxx_fprofile_abs_path)
-        set(COVERAGE_COMPILER_FLAGS "${COVERAGE_COMPILER_FLAGS} -fprofile-abs-path")
-    endif()
-elseif(CMAKE_C_COMPILER_ID MATCHES "(GNU|Clang)")
-    include(CheckCCompilerFlag)
-    check_c_compiler_flag(-fprofile-abs-path HAVE_c_fprofile_abs_path)
-    if(HAVE_c_fprofile_abs_path)
-        set(COVERAGE_COMPILER_FLAGS "${COVERAGE_COMPILER_FLAGS} -fprofile-abs-path")
-    endif()
-else()
-    set(COVERAGE_COMPILER_FLAGS "")
-endif()
-
-# [cmake_documentation] enable_coverage()
-#
-# The function adds coverage compiler and linker flags
-# to global `CMAKE_C_FLAGS` and `CMAKE_CXX_FLAGS` variables.
-# [/cmake_documentation]
-function(enable_coverage)
-    set(CMAKE_C_FLAGS
-        "${CMAKE_C_FLAGS} ${COVERAGE_COMPILER_FLAGS}"
-        PARENT_SCOPE
-    )
-    set(CMAKE_CXX_FLAGS
-        "${CMAKE_CXX_FLAGS} ${COVERAGE_COMPILER_FLAGS}"
-        PARENT_SCOPE
-    )
-endfunction()
-
-# [cmake_documentation] target_enable_coverage(name)
-#
-# The function adds coverage compiler and linker flags only for particular target.
-#
-# Arguments:
-# @arg __target__: Target name for which coverage should be enabled
-# [/cmake_documentation]
-function(target_enable_coverage name)
-    separate_arguments(flag_list NATIVE_COMMAND "${COVERAGE_COMPILER_FLAGS}")
-    target_compile_options(${name} PRIVATE ${flag_list})
-    target_link_options(${name} PRIVATE "--coverage")
-endfunction()
 
 # [cmake_documentation] add_gcovr_coverage_target()
 #
@@ -86,8 +37,10 @@ endfunction()
 # @param COVERAGE_INIT_TARGET Coverage counters reset target name (mandatory)
 # @param CHECK_TARGET         Test target name. If specified, `COVERAGE_TARGET`
 #                             will be dependent on it.
-# @param SOURCE_DIRS          List of directories with source files
-# @param OUTPUT_DIRECTORY     Path to output dir (default: `\${PROJECT_BINARY_DIR}/coverage_results`)
+# @param OUTPUT_DIRECTORY     Path to output dir
+#                             (default: `\${PROJECT_BINARY_DIR}/coverage`)
+# @param GCOV_LANGUAGES       List of languages for which coverage should be generated
+#                             (default: `\${PROJECT_LANGUAGES}`)
 # @param GCOV_EXECUTABLE      Name of `gcov` executable
 #                             (default: `gcov` for GCC or `llvm-cov gcov` for Clang)
 # @param GCOVR_FILTER         List of patterns to include to coverage
@@ -96,10 +49,10 @@ endfunction()
 # [/cmake_documentation]
 function(add_gcovr_coverage_target)
     set(options HTML COBERTURA COVERALLS SONARQUBE)
-    set(oneValueArgs COVERAGE_TARGET COVERAGE_INIT_TARGET CHECK_TARGET OUTPUT_DIRECTORY
-                     GCOV_EXECUTABLE
+    set(oneValueArgs COVERAGE_TARGET COVERAGE_INIT_TARGET CHECK_TARGET GCOV_EXECUTABLE
+                     OUTPUT_DIRECTORY
     )
-    set(multiValueArgs GCOVR_EXCLUDE GCOVR_FILTER ARG_GCOVR_OPTIONS)
+    set(multiValueArgs GCOV_LANGUAGES GCOVR_EXCLUDE GCOVR_FILTER GCOVR_OPTIONS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(NOT ARG_COVERAGE_TARGET)
@@ -110,121 +63,172 @@ function(add_gcovr_coverage_target)
         message(FATAL_ERROR "GcovrCodeCoverage init target name is not specified!")
     endif()
 
+    if(NOT ARG_GCOV_LANGUAGES)
+        get_property(ARG_GCOV_LANGUAGES GLOBAL PROPERTY ENABLED_LANGUAGES)
+    endif()
+
     if(NOT ARG_OUTPUT_DIRECTORY)
-        message(FATAL_ERROR "GcovrCodeCoverage output directory is not specified!")
+        set(ARG_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/coverage)
     endif()
 
-    if(COVERAGE_COMPILER_FLAGS)
-        if(NOT ARG_GCOV_EXECUTABLE)
-            include(Helpers)
-            get_target_compilers(${ARG_COVERAGE_TARGET} target_compilers targer_langs)
-
-            if(CMAKE_CXX_COMPILER_VERSION)
-                string(REGEX REPLACE "([0-9]+)\\..*" "\\1" COMPILER_VERSION_MAJOR
-                                     ${CMAKE_CXX_COMPILER_VERSION}
+    if(NOT ARG_GCOV_EXECUTABLE)
+        foreach(language ${ARG_GCOV_LANGUAGES})
+            set(_language_compiler ${CMAKE_${language}_COMPILER_ID})
+            if(NOT compiler_id)
+                set(compiler_id ${_language_compiler})
+                set(compiler_version CMAKE_${language}_COMPILER_VERSION)
+            elseif(NOT compiler_id STREQUAL _language_compiler)
+                message(WARNING "Cannot enable coverage for multiple compilers! "
+                                "Please set GCOV_EXECUTABLE or fill GCOV_LANGUAGES "
+                                "only with languages using the same compiler."
                 )
-            elseif(CMAKE_C_COMPILER_VERSION)
-                string(REGEX REPLACE "([0-9]+)\\..*" "\\1" COMPILER_VERSION_MAJOR
-                                     ${CMAKE_C_COMPILER_VERSION}
-                )
+                return()
             endif()
-            if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
-                find_program(
-                    LlvmCov_EXECUTABLE
-                    NAMES llvm-cov-${COMPILER_VERSION_MAJOR} llvm-cov
-                    DOC "llvm-cov executable"
-                )
-                set(ARG_GCOV_EXECUTABLE "${LlvmCov_EXECUTABLE} gcov")
-            else()
-                find_program(
-                    Gcov_EXECUTABLE
-                    NAMES gcov-${COMPILER_VERSION_MAJOR} gcov
-                    DOC "gcov executable"
-                )
-                set(ARG_GCOV_EXECUTABLE "${Gcov_EXECUTABLE}")
-            endif()
-        endif()
-        set(gcovr_dirs --root ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
-        set(gcovr_options --exclude-unreachable-branches --exclude-throw-branches --print-summary
-                          --gcov-executable ${ARG_GCOV_EXECUTABLE} ${ARG_GCOVR_OPTIONS}
-        )
+        endforeach()
 
-        list(APPEND gcovr_options --exclude "${PROJECT_BINARY_DIR}/*")
-        if(ARG_GCOVR_EXCLUDE)
-            foreach(exclude IN LISTS ARG_GCOVR_EXCLUDE)
-                list(APPEND gcovr_options --exclude "${exclude}")
-            endforeach()
+        if(compiler_version)
+            string(REGEX REPLACE "([0-9]+)\\..*" "\\1" compiler_version_major ${compiler_version})
         endif()
 
-        if(ARG_GCOVR_FILTER)
-            foreach(filter IN LISTS ARG_GCOVR_FILTER)
-                list(APPEND gcovr_options --filter "${filter}")
-            endforeach()
-        endif()
-
-        # Gcovr is used to generate coverage reports
-        find_package(Gcovr REQUIRED)
-
-        set(GCOVR_COMMANDS COMMAND ${CMAKE_COMMAND} -E make_directory ${ARG_OUTPUT_DIRECTORY})
-        if(ARG_HTML)
-            list(APPEND gcovr_options --html ${ARG_OUTPUT_DIRECTORY}/html/index.html --html-title
-                 "Code Coverage for ${PROJECT_NAME}"
+        if(compiler_id MATCHES "Clang" OR compiler_id MATCHES "LLVM")
+            find_program(
+                LlvmCov_EXECUTABLE
+                NAMES llvm-cov-${compiler_version_major} llvm-cov
+                DOC "llvm-cov executable"
             )
-            if(${Gcovr_VERSION_STRING} VERSION_GREATER_EQUAL 6.0)
-                list(APPEND gcovr_options --html-nested)
-            else()
-                list(APPEND gcovr_options --html-details)
-            endif()
-            list(
-                APPEND
-                GCOVR_COMMANDS
-                COMMAND
-                ${CMAKE_COMMAND}
-                -E
-                make_directory
-                ${ARG_OUTPUT_DIRECTORY}/html
+            set(ARG_GCOV_EXECUTABLE "${LlvmCov_EXECUTABLE} gcov")
+        else()
+            find_program(
+                Gcov_EXECUTABLE
+                NAMES gcov-${compiler_version_major} gcov
+                DOC "gcov executable"
             )
+            set(ARG_GCOV_EXECUTABLE "${Gcov_EXECUTABLE}")
         endif()
-        if(ARG_COBERTURA)
-            list(APPEND gcovr_options --xml ${ARG_OUTPUT_DIRECTORY}/cobertura.xml)
-        endif()
-        if(ARG_SONARQUBE)
-            list(APPEND gcovr_options --sonarqube ${ARG_OUTPUT_DIRECTORY}/sonarqube.json)
-        endif()
-        if(ARG_COVERALLS)
-            list(APPEND gcovr_options --coveralls ${ARG_OUTPUT_DIRECTORY}/coveralls.xml)
-        endif()
-
-        list(APPEND GCOVR_COMMANDS COMMAND ${Gcovr_EXECUTABLE} ${gcovr_options} ${gcovr_dirs})
-
-        find_program(FIND_COMMAND find)
-
-        add_custom_target(
-            ${ARG_COVERAGE_INIT_TARGET}
-            # Cleanup gcov counters
-            COMMAND ${FIND_COMMAND} . -name *.gcda -delete
-            COMMAND ${CMAKE_COMMAND} -E rm -rf ${ARG_OUTPUT_DIRECTORY}
-            WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-            VERBATIM
-            COMMENT "Resetting code coverage counters."
-        )
-
-        add_custom_target(
-            ${ARG_COVERAGE_TARGET}
-            ${GCOVR_COMMANDS}
-            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-            VERBATIM
-            COMMENT "Processing code coverage counters and generating reports."
-        )
-
-        # As long as ${ARG_CHECK_TARGET} is not defined, calling ${ARG_COVERAGE_TARGET} will not
-        # execute any tests (the `check`) but only generate reports. This assumes that the counters
-        # were initialized and the tests executed manually before.
-        if(TARGET ${ARG_CHECK_TARGET})
-            add_dependencies(${ARG_COVERAGE_TARGET} ${ARG_CHECK_TARGET})
-            add_dependencies(${ARG_CHECK_TARGET} ${ARG_COVERAGE_INIT_TARGET})
-        endif()
-    else()
-        message(WARNING "Compiler does not support gcov, no coverage target will be created")
     endif()
+
+    set(gcovr_dirs --root ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
+    set(gcovr_options --exclude-unreachable-branches --exclude-throw-branches --print-summary
+                      --gcov-executable ${ARG_GCOV_EXECUTABLE} ${ARG_GCOVR_OPTIONS}
+    )
+
+    # Exclude paths
+    list(APPEND gcovr_options --exclude "${PROJECT_BINARY_DIR}/*")
+    if(ARG_GCOVR_EXCLUDE)
+        foreach(exclude IN LISTS ARG_GCOVR_EXCLUDE)
+            list(APPEND gcovr_options --exclude "${exclude}")
+        endforeach()
+    endif()
+
+    # Include filter
+    if(ARG_GCOVR_FILTER)
+        foreach(filter IN LISTS ARG_GCOVR_FILTER)
+            list(APPEND gcovr_options --filter "${filter}")
+        endforeach()
+    endif()
+
+    # Gcovr is used to generate coverage reports
+    find_package(Gcovr REQUIRED)
+
+    set(gcovr_commands COMMAND ${CMAKE_COMMAND} -E make_directory ${ARG_OUTPUT_DIRECTORY})
+    if(ARG_HTML)
+        list(APPEND gcovr_options --html ${ARG_OUTPUT_DIRECTORY}/html/index.html --html-title
+             "Code Coverage for ${PROJECT_NAME}"
+        )
+        if(${Gcovr_VERSION_STRING} VERSION_GREATER_EQUAL 6.0)
+            list(APPEND gcovr_options --html-nested)
+        else()
+            list(APPEND gcovr_options --html-details)
+        endif()
+        list(
+            APPEND
+            gcovr_commands
+            COMMAND
+            ${CMAKE_COMMAND}
+            -E
+            make_directory
+            ${ARG_OUTPUT_DIRECTORY}/html
+        )
+    endif()
+    if(ARG_COBERTURA)
+        list(APPEND gcovr_options --xml ${ARG_OUTPUT_DIRECTORY}/cobertura.xml)
+    endif()
+    if(ARG_SONARQUBE)
+        list(APPEND gcovr_options --sonarqube ${ARG_OUTPUT_DIRECTORY}/sonarqube.json)
+    endif()
+    if(ARG_COVERALLS)
+        list(APPEND gcovr_options --coveralls ${ARG_OUTPUT_DIRECTORY}/coveralls.xml)
+    endif()
+
+    list(APPEND gcovr_commands COMMAND ${Gcovr_EXECUTABLE} ${gcovr_options} ${gcovr_dirs})
+
+    find_program(FIND_COMMAND find)
+
+    add_custom_target(
+        ${ARG_COVERAGE_INIT_TARGET}
+        # Cleanup gcov counters
+        COMMAND ${FIND_COMMAND} . -name *.gcda -delete
+        COMMAND ${CMAKE_COMMAND} -E rm -rf ${ARG_OUTPUT_DIRECTORY}
+        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+        VERBATIM
+        COMMENT "Resetting code coverage counters."
+    )
+
+    add_custom_target(
+        ${ARG_COVERAGE_TARGET}
+        ${gcovr_commands}
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        VERBATIM
+        COMMENT "Processing code coverage counters and generating reports."
+    )
+
+    # As long as ${ARG_CHECK_TARGET} is not defined, calling ${ARG_COVERAGE_TARGET} will not execute
+    # any tests (the `check`) but only generate reports. This assumes that the counters were
+    # initialized and the tests executed manually before.
+    if(TARGET ${ARG_CHECK_TARGET})
+        add_dependencies(${ARG_COVERAGE_TARGET} ${ARG_CHECK_TARGET})
+        add_dependencies(${ARG_CHECK_TARGET} ${ARG_COVERAGE_INIT_TARGET})
+    endif()
+endfunction()
+
+# [cmake_documentation] target_enable_coverage(name)
+#
+# The function adds coverage compiler and linker flags only for particular target.
+#
+# Arguments:
+# @arg __target__: Target name for which coverage should be enabled
+# [/cmake_documentation]
+function(target_enable_coverage targetName)
+    include(Helpers)
+    get_target_compilers(${targetName} target_compiler target_lang)
+    list(LENGTH target_compiler num_compilers)
+    if(NOT num_compilers EQUAL 1)
+        message(WARNING "Can't generate coverage for target ${targetName} "
+                        "because it does not have a single compiler"
+        )
+        return()
+    endif()
+
+    # Coverage works only on GCC/LLVM
+    set(coverage_flags "-O0 --coverage")
+    if(${target_compiler} STREQUAL "GNU")
+        set(coverage_flags "${coverage_flags} -fprofile-abs-path")
+    endif()
+
+    # Check if compiler supports coverage flags
+    if(NOT DEFINED CoverageFlags_DETECTED)
+        check_compiler_flags("${coverage_flags}" ${target_lang} CoverageFlags_DETECTED)
+        if(NOT CoverageFlags_DETECTED)
+            message(WARNING "Coverage flags are not supported by compiler for target ${targetName}")
+        endif()
+    endif()
+
+    if(NOT CoverageFlags_DETECTED)
+        return()
+    endif()
+
+    # Add compiler options for current target
+    separate_arguments(coverage_flags NATIVE_COMMAND "${coverage_flags}")
+    target_compile_options(${targetName} PRIVATE ${coverage_flags})
+    target_link_options(${targetName} PRIVATE "--coverage")
 endfunction()

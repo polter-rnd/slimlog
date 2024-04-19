@@ -4,7 +4,7 @@
 # @arg __ASan_FOUND__: `TRUE` if the compiler supports address sanitizer
 # [/cmake_documentation]
 
-set(FLAG_CANDIDATES
+set(flag_candidates
     # GNU/Clang
     "-g -fsanitize=address -fno-omit-frame-pointer \
      -fno-optimize-sibling-calls -fsanitize-address-use-after-scope"
@@ -13,9 +13,9 @@ set(FLAG_CANDIDATES
 )
 
 include(Helpers)
-check_compiler_flags_list("${FLAG_CANDIDATES}" "AddressSanitizer" "ASan")
+check_compiler_flags_list("${flag_candidates}" "AddressSanitizer" "ASan")
 
-if(ASan_FLAG_DETECTED)
+if(ASan_DETECTED)
     set(ASan_SUPPORTED "AddressSanitizer is supported by compiler")
 endif()
 

@@ -65,10 +65,10 @@ function(add_doxygen_documentation_target)
     endif()
 
     # request to configure the file
-    set(DOXYGEN_OUTPUT_DIRECTORY ${ARG_DOXYGEN_OUT_DIR})
-    string(REGEX REPLACE ";" "\n" DOXYGEN_INPUT "${ARG_SOURCE_DIRS}")
+    set(DOXYGEN_OUTPUT_DIRECTORY "\"${ARG_DOXYGEN_OUT_DIR}\"")
+    string(REGEX REPLACE ";" "\"\n" DOXYGEN_INPUT "${ARG_SOURCE_DIRS}")
     if(ARG_CMAKE_DOCS AND EXISTS "${cmake_doxygen_file}")
-        set(DOXYGEN_INPUT "${DOXYGEN_INPUT} ${cmake_doxygen_file}")
+        set(DOXYGEN_INPUT "\"${DOXYGEN_INPUT}\" \"${cmake_doxygen_file}\"")
     endif()
     configure_file(${ARG_DOXYGEN_IN} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
 
