@@ -10,7 +10,7 @@ template<typename StringT>
 class ConsoleSink : public Logger<StringT>::Sink {
 public:
     void
-    emit(const Log::Level level, const Log::Location& caller, const StringT& message) const override
+    emit(const Log::Level level, const StringT& message, const Log::Location& caller) const override
     {
         if constexpr (char_type_equal<char>()) {
             std::string_view level_string;

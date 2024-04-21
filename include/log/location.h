@@ -14,12 +14,12 @@ public:
     [[nodiscard]] static constexpr auto current(
 #if __has_builtin(__builtin_FILE) and __has_builtin(__builtin_FUNCTION)                            \
     and __has_builtin(__builtin_LINE)
-        // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+        // NOLINTNEXTLINE(*-easily-swappable-parameters)
         const char* file = __builtin_FILE(),
         const char* function = __builtin_FUNCTION(),
         int line = __builtin_LINE()
 #else
-        // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+        // NOLINTNEXTLINE(*-easily-swappable-parameters)
         const char* file = "unknown",
         const char* function = "unknown",
         int line = {}

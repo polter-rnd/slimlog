@@ -34,12 +34,19 @@ public:
     template<typename T>
         requires(std::convertible_to<T, BasicFormatString<CharT, Args...>>
                  || std::convertible_to<T, std::basic_string_view<CharT>>)
-    // NOLINTNEXTLINE(hicpp-explicit-conversions)
+    // NOLINTNEXTLINE(*-explicit-conversions)
     consteval BasicFormat(const T& fmt, const Location& loc = Location::current())
         : m_fmt(fmt)
         , m_loc(loc)
     {
     }
+
+    BasicFormat(const BasicFormat&) = delete;
+    BasicFormat(BasicFormat&&) = delete;
+    ~BasicFormat() = default;
+
+    auto operator=(const BasicFormat&) -> BasicFormat& = delete;
+    auto operator=(BasicFormat&&) -> BasicFormat& = delete;
 
     [[nodiscard]] constexpr auto fmt() const noexcept -> const auto&
     {
@@ -52,8 +59,8 @@ public:
     }
 
 private:
-    BasicFormatString<CharT, Args...> m_fmt;
-    Location m_loc;
+    const BasicFormatString<CharT, Args...> m_fmt;
+    const Location m_loc;
 };
 
 template<typename... Args>

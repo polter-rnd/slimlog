@@ -41,7 +41,7 @@ public:
         virtual ~Sink() = default;
 
         virtual auto
-        emit(Log::Level level, const Log::Location& location, const StringT& message) const -> void
+        emit(Log::Level level, const StringT& message, const Log::Location& location) const -> void
             = 0;
         virtual auto flush() -> void = 0;
     };
@@ -88,16 +88,18 @@ public:
         m_level = level;
     }
 
-    template<typename T>
-        requires std::invocable<T>
+    template<typename T, typename... Args>
+        requires std::invocable<T, Args...>
     inline auto emit(
         const Log::Level level,
         const T& callback,
-        const Log::Location& location = Log::Location::current()) const -> void
+        const Log::Location& location = Log::Location::current(),
+        Args&&... args) const -> void
     {
         for (const auto& sink : m_sinks) {
             if (m_level >= level) {
-                sink.first->emit(level, location, callback());
+                // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
+                sink.first->emit(level, callback(std::forward<Args>(args)...), location);
             }
         }
     }
@@ -111,41 +113,32 @@ public:
      * @param args Event message. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename T>
+        requires(!std::invocable<T>)
     inline auto emit(
         const Log::Level level,
         const T& message,
         const Log::Location& location = Log::Location::current()) const -> void
     {
-        auto callback = [&message]() {
-            // cppcheck-suppress syntaxError
-            return message; // NOLINT(cppcoreguidelines-pro-bounds-array-to-pointer-decay, \
-                                      hicpp-no-array-decay)
-        };
-        emit(level, callback, location);
+        auto callback = [](const T& message) -> const T& { return message; };
+        emit(level, callback, location, message);
     }
 
     template<typename... Args>
-    // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
     inline void emit(Log::Level level, const Log::Format<Args...>& fmt, Args&&... args) const
     {
-        auto callback = [&fmt, &args...]() { // NOLINT(cppcoreguidelines-avoid-c-arrays, \
-                                                       hicpp-avoid-c-arrays, \
-                                                       modernize-avoid-c-arrays)
+        auto callback = [&fmt](Args&&... args) {
             return Log::format(fmt.fmt(), std::forward<Args>(args)...);
         };
-        emit(level, callback, fmt.loc());
+        emit(level, callback, fmt.loc(), std::forward<Args>(args)...);
     }
 
     template<typename... Args>
-    // NOLINTNEXTLINE(cppcoreguidelines-missing-std-forward)
     inline void emit(Log::Level level, const Log::WideFormat<Args...>& fmt, Args&&... args) const
     {
-        auto callback = [&fmt, &args...]() { // NOLINT(cppcoreguidelines-avoid-c-arrays, \
-                                                       hicpp-avoid-c-arrays, \
-                                                       modernize-avoid-c-arrays)
+        auto callback = [&fmt](Args&&... args) {
             return Log::format(fmt.fmt(), std::forward<Args>(args)...);
         };
-        emit(level, callback, fmt.loc());
+        emit(level, callback, fmt.loc(), std::forward<Args>(args)...);
     }
 
     // Informational
@@ -177,8 +170,7 @@ private:
 
 template<typename T, size_t N>
 Logger(
-    const T (&)[N], // NOLINT(cppcoreguidelines-avoid-c-arrays, \
-                              hicpp-avoid-c-arrays,modernize-avoid-c-arrays)
+    const T (&)[N], // NOLINT(*-avoid-c-arrays)
     Log::Level = Log::Level::Info) -> Logger<std::basic_string_view<T>>;
 
 } // namespace PlainCloud::Log
