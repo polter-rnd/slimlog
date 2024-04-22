@@ -41,17 +41,13 @@
 #                             (default: `\${PROJECT_BINARY_DIR}/coverage`)
 # @param GCOV_LANGUAGES       List of languages for which coverage should be generated
 #                             (default: `\${PROJECT_LANGUAGES}`)
-# @param GCOV_EXECUTABLE      Name of `gcov` executable
-#                             (default: `gcov` for GCC or `llvm-cov gcov` for Clang)
 # @param GCOVR_FILTER         List of patterns to include to coverage
 # @param GCOVR_EXCLUDE        List of patterns to exclude from coverage
 # @param GCOVR_OPTIONS        List of extra options for `gcovr`
 # [/cmake_documentation]
 function(add_gcovr_coverage_target)
     set(options HTML COBERTURA COVERALLS SONARQUBE)
-    set(oneValueArgs COVERAGE_TARGET COVERAGE_INIT_TARGET CHECK_TARGET GCOV_EXECUTABLE
-                     OUTPUT_DIRECTORY
-    )
+    set(oneValueArgs COVERAGE_TARGET COVERAGE_INIT_TARGET CHECK_TARGET OUTPUT_DIRECTORY)
     set(multiValueArgs GCOV_LANGUAGES GCOVR_EXCLUDE GCOVR_FILTER GCOVR_OPTIONS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
@@ -71,40 +67,43 @@ function(add_gcovr_coverage_target)
         set(ARG_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/coverage)
     endif()
 
-    if(NOT ARG_GCOV_EXECUTABLE)
-        foreach(language ${ARG_GCOV_LANGUAGES})
-            set(_language_compiler ${CMAKE_${language}_COMPILER_ID})
-            if(NOT compiler_id)
-                set(compiler_id ${_language_compiler})
-                set(compiler_version CMAKE_${language}_COMPILER_VERSION)
-            elseif(NOT compiler_id STREQUAL _language_compiler)
-                message(WARNING "Cannot enable coverage for multiple compilers! "
-                                "Please set GCOV_EXECUTABLE or fill GCOV_LANGUAGES "
-                                "only with languages using the same compiler."
-                )
-                return()
-            endif()
-        endforeach()
-
-        if(compiler_version)
-            string(REGEX REPLACE "([0-9]+)\\..*" "\\1" compiler_version_major ${compiler_version})
-        endif()
-
-        if(compiler_id MATCHES "Clang" OR compiler_id MATCHES "LLVM")
-            find_program(
-                LlvmCov_EXECUTABLE
-                NAMES llvm-cov-${compiler_version_major} llvm-cov
-                DOC "llvm-cov executable"
+    foreach(language ${ARG_GCOV_LANGUAGES})
+        set(_language_compiler ${CMAKE_${language}_COMPILER_ID})
+        if(NOT compiler_id)
+            set(compiler_id ${_language_compiler})
+            set(compiler_version CMAKE_${language}_COMPILER_VERSION)
+        elseif(NOT compiler_id STREQUAL _language_compiler)
+            message(WARNING "Cannot enable coverage for multiple compilers! "
+                            "Please set GCOV_EXECUTABLE or fill GCOV_LANGUAGES "
+                            "only with languages using the same compiler."
             )
-            set(ARG_GCOV_EXECUTABLE "${LlvmCov_EXECUTABLE} gcov")
-        else()
-            find_program(
-                Gcov_EXECUTABLE
-                NAMES gcov-${compiler_version_major} gcov
-                DOC "gcov executable"
-            )
-            set(ARG_GCOV_EXECUTABLE "${Gcov_EXECUTABLE}")
+            return()
         endif()
+    endforeach()
+
+    if(compiler_version)
+        string(REGEX REPLACE "([0-9]+)\\..*" "\\1" compiler_version_major ${compiler_version})
+    endif()
+
+    if(compiler_id MATCHES "Clang")
+        set_directory_hints(LlvmCov HINTS LLVM_DIR LLVM_ROOT)
+        find_program(
+            LlvmCov_EXECUTABLE
+            NAMES llvm-cov-${compiler_version_major} llvm-cov
+            HINTS ${LlvmCov_HINTS}
+            DOC "llvm-cov executable"
+        )
+        set(ARG_GCOV_EXECUTABLE "${LlvmCov_EXECUTABLE} gcov")
+    elseif(compiler_id MATCHES "GNU")
+        find_program(
+            Gcov_EXECUTABLE
+            NAMES gcov-${compiler_version_major} gcov
+            DOC "gcov executable"
+        )
+        set(ARG_GCOV_EXECUTABLE "${Gcov_EXECUTABLE}")
+    else()
+        message(WARNING "Coverage supported only for GCC or Clang compilers")
+        return()
     endif()
 
     set(gcovr_dirs --root ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})

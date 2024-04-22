@@ -103,7 +103,7 @@ function(sanitizer_add_flags targetName targetCompiler targetLang varPrefix)
 
     # If compiler is a GNU compiler, search for static flag, if SANITIZE_LINK_STATIC is enabled.
     if(SANITIZE_LINK_STATIC
-       AND (${targetCompiler} STREQUAL "GNU")
+       AND (${targetCompiler} MATCHES "GNU")
        AND targetLang
        AND NOT DEFINED ${varPrefix}_STATIC_DETECTED
     )

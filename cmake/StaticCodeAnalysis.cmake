@@ -48,13 +48,39 @@ find_package_switchable(
     MIN_VERSION ${IWYU_MIN_VERSION}
 )
 
-# [cmake_documentation] add_static_analysis_targets()
+# [cmake_documentation] add_static_analysis_target()
 #
 # The function creates codeanalysis target which in its turn calls
 # cppcheck, clang-tidy and include-what-you-mean to generate analysis reports.
 #
-# @param TARGET                      Which target to analyze (mandatory)
 # @param ANALYSIS_TARGET             Name of global analysis target (mandatory)
+# [/cmake_documentation]
+function(add_static_analysis_target)
+    set(options "")
+    set(oneValueArgs ANALYSIS_TARGET)
+    set(multipleValueArgs "")
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multipleValueArgs}" ${ARGN})
+
+    if(NOT ARG_ANALYSIS_TARGET)
+        message(FATAL_ERROR "StaticCodeAnalysis target name is not specified!")
+    endif()
+
+    add_custom_target(${ARG_ANALYSIS_TARGET})
+    set(STATIC_ANALYSIS_TARGET
+        ${ARG_ANALYSIS_TARGET}
+        CACHE STRING ""
+    )
+endfunction()
+
+# [cmake_documentation] target_enable_static_analysis(targetName)
+#
+# Enable static analysis features for given target.
+# Creates targets `\${targetName}-cppcheck`, `\${targetName}-clangtidy`
+# and `\${targetName}-iwyu` if respective tools are found.
+#
+# Arguments:
+# @arg __targetName__: Target name for which static analysis should be enabled
+#
 # @param CPPCHECK_EXTRA_ARGS         Additional flags for `cppcheck`
 # @param CPPCHECK_SUPPRESSIONS_LISTS Suppression lists for `cppcheck`
 # @param CLANG_TIDY_EXTRA_ARGS       Additional arguments for `clang-tidy`
@@ -62,24 +88,20 @@ find_package_switchable(
 # @param IWYU_EXTRA_ARGS             Additional arguments for `include-what-you-use`
 # @param IWYU_MAPPING_FILES_ARGS     Mapping files for `include-what-you-use`
 # [/cmake_documentation]
-function(add_static_analysis_targets)
+function(target_enable_static_analysis targetName)
     set(options "")
-    set(oneValueArgs TARGET ANALYSIS_TARGET)
+    set(oneValueArgs "")
     set(multipleValueArgs CPPCHECK_EXTRA_ARGS CPPCHECK_SUPPRESSIONS_LISTS CLANG_TIDY_EXTRA_ARGS
                           CLANG_TIDY_HEADER_FILTER IWYU_MAPPING_FILES_ARGS
     )
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multipleValueArgs}" ${ARGN})
 
-    if(NOT ARG_TARGET)
-        message(FATAL_ERROR "StaticCodeAnalysis target is not specified!")
+    if(NOT TARGET ${STATIC_ANALYSIS_TARGET})
+        message(FATAL_ERROR "No static analysis target '${STATIC_ANALYSIS_TARGET}' defined")
     endif()
 
-    if(NOT ARG_ANALYSIS_TARGET)
-        message(FATAL_ERROR "StaticCodeAnalysis target name is not specified!")
-    endif()
-
-    get_target_property(target_source_dir ${ARG_TARGET} SOURCE_DIR)
-    get_target_property(target_sources ${ARG_TARGET} SOURCES)
+    get_target_property(target_source_dir ${targetName} SOURCE_DIR)
+    get_target_property(target_sources ${targetName} SOURCES)
 
     # Include only cpp files and convert to absolute path
     set(target_sources_absolute "")
@@ -88,10 +110,6 @@ function(add_static_analysis_targets)
         get_filename_component(source_absolute "${source}" REALPATH BASE_DIR "${target_source_dir}")
         list(APPEND target_sources_absolute "${source_absolute}")
     endforeach()
-
-    if(NOT TARGET ${ARG_ANALYSIS_TARGET})
-        add_custom_target(${ARG_ANALYSIS_TARGET})
-    endif()
 
     if(ENABLE_CPPCHECK)
         find_program(Cppcheck_EXECUTABLE NAMES cppcheck REQUIRED)
@@ -103,7 +121,7 @@ function(add_static_analysis_targets)
         endif()
         # TO DO: Analyzes all files from compilation database rather than just the target_sources
         add_custom_target(
-            ${ARG_TARGET}-cppcheck
+            ${targetName}-cppcheck
             COMMAND
                 ${Cppcheck_EXECUTABLE}
                 --enable=warning,performance,portability,information,missingInclude
@@ -123,14 +141,17 @@ function(add_static_analysis_targets)
             USES_TERMINAL
             COMMENT "Analyzing code by 'cppcheck'"
         )
-        add_dependencies(${ARG_ANALYSIS_TARGET} ${ARG_TARGET}-cppcheck)
+        add_dependencies(${STATIC_ANALYSIS_TARGET} ${targetName}-cppcheck)
     endif()
 
     if(ENABLE_CLANG_TIDY)
+        # Find run-clang-tidy nearby clang-tidy binary
+        get_filename_component(clang_tidy_realpath ${ClangTidy_EXECUTABLE} REALPATH)
+        get_filename_component(clang_tidy_dir ${clang_tidy_realpath} DIRECTORY)
         find_program(
             RunClangTidy_EXECUTABLE
             NAMES run-clang-tidy.py run-clang-tidy
-            HINTS /usr/share/clang REQUIRED
+            HINTS ${clang_tidy_dir} REQUIRED
         )
         if(ARG_CLANG_TIDY_EXTRA_ARGS)
             set(clang_tidy_extra_args "")
@@ -143,7 +164,7 @@ function(add_static_analysis_targets)
             set(ARG_CLANG_TIDY_HEADER_FILTER ".*")
         endif()
         add_custom_target(
-            ${ARG_TARGET}-clangtidy
+            ${targetName}-clangtidy
             COMMAND
                 ${RunClangTidy_EXECUTABLE} -quiet -p=${CMAKE_BINARY_DIR}
                 -header-filter=${ARG_CLANG_TIDY_HEADER_FILTER} ${clang_tidy_extra_args}
@@ -152,7 +173,7 @@ function(add_static_analysis_targets)
             USES_TERMINAL
             COMMENT "Analyzing code by 'clang-tidy'"
         )
-        add_dependencies(${ARG_ANALYSIS_TARGET} ${ARG_TARGET}-clangtidy)
+        add_dependencies(${STATIC_ANALYSIS_TARGET} ${targetName}-clangtidy)
     endif()
 
     if(ENABLE_IWYU)
@@ -170,7 +191,7 @@ function(add_static_analysis_targets)
             endforeach()
         endif()
         add_custom_target(
-            ${ARG_TARGET}-iwyu
+            ${targetName}-iwyu
             COMMAND
                 ${CMAKE_COMMAND} -E env IWYU_BINARY=${Iwyu_EXECUTABLE} ${IwyuTool_EXECUTABLE} -p
                 ${CMAKE_BINARY_DIR}/compile_commands.json ${target_sources_absolute} -- -Xiwyu
@@ -180,6 +201,6 @@ function(add_static_analysis_targets)
             USES_TERMINAL
             COMMENT "Analyzing code by 'include-what-you-use'"
         )
-        add_dependencies(${ARG_ANALYSIS_TARGET} ${ARG_TARGET}-iwyu)
+        add_dependencies(${STATIC_ANALYSIS_TARGET} ${targetName}-iwyu)
     endif()
 endfunction()

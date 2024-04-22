@@ -15,10 +15,17 @@
 
 # Hints where to look for ClangFormat executable Environment and user variables
 
-set_directory_hints(ClangFormat HINTS LLVM_DIR LLVM_ROOT)
+include(Helpers)
+if(NOT LLVM_DIR AND NOT LLVM_ROOT)
+    set_versioned_compiler_names(ClangFormat COMPILER Clang NAMES clang-format)
+else()
+    set_directory_hints(ClangFormat HINTS LLVM_DIR LLVM_ROOT)
+    list(TRANSFORM ClangFormat_HINTS APPEND /bin)
+endif()
+
 find_program(
     ClangFormat_EXECUTABLE
-    NAMES clang-format
+    NAMES ${ClangFormat_NAMES} clang-format
     HINTS ${ClangFormat_HINTS}
     DOC "clang-format executable"
 )

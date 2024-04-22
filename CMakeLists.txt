@@ -48,6 +48,7 @@ if(ENABLE_CODE_ANALYSIS)
     set(CLANG_TIDY_MIN_VERSION 14.0)
     set(IWYU_MIN_VERSION 0.20)
     include(StaticCodeAnalysis)
+    add_static_analysis_target(ANALYSIS_TARGET codeanalysis)
 endif()
 
 # Option for enabling / disabling sanitizers

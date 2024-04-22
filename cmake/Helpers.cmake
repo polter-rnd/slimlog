@@ -178,6 +178,62 @@ function(set_directory_hints package)
     endforeach()
 endfunction()
 
+# [cmake_documentation] set_versioned_compiler_names(package)
+#
+# Appends compiler version to names, e.g. for Clang 15 it will make
+# `clang-format` -> `clang-format-15`.
+# If languages specified, will check compiler version only for those languages
+# and take the maximum version if there are multiple versions of the same compiler.
+#
+# ~~~
+# set_versioned_compiler_names(ClangFormat COMPILER Clang NAMES clang-format)
+# message("Versioned cmake-format: ${ClangFormat_NAMES}")
+# ~~~
+#
+# Required arguments:
+# @arg __package__: Package name (result will be stored in `package`_NAMES variable).
+#
+# @param COMPILER Name of the compiler which vesion to append (e.g. `Clang`)
+# @param LANGS Languages to check the compiler for (e.g. `C CXX`)
+# @param NAMES Input binary names, (e.g. `clang-format`)
+# [/cmake_documentation]
+function(set_versioned_compiler_names package)
+    set(options "")
+    set(oneValueArgs COMPILER)
+    set(multipleValueArgs LANGS NAMES)
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multipleValueArgs}" ${ARGN})
+
+    if(NOT ARG_COMPILER)
+        get_property(ARG_LANGS GLOBAL PROPERTY ENABLED_LANGUAGES)
+    endif()
+
+    if(NOT ARG_LANGS)
+        get_property(ARG_LANGS GLOBAL PROPERTY ENABLED_LANGUAGES)
+    endif()
+
+    set(${package}_NAMES
+        ""
+        PARENT_SCOPE
+    )
+    set(_max_compiler_ver -1)
+    foreach(lang ${ARG_LANGS})
+        if(CMAKE_${lang}_COMPILER_ID STREQUAL "${ARG_COMPILER}")
+            set(compiler_ver ${CMAKE_${lang}_COMPILER_VERSION})
+            string(REGEX REPLACE "([0-9]+)\\..*" "\\1" compiler_ver ${compiler_ver})
+            if(compiler_ver GREATER _max_compiler_ver)
+                set(_max_compiler_ver ${compiler_ver})
+            endif()
+        endif()
+    endforeach()
+    if(_max_compiler_ver GREATER -1)
+        list(TRANSFORM ARG_NAMES APPEND -${_max_compiler_ver} OUTPUT_VARIABLE ${package}_NAMES)
+        set(${package}_NAMES
+            ${${package}_NAMES}
+            PARENT_SCOPE
+        )
+    endif()
+endfunction()
+
 # [cmake_documentation] check_compiler_flag(flat, lang, variable)
 #
 # Helper function to check compiler flags for language compiler.
