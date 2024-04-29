@@ -52,11 +52,12 @@ public:
     auto operator=(Logger&&) -> Logger& = delete;
     ~Logger() = default;
 
+    template<typename T>
     explicit Logger(
-        StringT&& name,
+        T&& name,
         const Log::Level level = Log::Level::Info,
         const std::initializer_list<std::shared_ptr<Sink>>& sinks = {})
-        : m_name(std::move(name))
+        : m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
     {
         m_sinks.reserve(sinks.size());
@@ -168,9 +169,18 @@ private:
     Log::Level m_level;
 };
 
+template<typename T>
+Logger(
+    T&&,
+    Log::Level = Log::Level::Info,
+    const std::initializer_list<std::shared_ptr<typename Logger<T>::Sink>>& sinks = {})
+    -> Logger<T>;
+
 template<typename T, size_t N>
 Logger(
     const T (&)[N], // NOLINT(*-avoid-c-arrays)
-    Log::Level = Log::Level::Info) -> Logger<std::basic_string_view<T>>;
+    Log::Level = Log::Level::Info,
+    const std::initializer_list<std::shared_ptr<typename Logger<T>::Sink>>& sinks = {})
+    -> Logger<std::basic_string_view<T>>;
 
 } // namespace PlainCloud::Log
