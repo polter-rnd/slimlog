@@ -170,7 +170,7 @@ function(add_gcovr_coverage_target)
         COMMAND ${CMAKE_COMMAND} -E rm -rf ${ARG_OUTPUT_DIRECTORY}
         WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
         VERBATIM
-        COMMENT "Resetting code coverage counters."
+        COMMENT "Resetting code coverage counters"
     )
 
     add_custom_target(
@@ -178,7 +178,7 @@ function(add_gcovr_coverage_target)
         ${gcovr_commands}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         VERBATIM
-        COMMENT "Processing code coverage counters and generating reports."
+        COMMENT "Processing code coverage counters and generating reports"
     )
 
     # As long as ${ARG_CHECK_TARGET} is not defined, calling ${ARG_COVERAGE_TARGET} will not execute
@@ -230,4 +230,16 @@ function(target_enable_coverage targetName)
     separate_arguments(coverage_flags NATIVE_COMMAND "${coverage_flags}")
     target_compile_options(${targetName} PRIVATE ${coverage_flags})
     target_link_options(${targetName} PRIVATE "--coverage")
+
+    find_program(find_command find)
+    get_target_property(target_binary_dir ${targetName} BINARY_DIR)
+    add_custom_command(
+        TARGET ${targetName}
+        POST_BUILD
+        # Cleanup gcov counters for this target
+        COMMAND ${find_command} . -name *.gcda -delete
+        WORKING_DIRECTORY ${target_binary_dir}
+        VERBATIM
+        COMMENT "Resetting code coverage counters for target '${targetName}'"
+    )
 endfunction()
