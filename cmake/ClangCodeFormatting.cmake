@@ -1,12 +1,12 @@
-# [cmake_documentation] CppCodeFormatting.cmake
+# [cmake_documentation] ClangCodeFormatting.cmake
 #
 # Defines the following functions:
-# - @ref add_cpp_code_format_targets
+# - @ref add_clang_code_format_targets
 # [/cmake_documentation]
 
-# [cmake_documentation] add_cpp_code_format_targets()
+# [cmake_documentation] add_clang_code_format_targets()
 #
-# The function creates format-cpp and formatcheck-cpp targets which runs
+# The function creates format-clang and formatcheck-clang targets which runs
 # `clang-format` tool to format or check formatting respectively.
 #
 # @param CHECK_TARGET  Code format check target name (mandatory)
@@ -14,7 +14,7 @@
 # @param SOURCE_DIRS   List of source directories to be formatted (mandatory)
 # @param EXCLUDE_DIRS  List of directories to be excluded from formatting
 # [/cmake_documentation]
-function(add_cpp_code_format_targets)
+function(add_clang_code_format_targets)
     find_package(ClangFormat REQUIRED)
     find_program(Diff_EXECUTABLE diff REQUIRED)
 
