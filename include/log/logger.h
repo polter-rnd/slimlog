@@ -57,7 +57,8 @@ public:
         T&& name,
         const Log::Level level = Log::Level::Info,
         const std::initializer_list<std::shared_ptr<Sink>>& sinks = {})
-        : m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        : m_parent(nullptr)
+        , m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
     {
         m_sinks.reserve(sinks.size());
@@ -66,17 +67,34 @@ public:
         }
     }
 
+    template<typename T>
+    explicit Logger(
+        T&& name, const std::shared_ptr<Logger<StringT>>& parent, const Log::Level level)
+        : m_parent(parent)
+        , m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        , m_level(level)
+    {
+    }
+
+    template<typename T>
+    explicit Logger(T&& name, const std::shared_ptr<Logger<StringT>>& parent)
+        : m_parent(parent)
+        , m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        , m_level(parent->level())
+    {
+    }
+
     auto add_sink(const std::shared_ptr<Sink>& sink) -> bool
     {
-        return m_sinks.insert_or_assign(sink, false).second;
+        return m_sinks.insert_or_assign(sink, true).second;
     }
 
     template<template<typename> class T, typename... Args>
-    auto add_sink(Args&&... args) -> bool
+    auto add_sink(Args&&... args) -> std::shared_ptr<Sink>
     {
         return m_sinks
-            .insert_or_assign(std::make_shared<T<StringT>>(std::forward<Args>(args)...), false)
-            .second;
+            .insert_or_assign(std::make_shared<T<StringT>>(std::forward<Args>(args)...), true)
+            .first->first;
     }
 
     auto remove_sink(const std::shared_ptr<Sink>& sink) -> bool
@@ -84,9 +102,31 @@ public:
         return m_sinks.erase(sink) == 1;
     }
 
+    auto set_sink_enabled(const std::shared_ptr<Sink>& sink, bool enabled) -> bool
+    {
+        if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
+            itr->second = enabled;
+            return true;
+        }
+        return false;
+    }
+
+    auto sink_enabled(const std::shared_ptr<Sink>& sink) -> bool
+    {
+        if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
+            return itr->second;
+        }
+        return false;
+    }
+
     auto set_level(Log::Level level) -> void
     {
         m_level = level;
+    }
+
+    auto level() -> Log::Level
+    {
+        return m_level;
     }
 
     template<typename T, typename... Args>
@@ -97,8 +137,16 @@ public:
         const Log::Location& location = Log::Location::current(),
         Args&&... args) const -> void
     {
-        for (const auto& sink : m_sinks) {
-            if (m_level >= level) {
+        if (m_level < level) {
+            return;
+        }
+
+        auto sinks{m_sinks};
+        for (auto parent{m_parent}; parent; parent = parent->m_parent) {
+            sinks.insert(parent->m_sinks.cbegin(), parent->m_sinks.cend());
+        }
+        for (const auto& sink : sinks) {
+            if (sink.second) {
                 // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                 sink.first->emit(level, callback(std::forward<Args>(args)...), location);
             }
@@ -165,6 +213,7 @@ public:
 
 private:
     std::unordered_map<std::shared_ptr<Sink>, bool> m_sinks;
+    std::shared_ptr<Logger<StringT>> m_parent;
     StringT m_name;
     Log::Level m_level;
 };
