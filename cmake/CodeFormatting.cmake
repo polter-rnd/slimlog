@@ -14,12 +14,12 @@
 # ~~~
 #
 # In example above, will be created the following targets:
-# - __formatcheck-cpp__:   checking code formatting using `clang-format`
+# - __formatcheck-clang__: checking code formatting using `clang-format`
 # - __formatcheck-cmake__: checking cmake formatting using `cmake-format`
-# - __formatcheck__:       calls both `formatcheck-cpp` and `formatcheck-cmake`
-# - __format-cpp__:        formatting source code using `clang-format`
+# - __formatcheck__:       calls both `formatcheck-clang` and `formatcheck-cmake`
+# - __format-clang__:      formatting source code using `clang-format`
 # - __format-cmake__:      formatting cmake files using `cmakae-format`
-# - __formatcheck__:       calls both `format-cpp` and `format-cmake`
+# - __formatcheck__:       calls both `format-clang` and `format-cmake`
 #
 # Defines the following functions:
 # - @ref add_code_format_targets
@@ -69,15 +69,17 @@ function(add_code_format_targets)
     add_custom_target(${ARG_CHECK_TARGET})
 
     if(ENABLE_CLANG_FORMAT)
-        include(CppCodeFormatting)
-        add_cpp_code_format_targets(
-            FORMAT_TARGET ${ARG_FORMAT_TARGET}-cpp
-            CHECK_TARGET ${ARG_CHECK_TARGET}-cpp
+        include(ClangCodeFormatting)
+        # cmake-format: off
+        add_clang_code_format_targets(
+            FORMAT_TARGET ${ARG_FORMAT_TARGET}-clang
+            CHECK_TARGET ${ARG_CHECK_TARGET}-clang
             EXCLUDE_DIRS ${ARG_EXCLUDE_DIRS}
             SOURCE_DIRS ${ARG_SOURCE_DIRS}
         )
-        add_dependencies(${ARG_FORMAT_TARGET} ${ARG_FORMAT_TARGET}-cpp)
-        add_dependencies(${ARG_CHECK_TARGET} ${ARG_CHECK_TARGET}-cpp)
+        # cmake-format: on
+        add_dependencies(${ARG_FORMAT_TARGET} ${ARG_FORMAT_TARGET}-clang)
+        add_dependencies(${ARG_CHECK_TARGET} ${ARG_CHECK_TARGET}-clang)
     endif()
 
     if(ENABLE_CMAKE_FORMAT)
