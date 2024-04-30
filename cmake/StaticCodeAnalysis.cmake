@@ -181,22 +181,22 @@ function(target_enable_static_analysis targetName)
         if(ARG_IWYU_MAPPING_FILES_ARGS)
             set(iwyu_mapping_files_args "")
             foreach(mapping_file ${ARG_IWYU_MAPPING_FILES_ARGS})
-                list(APPEND iwyu_mapping_files_args "-Xiwyu --mapping_file=${mapping_file}")
+                list(APPEND iwyu_mapping_files_args "-Xiwyu" "--mapping_file=${mapping_file}")
             endforeach()
         endif()
         if(ARG_IWYU_EXTRA_ARGS)
             set(iwyu_extra_args "")
             foreach(extra_arg ${ARG_IWYU_EXTRA_ARGS})
-                list(APPEND iwyu_extra_args "-Xiwyu ${extra_arg}")
+                list(APPEND iwyu_extra_args "-Xiwyu" "${extra_arg}")
             endforeach()
         endif()
         add_custom_target(
             ${targetName}-iwyu
             COMMAND
                 ${CMAKE_COMMAND} -E env IWYU_BINARY=${Iwyu_EXECUTABLE} ${IwyuTool_EXECUTABLE} -p
-                ${CMAKE_BINARY_DIR}/compile_commands.json ${target_sources_absolute} -- -Xiwyu
-                --quoted_includes_first -Xiwyu --cxx17ns -Xiwyu --no_fwd_decls -Xiwyu --error=1
-                ${iwyu_mapping_files_args} ${iwyu_extra_args}
+                ${CMAKE_BINARY_DIR}/compile_commands.json -- -Xiwyu --cxx17ns -Xiwyu --error=1
+                -Xiwyu --quoted_includes_first -Xiwyu --check_also="${PROJECT_SOURCE_DIR}/*.h"
+                -Xiwyu --no_fwd_decls ${iwyu_mapping_files_args} ${iwyu_extra_args}
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
             USES_TERMINAL
             COMMENT "Analyzing code by 'include-what-you-use'"

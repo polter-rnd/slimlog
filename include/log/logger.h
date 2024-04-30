@@ -1,30 +1,21 @@
 #pragma once
 
-#include <algorithm>
+#include "format.h"
+#include "level.h"
+#include "location.h"
+#include "policy.h"
+#include "sink.h"
+
+#include <concepts>
 #include <cstddef>
-#include <functional>
-#include <iterator>
+#include <initializer_list>
 #include <memory>
-#include <string>
 #include <string_view>
-#include <type_traits>
-#include <unordered_map>
-#include <unordered_set>
 #include <utility>
-#include <version>
 
 // GCC 11+
 // CLang 15+
 // libfmt 9.1.0+
-
-namespace PlainCloud::Log {
-// Forward declaration of namespace to make IWYU happy
-}
-
-#include "format.h"
-#include "level.h"
-#include "location.h"
-#include "sink.h"
 
 namespace PlainCloud::Log {
 

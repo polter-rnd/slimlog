@@ -3,7 +3,6 @@
 #include "policy.h"
 
 #include <atomic>
-#include <mutex>
 
 namespace PlainCloud::Log {
 
