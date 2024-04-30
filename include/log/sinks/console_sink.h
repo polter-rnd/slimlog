@@ -1,13 +1,14 @@
 #pragma once
 
 #include <log/logger.h>
+#include <log/sink.h>
 
 #include <iostream>
 
 namespace PlainCloud::Log {
 
 template<typename StringT>
-class ConsoleSink : public Logger<StringT>::Sink {
+class ConsoleSink : public Sink<StringT> {
 public:
     void
     emit(const Log::Level level, const StringT& message, const Log::Location& caller) const override

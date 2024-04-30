@@ -22,30 +22,15 @@ namespace PlainCloud::Log {
 }
 
 #include "format.h"
+#include "level.h"
 #include "location.h"
+#include "sink.h"
 
 namespace PlainCloud::Log {
 
-enum class Level { Fatal, Error, Warning, Info, Debug, Trace };
-
-template<typename StringT>
+template<typename StringT, typename ThreadingPolicy = MultiThreadedPolicy<>>
 class Logger {
 public:
-    class Sink {
-    public:
-        Sink() = default;
-        Sink(Sink const&) = default;
-        Sink(Sink&&) noexcept = default;
-        auto operator=(Sink const&) -> Sink& = default;
-        auto operator=(Sink&&) noexcept -> Sink& = default;
-        virtual ~Sink() = default;
-
-        virtual auto
-        emit(Log::Level level, const StringT& message, const Log::Location& location) const -> void
-            = 0;
-        virtual auto flush() -> void = 0;
-    };
-
     Logger(Logger const&) = delete;
     Logger(Logger&&) = delete;
     auto operator=(Logger const&) -> Logger& = delete;
@@ -56,15 +41,12 @@ public:
     explicit Logger(
         T&& name,
         const Log::Level level = Log::Level::Info,
-        const std::initializer_list<std::shared_ptr<Sink>>& sinks = {})
+        const std::initializer_list<std::shared_ptr<Sink<StringT>>>& sinks = {})
         : m_parent(nullptr)
         , m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
+        , m_sinks(sinks)
     {
-        m_sinks.reserve(sinks.size());
-        for (const auto& sink : sinks) {
-            m_sinks.emplace(sink, true);
-        }
     }
 
     template<typename T>
@@ -84,39 +66,30 @@ public:
     {
     }
 
-    auto add_sink(const std::shared_ptr<Sink>& sink) -> bool
+    auto add_sink(const std::shared_ptr<Sink<StringT>>& sink) -> bool
     {
-        return m_sinks.insert_or_assign(sink, true).second;
+        return m_sinks.add_sink(sink);
     }
 
     template<template<typename> class T, typename... Args>
-    auto add_sink(Args&&... args) -> std::shared_ptr<Sink>
+    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<StringT>>
     {
-        return m_sinks
-            .insert_or_assign(std::make_shared<T<StringT>>(std::forward<Args>(args)...), true)
-            .first->first;
+        return m_sinks.template add_sink<T<StringT>>(std::forward<Args>(args)...);
     }
 
-    auto remove_sink(const std::shared_ptr<Sink>& sink) -> bool
+    auto remove_sink(const std::shared_ptr<Sink<StringT>>& sink) -> bool
     {
-        return m_sinks.erase(sink) == 1;
+        return m_sinks.remove_sink(sink);
     }
 
-    auto set_sink_enabled(const std::shared_ptr<Sink>& sink, bool enabled) -> bool
+    auto set_sink_enabled(const std::shared_ptr<Sink<StringT>>& sink, bool enabled) -> bool
     {
-        if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
-            itr->second = enabled;
-            return true;
-        }
-        return false;
+        return m_sinks.set_sink_enabled(sink, enabled);
     }
 
-    auto sink_enabled(const std::shared_ptr<Sink>& sink) -> bool
+    auto sink_enabled(const std::shared_ptr<Sink<StringT>>& sink) -> bool
     {
-        if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
-            return itr->second;
-        }
-        return false;
+        return m_sinks.sink_enabled(sink);
     }
 
     auto set_level(Log::Level level) -> void
@@ -126,7 +99,7 @@ public:
 
     auto level() -> Log::Level
     {
-        return m_level;
+        return static_cast<Level>(m_level);
     }
 
     template<typename T, typename... Args>
@@ -137,20 +110,7 @@ public:
         const Log::Location& location = Log::Location::current(),
         Args&&... args) const -> void
     {
-        if (m_level < level) {
-            return;
-        }
-
-        auto sinks{m_sinks};
-        for (auto parent{m_parent}; parent; parent = parent->m_parent) {
-            sinks.insert(parent->m_sinks.cbegin(), parent->m_sinks.cend());
-        }
-        for (const auto& sink : sinks) {
-            if (sink.second) {
-                // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
-                sink.first->emit(level, callback(std::forward<Args>(args)...), location);
-            }
-        }
+        m_sinks.emit(*this, level, callback, location, std::forward<Args>(args)...);
     }
 
     /**
@@ -212,24 +172,22 @@ public:
     }
 
 private:
-    std::unordered_map<std::shared_ptr<Sink>, bool> m_sinks;
     std::shared_ptr<Logger<StringT>> m_parent;
     StringT m_name;
-    Log::Level m_level;
+    LevelDriver<ThreadingPolicy> m_level;
+    SinkDriver<StringT, ThreadingPolicy> m_sinks;
+
+    template<typename T, typename Policy>
+    friend class SinkDriver;
 };
 
-template<typename T>
-Logger(
-    T&&,
-    Log::Level = Log::Level::Info,
-    const std::initializer_list<std::shared_ptr<typename Logger<T>::Sink>>& sinks = {})
-    -> Logger<T>;
+template<typename T, typename SinkT = Sink<T>>
+Logger(T, Level = Level::Info, std::initializer_list<std::shared_ptr<SinkT>> = {}) -> Logger<T>;
 
-template<typename T, size_t N>
+template<typename T, size_t N, typename SinkT = Sink<T>>
 Logger(
     const T (&)[N], // NOLINT(*-avoid-c-arrays)
-    Log::Level = Log::Level::Info,
-    const std::initializer_list<std::shared_ptr<typename Logger<T>::Sink>>& sinks = {})
-    -> Logger<std::basic_string_view<T>>;
+    Level = Level::Info,
+    std::initializer_list<std::shared_ptr<SinkT>> = {}) -> Logger<std::basic_string_view<T>>;
 
 } // namespace PlainCloud::Log
