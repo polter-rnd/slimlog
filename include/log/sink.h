@@ -2,9 +2,15 @@
 #pragma once
 
 #include "level.h"
+#include "location.h"
+#include "policy.h"
 
+#include <atomic>
+#include <concepts>
+#include <initializer_list>
 #include <memory>
 #include <unordered_map>
+#include <utility>
 
 namespace PlainCloud::Log {
 

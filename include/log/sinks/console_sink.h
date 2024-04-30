@@ -1,9 +1,13 @@
 #pragma once
 
-#include <log/logger.h>
+#include "log/level.h"
+#include "log/location.h"
+
 #include <log/sink.h>
 
 #include <iostream>
+#include <string_view>
+#include <type_traits>
 
 namespace PlainCloud::Log {
 
