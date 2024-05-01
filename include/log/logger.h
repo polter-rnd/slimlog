@@ -173,12 +173,15 @@ private:
 };
 
 template<typename T, typename SinkT = Sink<T>>
-Logger(T, Level = Level::Info, std::initializer_list<std::shared_ptr<SinkT>> = {}) -> Logger<T>;
+Logger(
+    T, Level = Level::Info, std::initializer_list<std::shared_ptr<SinkT>> = std::initializer_list{})
+    -> Logger<T>;
 
 template<typename T, size_t N, typename SinkT = Sink<T>>
 Logger(
     const T (&)[N], // NOLINT(*-avoid-c-arrays)
     Level = Level::Info,
-    std::initializer_list<std::shared_ptr<SinkT>> = {}) -> Logger<std::basic_string_view<T>>;
+    std::initializer_list<std::shared_ptr<SinkT>> = std::initializer_list{})
+    -> Logger<std::basic_string_view<T>>;
 
 } // namespace PlainCloud::Log

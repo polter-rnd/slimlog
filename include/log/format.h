@@ -19,11 +19,9 @@
 namespace PlainCloud::Log {
 
 #ifdef __cpp_lib_format
-using std::format;
 template<typename T, typename... Args>
 using BasicFormatString = std::basic_format_string<T, Args...>;
 #else
-using fmt::format;
 template<typename T, typename... Args>
 using BasicFormatString = fmt::basic_format_string<T, Args...>;
 #endif
