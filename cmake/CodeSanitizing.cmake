@@ -52,8 +52,6 @@ find_package_switchable(
     PURPOSE "Thread sanitizer"
 )
 
-option(SANITIZE_LINK_STATIC "Try to link static against sanitizers." ON)
-
 if((SANITIZE_LEAK OR SANITIZE_MEMORY) AND SANITIZE_THREAD)
     message(FATAL_ERROR "ThreadSanitizer is not compatible with MemorySanitizer or LeakSanitizer.")
 endif()
@@ -102,11 +100,12 @@ function(sanitizer_add_flags targetName targetCompiler targetLang varPrefix)
     endif()
 
     # If compiler is a GNU compiler, search for static flag, if SANITIZE_LINK_STATIC is enabled.
-    if(SANITIZE_LINK_STATIC
-       AND (${targetCompiler} MATCHES "GNU")
+    if(targetCompiler MATCHES "GNU"
        AND targetLang
        AND NOT DEFINED ${varPrefix}_STATIC_DETECTED
     )
+        option(SANITIZE_LINK_STATIC "Try to link static against sanitizers." ON)
+
         string(TOLOWER ${varPrefix} varPrefix_lower)
         set(sanitizer_flags_static "-static-lib${varPrefix_lower} ${sanitizer_flags}")
 

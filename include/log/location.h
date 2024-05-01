@@ -12,8 +12,11 @@ using Location = std::source_location;
 class Location {
 public:
     [[nodiscard]] static constexpr auto current(
-#if __has_builtin(__builtin_FILE) and __has_builtin(__builtin_FUNCTION)                            \
-    and __has_builtin(__builtin_LINE)
+#ifndef __has_builtin
+#define __has_builtin(__x) 0
+#endif
+#if (__has_builtin(__builtin_FILE) and __has_builtin(__builtin_FUNCTION)                            \
+    and __has_builtin(__builtin_LINE)) or (defined(_MSC_VER) and _MSC_VER > 192) 
         // NOLINTNEXTLINE(*-easily-swappable-parameters)
         const char* file = __builtin_FILE(),
         const char* function = __builtin_FUNCTION(),
