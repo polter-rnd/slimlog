@@ -14,28 +14,27 @@ namespace PlainCloud::Log {
 template<typename StringT>
 class ConsoleSink : public Sink<StringT> {
 public:
-    void
-    emit(const Log::Level level, const StringT& message, const Log::Location& caller) const override
+    void emit(const Level level, const StringT& message, const Location& caller) const override
     {
         if constexpr (char_type_equal<char>()) {
             std::string_view level_string;
             switch (level) {
-            case Log::Level::Fatal:
+            case Level::Fatal:
                 level_string = "FATAL";
                 break;
-            case Log::Level::Error:
+            case Level::Error:
                 level_string = "ERROR";
                 break;
-            case Log::Level::Warning:
+            case Level::Warning:
                 level_string = "WARN ";
                 break;
-            case Log::Level::Info:
+            case Level::Info:
                 level_string = "INFO ";
                 break;
-            case Log::Level::Debug:
+            case Level::Debug:
                 level_string = "DEBUG";
                 break;
-            case Log::Level::Trace:
+            case Level::Trace:
                 level_string = "TRACE";
                 break;
             }
@@ -46,22 +45,22 @@ public:
         } else if constexpr (char_type_equal<wchar_t>()) {
             std::wstring_view level_string;
             switch (level) {
-            case Log::Level::Fatal:
+            case Level::Fatal:
                 level_string = L"FATAL";
                 break;
-            case Log::Level::Error:
+            case Level::Error:
                 level_string = L"ERROR";
                 break;
-            case Log::Level::Warning:
+            case Level::Warning:
                 level_string = L"WARN ";
                 break;
-            case Log::Level::Info:
+            case Level::Info:
                 level_string = L"INFO ";
                 break;
-            case Log::Level::Debug:
+            case Level::Debug:
                 level_string = L"DEBUG";
                 break;
-            case Log::Level::Trace:
+            case Level::Trace:
                 level_string = L"TRACE";
                 break;
             }
