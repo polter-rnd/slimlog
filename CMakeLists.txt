@@ -89,13 +89,26 @@ find_package_switchable(
 add_feature_info("DoxygenDocumentation" BUILD_DOCS "build documentation")
 
 if(BUILD_DOCS)
-    include(DoxygenDocumentation)
-    add_doxygen_documentation_target(
-        CMAKE_DOCS
-        DOXYGEN_TARGET docs
-        DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile.in
-        DOXYGEN_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/docs
-        SOURCE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src
+    find_package(Doxygen REQUIRED)
+
+    # Write documentation for CMake files
+    include(CMakeDocumentation)
+    parse_cmake_documentation(
+        INCLUDES ${ARG_CMAKE_INCLUDES}
+        EXCLUDES ${ARG_CMAKE_EXCLUDES}
+        START_FLAG "[cmake_documentation]"
+        END_FLAG "[/cmake_documentation]"
+    )
+    set(cmake_doxygen_file ${PROJECT_BINARY_DIR}/cmake.dox)
+    write_cmake_documentation("${cmake_doxygen_file}" SORTED)
+
+    # Create docs target
+    set(DOXYGEN_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/docs)
+    set(DOXYGEN_PROJECT_NAME "PlainCloud")
+    doxygen_add_docs(
+        docs
+        ${PROJECT_SOURCE_DIR}
+        COMMENT "Generating API documentation with Doxygen"
     )
 endif()
 
