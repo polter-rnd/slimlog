@@ -8,8 +8,8 @@
 # add_code_format_targets(
 #     CHECK_TARGET formatcheck
 #     FORMAT_TARGET format
-#     SOURCE_DIRS \${CMAKE_CURRENT_SOURCE_DIR}
-#     EXCLUDE_DIRS \${CMAKE_BINARY_DIR}
+#     SOURCE_DIRS \${PROJECT_SOURCE_DIR}
+#     EXCLUDE_DIRS \${PROJECT_BINARY_DIR}
 # )
 # ~~~
 #

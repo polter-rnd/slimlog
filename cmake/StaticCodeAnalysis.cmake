@@ -128,12 +128,12 @@ function(target_enable_static_analysis targetName)
                 # Cppcheck does not need standard library headers to get proper results
                 --suppress=missingIncludeSystem
                 # Ignore build folder
-                -i ${CMAKE_BINARY_DIR}
+                -i ${PROJECT_BINARY_DIR}
                 # Enable inline suppressions
                 --inline-suppr
                 # Suppress warnings in some specific files
                 ${cppcheck_args_suppressions_list}
-                --project=${CMAKE_BINARY_DIR}/compile_commands.json
+                --project=${PROJECT_BINARY_DIR}/compile_commands.json
                 # User-specified args
                 ${ARG_CPPCHECK_EXTRA_ARGS}
                 # Find all source files from the root of the repo
@@ -166,10 +166,10 @@ function(target_enable_static_analysis targetName)
         add_custom_target(
             ${targetName}-clangtidy
             COMMAND
-                ${RunClangTidy_EXECUTABLE} -quiet -p=${CMAKE_BINARY_DIR}
+                ${RunClangTidy_EXECUTABLE} -quiet -p=${PROJECT_BINARY_DIR}
                 -header-filter=${ARG_CLANG_TIDY_HEADER_FILTER} ${clang_tidy_extra_args}
                 ${target_sources_absolute}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
             USES_TERMINAL
             COMMENT "Analyzing code by 'clang-tidy'"
         )
@@ -194,10 +194,10 @@ function(target_enable_static_analysis targetName)
             ${targetName}-iwyu
             COMMAND
                 ${CMAKE_COMMAND} -E env IWYU_BINARY=${Iwyu_EXECUTABLE} ${IwyuTool_EXECUTABLE} -p
-                ${CMAKE_BINARY_DIR}/compile_commands.json -- -Xiwyu --cxx17ns -Xiwyu --error=1
+                ${PROJECT_BINARY_DIR}/compile_commands.json -- -Xiwyu --cxx17ns -Xiwyu --error=1
                 -Xiwyu --quoted_includes_first -Xiwyu --check_also="${PROJECT_SOURCE_DIR}/*.h"
                 -Xiwyu --no_fwd_decls ${iwyu_mapping_files_args} ${iwyu_extra_args}
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
             USES_TERMINAL
             COMMENT "Analyzing code by 'include-what-you-use'"
         )
