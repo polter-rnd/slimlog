@@ -67,12 +67,12 @@ endif()
 # Adds specific file to blacklist for usage in sanitizers.
 #
 # Required arguments:
-# @arg __fileName__: File name to be blackisted (relative to `\${CMAKE_CURRENT_SOURCE_DIR}`)
+# @arg __fileName__: File name to be blackisted (relative to `\${PROJECT_SOURCE_DIR}`)
 #
 # [/cmake_documentation]
 function(sanitizer_add_blacklist_file fileName)
     if(NOT IS_ABSOLUTE ${fileName})
-        set(fileName "${CMAKE_CURRENT_SOURCE_DIR}/${fileName}")
+        set(fileName "${PROJECT_SOURCE_DIR}/${fileName}")
     endif()
     get_filename_component(fileName "${fileName}" REALPATH)
 

@@ -41,7 +41,7 @@
 # ~~~{.cmake}
 # include(CMakeDocumentation)
 # parse_cmake_documentation()
-# write_cmake_documentation("\${CMAKE_SOURCE_DIR}/cmake/cmake.dox" SORTED)
+# write_cmake_documentation("\${PROJECT_SOURCE_DIR}/cmake/cmake.dox" SORTED)
 # ~~~
 #
 # Then the standard Doxygen application will be able to parse your cmake.dox documentation to be
@@ -58,7 +58,7 @@ include_guard(GLOBAL)
 #
 # ~~~{.cmake}
 # parse_cmake_documentation(
-#      [INCLUDES   includeFilePathPattern] # default: \${CMAKE_SOURCE_DIR}/*.cmake*
+#      [INCLUDES   includeFilePathPattern] # default: \${PROJECT_SOURCE_DIR}/*.cmake*
 #      [EXCLUDES   excludeFilePathPattern] # default:
 #      [START_FLAG matchingStartFlag]      # default: [cmake_documentation]
 #      [END_FLAG   matchingEndFlag]        # default: [/cmake_documentation]
@@ -79,7 +79,7 @@ macro(parse_cmake_documentation)
 
     # INCLUDES cmake file to the list files
     if(NOT DEFINED ARG_INCLUDES)
-        set(ARG_INCLUDES "${CMAKE_SOURCE_DIR}/*.cmake") # all *.cmake by default
+        set(ARG_INCLUDES "${PROJECT_SOURCE_DIR}/*.cmake") # all *.cmake by default
     endif()
 
     foreach(include_pattern ${ARG_INCLUDES})
@@ -278,7 +278,7 @@ endfunction()
 # This macro define some global cmake variables to be used when generate the .dox file.
 macro(process_cmake_documentation cmakeFile sectionName sectionContent)
     # Strip cmakeFile path
-    string(REGEX REPLACE "${CMAKE_SOURCE_DIR}/?\\\\?" "" filename_stripped ${cmakeFile})
+    string(REGEX REPLACE "${PROJECT_SOURCE_DIR}/?\\\\?" "" filename_stripped ${cmakeFile})
 
     # If sectionName is a fileName, add it to the list a file with its description
     string(REGEX MATCH ".*[.].*" filename_with_extension ${sectionName})
