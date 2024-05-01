@@ -6,9 +6,9 @@
 # include(DoxygenDocumentation)
 # add_doxygen_documentation_target(
 #     DOXYGEN_TARGET docs
-#     DOXYGEN_IN ${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile.in
-#     DOXYGEN_OUT_DIR ${CMAKE_CURRENT_BINARY_DIR}/docs
-#     SOURCE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/src
+#     DOXYGEN_IN ${PROJECT_BINARY_DIR}/docs/Doxyfile.in
+#     DOXYGEN_OUT_DIR ${PROJECT_BINARY_DIR}/docs
+#     SOURCE_DIRS ${PROJECT_BINARY_DIR}/src
 # )
 # ~~~
 #
@@ -22,19 +22,21 @@
 #
 # Available options:
 # @arg __CMAKE_DOCS__    If documentation for cmake modules should also be generated
+# @arg __HTML__          Build docs in HTML format
+# @arg __LATEX__         Build docs in LATEX format
+# @arg __MAN__           Build docs in MAN format
 #
 # @param DOXYGEN_TARGET  Doxygen documentation target name (mandatory)
-# @param DOXYGEN_IN      Doxygen.in configuration file (mandatory)
-# @param DOXYGEN_OUT_DIR Documentation output directory (mandatory)
 # @param SOURCE_DIRS     List of directories with source files
+# @param SOURCE_EXCLUDES List of patterns to exclude from docs
 # @param CMAKE_INCLUDES  List of patterns for cmake files to include in docs
 # @param CMAKE_EXCLUDES  List of patterns for cmake files to exclude from docs
 # [/cmake_documentation]
 function(add_doxygen_documentation_target)
     # Parse parameters
-    set(options CMAKE_DOCS)
-    set(oneValueArgs DOXYGEN_TARGET DOXYGEN_IN DOXYGEN_OUT_DIR)
-    set(multipleValueArgs SOURCE_DIRS CMAKE_INCLUDES CMAKE_EXCLUDES)
+    set(options CMAKE_DOCS LATEX HTML MAN)
+    set(oneValueArgs DOXYGEN_TARGET BRIEF)
+    set(multipleValueArgs SOURCE_DIRS SOURCE_EXCLUDES CMAKE_INCLUDES CMAKE_EXCLUDES)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multipleValueArgs}" ${ARGN})
 
     find_package(Doxygen REQUIRED)
@@ -43,12 +45,8 @@ function(add_doxygen_documentation_target)
         message(FATAL_ERROR "DoxygenDocumentation target is not specified!")
     endif()
 
-    if(NOT ARG_DOXYGEN_IN)
-        message(FATAL_ERROR "DoxygenDocumentation input file is not specified!")
-    endif()
-
-    if(NOT ARG_DOXYGEN_OUT_DIR)
-        message(FATAL_ERROR "DoxygenDocumentation output directory is not specified!")
+    if(NOT ARG_SOURCE_DIRS)
+        set(ARG_SOURCE_DIRS ${PROJECT_SOURCE_DIR})
     endif()
 
     if(ARG_CMAKE_DOCS)
@@ -60,23 +58,28 @@ function(add_doxygen_documentation_target)
             START_FLAG "[cmake_documentation]"
             END_FLAG "[/cmake_documentation]"
         )
-        set(cmake_doxygen_file ${CMAKE_CURRENT_BINARY_DIR}/cmake.dox)
+        set(cmake_doxygen_file ${PROJECT_BINARY_DIR}/cmake.dox)
         write_cmake_documentation("${cmake_doxygen_file}" SORTED)
     endif()
 
-    # request to configure the file
-    set(DOXYGEN_OUTPUT_DIRECTORY "\"${ARG_DOXYGEN_OUT_DIR}\"")
-    string(REGEX REPLACE ";" "\"\n" DOXYGEN_INPUT "${ARG_SOURCE_DIRS}")
-    if(ARG_CMAKE_DOCS AND EXISTS "${cmake_doxygen_file}")
-        set(DOXYGEN_INPUT "\"${DOXYGEN_INPUT}\" \"${cmake_doxygen_file}\"")
-    endif()
-    configure_file(${ARG_DOXYGEN_IN} ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile @ONLY)
+    # Output directory named the same as target
+    set(DOXYGEN_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/${ARG_DOXYGEN_TARGET})
+    set(DOXYGEN_EXCLUDE_PATTERNS ${ARG_SOURCE_EXCLUDES})
+    set(DOXYGEN_PROJECT_BRIEF "String with spaces")
 
-    add_custom_target(
+    if(ARG_HTML)
+        set(DOXYGEN_GENERATE_HTML ON)
+    endif()
+    if(ARG_LATEX)
+        set(DOXYGEN_GENERATE_LATEX ON)
+    endif()
+    if(ARG_MAN)
+        set(DOXYGEN_GENERATE_MAN ON)
+    endif()
+
+    doxygen_add_docs(
         ${ARG_DOXYGEN_TARGET}
-        COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYGEN_OUT}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        ${ARG_SOURCE_DIRS}
         COMMENT "Generating API documentation with Doxygen"
-        VERBATIM USES_TERMINAL
     )
 endfunction()
