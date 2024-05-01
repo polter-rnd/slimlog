@@ -81,9 +81,9 @@ public:
         requires std::invocable<T, Args...>
     auto emit(
         const LoggerT& logger,
-        const Log::Level level,
+        const Level level,
         const T& callback,
-        const Log::Location& location = Log::Location::current(),
+        const Location& location = Location::current(),
         Args&&... args) const -> void
     {
         if (static_cast<Level>(logger.m_level) < level) {
@@ -156,9 +156,9 @@ public:
         requires std::invocable<T, Args...>
     auto emit(
         const LoggerT& logger,
-        const Log::Level level,
+        const Level level,
         const T& callback,
-        const Log::Location& location = Log::Location::current(),
+        const Location& location = Location::current(),
         Args&&... args) const -> void
     {
         ReadLockT lock(m_mutex);
