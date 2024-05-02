@@ -15,10 +15,6 @@ if(NOT HAS_CXX20_LIBFORMAT)
     target_link_libraries(${TARGET} PRIVATE fmt::fmt-header-only)
 endif()
 
-if(ENABLE_CODE_ANALYSIS AND COMMAND target_enable_static_analysis)
-    target_enable_static_analysis(${TARGET})
-endif()
-
 if(ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
     target_enable_sanitizers(${TARGET})
 endif()
