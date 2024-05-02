@@ -43,12 +43,20 @@ endif()
 # Option for enabling / disabling static analyzers
 option(ENABLE_CODE_ANALYSIS "Static code analysis" OFF)
 add_feature_info("StaticCodeAnalysis" ENABLE_CODE_ANALYSIS "code linting and static analysis")
+set(CPPCHECK_MIN_VERSION 2.10)
+set(CLANG_TIDY_MIN_VERSION 14.0)
+set(IWYU_MIN_VERSION 0.19)
+include(StaticCodeAnalysis)
 if(ENABLE_CODE_ANALYSIS)
-    set(CPPCHECK_MIN_VERSION 2.10)
-    set(CLANG_TIDY_MIN_VERSION 14.0)
-    set(IWYU_MIN_VERSION 0.20)
-    include(StaticCodeAnalysis)
-    add_static_analysis_target(ANALYSIS_TARGET codeanalysis)
+    # cmake-format: off
+    enable_static_code_analysis(
+        IWYU_EXTRA_ARGS
+            --cxx17ns --quoted_includes_first --no_fwd_decls
+        CPPCHECK_EXTRA_ARGS
+            --enable=warning,performance,portability,information,missingInclude
+            --inline-suppr --suppress=missingIncludeSystem
+    )
+    # cmake-format: on
 endif()
 
 # Option for enabling / disabling sanitizers
@@ -71,7 +79,8 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
         # cmake-format: off
         add_gcovr_coverage_target(
             HTML COBERTURA COVERALLS SONARQUBE
-            COVERAGE_TARGET coverage COVERAGE_INIT_TARGET coverage-init
+            COVERAGE_TARGET coverage
+            COVERAGE_INIT_TARGET coverage-clean
         )
         # cmake-format: on
     endif()
@@ -105,11 +114,7 @@ if(BUILD_DOCS)
     # Create docs target
     set(DOXYGEN_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/docs)
     set(DOXYGEN_PROJECT_NAME "PlainCloud")
-    doxygen_add_docs(
-        docs
-        ${PROJECT_SOURCE_DIR}
-        COMMENT "Generating API documentation with Doxygen"
-    )
+    doxygen_add_docs(docs ${PROJECT_SOURCE_DIR} COMMENT "Generating API documentation with Doxygen")
 endif()
 
 # Summary of enabled and disabled features
