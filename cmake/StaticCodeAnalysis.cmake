@@ -40,13 +40,6 @@ find_package_switchable(
     MIN_VERSION ${IWYU_MIN_VERSION}
 )
 
-# Reset all analyzers by default
-foreach(language C CXX OBJC OBJCXX)
-    unset(CMAKE_${language}_CPPCHECK CACHE)
-    unset(CMAKE_${language}_CLANG_TIDY CACHE)
-    unset(CMAKE_${language}_INCLUDE_WHAT_YOU_USE CACHE)
-endforeach()
-
 # [cmake_documentation] enable_static_code_analysis()
 #
 # Enable static analysis features for all targets.
