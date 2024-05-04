@@ -1,3 +1,8 @@
+/**
+ * @file location.h
+ * @brief Contains definition of Location class.
+ */
+
 #pragma once
 
 #if __has_include(<source_location>)
@@ -9,6 +14,12 @@ namespace PlainCloud::Log {
 #ifdef __cpp_lib_source_location
 using Location = std::source_location;
 #else
+/**
+ * @brief Certain place in source code.
+ *
+ * Consists of source file name, function and line.
+ * Compatible with `std::source_location`. See documentation for it.
+ */
 class Location {
 public:
     [[nodiscard]] static constexpr auto current(
