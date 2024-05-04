@@ -25,19 +25,19 @@
 # - @ref add_code_format_targets
 #
 # Uses the following parameters:
-# @arg __ENABLE_CLANG_FORMAT__: Enable source code formatting with clang-format
-# @arg __ENABLE_CMAKE_FORMAT__: Enable cmake files formatting with cmake-format
+# @arg __FORMAT_CLANG__: Enable source code formatting with clang-format
+# @arg __FORMAT_CMAKE__: Enable cmake files formatting with cmake-format
 # [/cmake_documentation]
 
 include(Helpers)
 find_package_switchable(
     ClangFormat
-    OPTION ENABLE_CLANG_FORMAT
+    OPTION FORMAT_CLANG
     PURPOSE "Enable source code formatting with clang-format"
 )
 find_package_switchable(
     CMakeFormat
-    OPTION ENABLE_CMAKE_FORMAT
+    OPTION FORMAT_CMAKE
     PURPOSE "Enable cmake files formatting with cmake-format"
 )
 
@@ -68,7 +68,7 @@ function(add_code_format_targets)
     add_custom_target(${ARG_FORMAT_TARGET})
     add_custom_target(${ARG_CHECK_TARGET})
 
-    if(ENABLE_CLANG_FORMAT)
+    if(FORMAT_CLANG)
         include(ClangCodeFormatting)
         # cmake-format: off
         add_clang_code_format_targets(
@@ -82,7 +82,7 @@ function(add_code_format_targets)
         add_dependencies(${ARG_CHECK_TARGET} ${ARG_CHECK_TARGET}-clang)
     endif()
 
-    if(ENABLE_CMAKE_FORMAT)
+    if(FORMAT_CMAKE)
         include(CMakeFormatting)
         add_cmake_code_format_targets(
             FORMAT_TARGET ${ARG_FORMAT_TARGET}-cmake

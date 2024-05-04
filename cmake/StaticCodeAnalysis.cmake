@@ -12,30 +12,30 @@
 # ~~~
 #
 # Uses the following parameters:
-# @arg __ENABLE_CPPCHECK__:        Enable basic static analysis of C/C++ code
+# @arg __ANALYZE_CPPCHECK__:       Enable basic static analysis of C/C++ code
 # @arg __CPPCHECK_MIN_VERSION__:   Minimum required version for `cppcheck`
-# @arg __ENABLE_CLANG_TIDY__:      Enable clang-based analysis and linting of C/C++ code
+# @arg __ANALYZE_CLANG_TIDY__:     Enable clang-based analysis and linting of C/C++ code
 # @arg __CLANG_TIDY_MIN_VERSION__: Minimum required version for `clang-tidy`
-# @arg __ENABLE_IWYU__:            Enable include file analysis in C and C++ source files
+# @arg __ANALYZE_IWYU__:           Enable include file analysis in C and C++ source files
 # @arg __IWYU_MIN_VERSION__:       Minimum required version for `include-what-you-use`
 # [/cmake_documentation]
 
 include(Helpers)
 find_package_switchable(
     Cppcheck
-    OPTION ENABLE_CPPCHECK
+    OPTION ANALYZE_CPPCHECK
     PURPOSE "Basic static analysis of C/C++ code"
     MIN_VERSION ${CPPCHECK_MIN_VERSION}
 )
 find_package_switchable(
     ClangTidy
-    OPTION ENABLE_CLANG_TIDY
+    OPTION ANALYZE_CLANG_TIDY
     PURPOSE "Clang-based analysis and linting of C/C++ code"
     MIN_VERSION ${CLANG_TIDY_MIN_VERSION}
 )
 find_package_switchable(
     Iwyu
-    OPTION ENABLE_IWYU
+    OPTION ANALYZE_IWYU
     PURPOSE "Analyze includes in C and C++ source files"
     MIN_VERSION ${IWYU_MIN_VERSION}
 )
@@ -64,7 +64,7 @@ function(enable_static_code_analysis)
 
     get_property(enabled_languages GLOBAL PROPERTY ENABLED_LANGUAGES)
 
-    if(ENABLE_CPPCHECK)
+    if(ANALYZE_CPPCHECK)
         find_program(Cppcheck_EXECUTABLE NAMES cppcheck REQUIRED)
         foreach(language ${enabled_languages})
             if(language MATCHES "^C|CXX$")
@@ -76,7 +76,7 @@ function(enable_static_code_analysis)
         endforeach()
     endif()
 
-    if(ENABLE_CLANG_TIDY)
+    if(ANALYZE_CLANG_TIDY)
         if(ARG_CLANG_TIDY_EXTRA_ARGS)
             set(clang_tidy_extra_args "")
             foreach(extra_arg ${ARG_CLANG_TIDY_EXTRA_ARGS})
@@ -93,7 +93,7 @@ function(enable_static_code_analysis)
         endforeach()
     endif()
 
-    if(ENABLE_IWYU)
+    if(ANALYZE_IWYU)
         if(ARG_IWYU_EXTRA_ARGS)
             set(iwyu_extra_args "")
             foreach(extra_arg ${ARG_IWYU_EXTRA_ARGS})
