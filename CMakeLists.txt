@@ -43,11 +43,11 @@ endif()
 # Option for enabling / disabling static analyzers
 option(ENABLE_ANALYZERS "Static code analyzers" OFF)
 add_feature_info("StaticCodeAnalysis" ENABLE_ANALYZERS "code linting and static analysis")
-set(CPPCHECK_MIN_VERSION 2.10)
-set(CLANG_TIDY_MIN_VERSION 14.0)
-set(IWYU_MIN_VERSION 0.19)
-include(StaticCodeAnalysis)
 if(ENABLE_ANALYZERS)
+    set(CPPCHECK_MIN_VERSION 2.10)
+    set(CLANG_TIDY_MIN_VERSION 14.0)
+    set(IWYU_MIN_VERSION 0.19)
+    include(StaticCodeAnalysis)
     # cmake-format: off
     enable_static_code_analysis(
         IWYU_EXTRA_ARGS
@@ -57,6 +57,13 @@ if(ENABLE_ANALYZERS)
             --inline-suppr --suppress=missingIncludeSystem
     )
     # cmake-format: on
+else()
+    # Reset all analyzers by default
+    foreach(language C CXX OBJC OBJCXX)
+        unset(CMAKE_${language}_CPPCHECK CACHE)
+        unset(CMAKE_${language}_CLANG_TIDY CACHE)
+        unset(CMAKE_${language}_INCLUDE_WHAT_YOU_USE CACHE)
+    endforeach()
 endif()
 
 # Option for enabling / disabling sanitizers
