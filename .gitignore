@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# IDE projects and build folders
+.vs
+.vscode
+.PVS-Studio
+out
+build
+CMakeSettings.json
