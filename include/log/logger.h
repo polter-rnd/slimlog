@@ -19,7 +19,7 @@
 
 namespace PlainCloud::Log {
 
-template<typename StringT, typename ThreadingPolicy = MultiThreadedPolicy<>>
+template<typename String, typename ThreadingPolicy = MultiThreadedPolicy<>>
 class Logger {
 public:
     Logger(Logger const&) = delete;
@@ -32,7 +32,7 @@ public:
     explicit Logger(
         T&& name,
         const Level level = Level::Info,
-        const std::initializer_list<std::shared_ptr<Sink<StringT>>>& sinks = {})
+        const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {})
         : m_parent(nullptr)
         , m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
@@ -41,7 +41,7 @@ public:
     }
 
     template<typename T>
-    explicit Logger(T&& name, const std::shared_ptr<Logger<StringT>>& parent, const Level level)
+    explicit Logger(T&& name, const std::shared_ptr<Logger<String>>& parent, const Level level)
         : m_parent(parent)
         , m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
@@ -49,35 +49,35 @@ public:
     }
 
     template<typename T>
-    explicit Logger(T&& name, const std::shared_ptr<Logger<StringT>>& parent)
+    explicit Logger(T&& name, const std::shared_ptr<Logger<String>>& parent)
         : m_parent(parent)
         , m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(parent->level())
     {
     }
 
-    auto add_sink(const std::shared_ptr<Sink<StringT>>& sink) -> bool
+    auto add_sink(const std::shared_ptr<Sink<String>>& sink) -> bool
     {
         return m_sinks.add_sink(sink);
     }
 
     template<template<typename> class T, typename... Args>
-    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<StringT>>
+    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<String>>
     {
-        return m_sinks.template add_sink<T<StringT>>(std::forward<Args>(args)...);
+        return m_sinks.template add_sink<T<String>>(std::forward<Args>(args)...);
     }
 
-    auto remove_sink(const std::shared_ptr<Sink<StringT>>& sink) -> bool
+    auto remove_sink(const std::shared_ptr<Sink<String>>& sink) -> bool
     {
         return m_sinks.remove_sink(sink);
     }
 
-    auto set_sink_enabled(const std::shared_ptr<Sink<StringT>>& sink, bool enabled) -> bool
+    auto set_sink_enabled(const std::shared_ptr<Sink<String>>& sink, bool enabled) -> bool
     {
         return m_sinks.set_sink_enabled(sink, enabled);
     }
 
-    auto sink_enabled(const std::shared_ptr<Sink<StringT>>& sink) -> bool
+    auto sink_enabled(const std::shared_ptr<Sink<String>>& sink) -> bool
     {
         return m_sinks.sink_enabled(sink);
     }
@@ -158,10 +158,10 @@ public:
     }
 
 private:
-    std::shared_ptr<Logger<StringT>> m_parent;
-    StringT m_name;
+    std::shared_ptr<Logger<String>> m_parent;
+    String m_name;
     LevelDriver<ThreadingPolicy> m_level;
-    SinkDriver<StringT, ThreadingPolicy> m_sinks;
+    SinkDriver<String, ThreadingPolicy> m_sinks;
 
     template<typename T, typename Policy>
     friend class SinkDriver;

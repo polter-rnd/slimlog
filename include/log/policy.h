@@ -9,9 +9,9 @@ namespace PlainCloud::Log {
 struct SingleThreadedPolicy { };
 
 template<
-    typename MutexT = std::shared_mutex,
-    typename ReadLockT = std::shared_lock<MutexT>,
-    typename WriteLockT = std::unique_lock<MutexT>,
+    typename Mutex = std::shared_mutex,
+    typename ReadLock = std::shared_lock<Mutex>,
+    typename WriteLock = std::unique_lock<Mutex>,
     std::memory_order LoadOrder = std::memory_order_relaxed,
     std::memory_order StoreOrder = std::memory_order_relaxed>
 struct MultiThreadedPolicy { };
