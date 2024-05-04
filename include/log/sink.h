@@ -33,7 +33,7 @@ template<typename String, typename ThreadingPolicy>
 class SinkDriver { };
 
 template<typename String>
-class SinkDriver<String, SingleThreadedPolicy> {
+class SinkDriver<String, SingleThreadedPolicy> final {
 public:
     SinkDriver(const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {}) noexcept
     {
@@ -104,6 +104,17 @@ public:
         }
     }
 
+protected:
+    std::unordered_map<std::shared_ptr<Sink<String>>, bool>::const_iterator cbegin() const noexcept
+    {
+        return m_sinks.cbegin();
+    }
+
+    std::unordered_map<std::shared_ptr<Sink<String>>, bool>::const_iterator cend() const noexcept
+    {
+        return m_sinks.cend();
+    }
+
 private:
     std::unordered_map<std::shared_ptr<Sink<String>>, bool> m_sinks;
 };
@@ -116,40 +127,42 @@ template<
     std::memory_order LoadOrder,
     std::memory_order StoreOrder>
 class SinkDriver<String, MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>>
-    : public SinkDriver<String, SingleThreadedPolicy> {
+    final {
 public:
-    using SinkDriver<String, SingleThreadedPolicy>::SinkDriver;
+    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {}) noexcept
+        : m_sinks(sinks)
+    {
+    }
 
     auto add_sink(const std::shared_ptr<Sink<String>>& sink) -> bool
     {
         WriteLock lock(m_mutex);
-        return SinkDriver<String, SingleThreadedPolicy>::add_sink(sink);
+        return m_sinks.add_sink(sink);
     }
 
     template<typename T, typename... Args>
     auto add_sink(Args&&... args) -> std::shared_ptr<Sink<String>>
     {
         WriteLock lock(m_mutex);
-        return SinkDriver<String, SingleThreadedPolicy>::template add_sink<T>(
-            std::forward<Args>(args)...);
+        return m_sinks.template add_sink<T>(std::forward<Args>(args)...);
     }
 
     auto remove_sink(const std::shared_ptr<Sink<String>>& sink) -> bool
     {
         WriteLock lock(m_mutex);
-        return SinkDriver<String, SingleThreadedPolicy>::remove_sink(sink);
+        return m_sinks.remove_sink(sink);
     }
 
     auto set_sink_enabled(const std::shared_ptr<Sink<String>>& sink, bool enabled) -> bool
     {
         WriteLock lock(m_mutex);
-        return SinkDriver<String, SingleThreadedPolicy>::set_sink_enabled(sink, enabled);
+        return m_sinks.set_sink_enabled(sink, enabled);
     }
 
     auto sink_enabled(const std::shared_ptr<Sink<String>>& sink) -> bool
     {
         ReadLock lock(m_mutex);
-        return SinkDriver<String, SingleThreadedPolicy>::sink_enabled(sink);
+        return m_sinks.sink_enabled(sink);
     }
 
     template<typename Logger, typename T, typename... Args>
@@ -162,12 +175,14 @@ public:
         Args&&... args) const -> void
     {
         ReadLock lock(m_mutex);
-        SinkDriver<String, SingleThreadedPolicy>::emit(
-            logger, level, callback, location, std::forward<Args>(args)...);
+        m_sinks.emit(logger, level, callback, location, std::forward<Args>(args)...);
     }
 
 private:
     mutable Mutex m_mutex;
+    SinkDriver<String, SingleThreadedPolicy> m_sinks;
+
+    friend class SinkDriver<String, SingleThreadedPolicy>;
 };
 
 } // namespace PlainCloud::Log
