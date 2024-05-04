@@ -28,9 +28,9 @@ include(FeatureSummary)
 include(Helpers)
 
 # Option for enabling / disabling code formatters
-option(ENABLE_CODE_FORMATTING "Code formatting" OFF)
-add_feature_info("CodeFormatting" ENABLE_CODE_FORMATTING "formatting and checking code style")
-if(ENABLE_CODE_FORMATTING)
+option(ENABLE_FORMATTERS "Code formatters" OFF)
+add_feature_info("CodeFormatting" ENABLE_FORMATTERS "formatting and checking code style")
+if(ENABLE_FORMATTERS)
     include(CodeFormatting)
     add_code_format_targets(
         CHECK_TARGET formatcheck
@@ -41,13 +41,13 @@ if(ENABLE_CODE_FORMATTING)
 endif()
 
 # Option for enabling / disabling static analyzers
-option(ENABLE_CODE_ANALYSIS "Static code analysis" OFF)
-add_feature_info("StaticCodeAnalysis" ENABLE_CODE_ANALYSIS "code linting and static analysis")
+option(ENABLE_ANALYZERS "Static code analyzers" OFF)
+add_feature_info("StaticCodeAnalysis" ENABLE_ANALYZERS "code linting and static analysis")
 set(CPPCHECK_MIN_VERSION 2.10)
 set(CLANG_TIDY_MIN_VERSION 14.0)
 set(IWYU_MIN_VERSION 0.19)
 include(StaticCodeAnalysis)
-if(ENABLE_CODE_ANALYSIS)
+if(ENABLE_ANALYZERS)
     # cmake-format: off
     enable_static_code_analysis(
         IWYU_EXTRA_ARGS
@@ -123,5 +123,5 @@ feature_summary(WHAT ALL)
 # Summary of available options
 message(STATUS "Options summary:")
 message("")
-dump_option_variables("^ENABLE_|^BUILD_|^SANITIZE_")
+dump_option_variables("^ENABLE_|^BUILD_|^SANITIZE_|^ANALYZE_|^FORMAT_")
 message("")
