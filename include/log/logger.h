@@ -46,7 +46,7 @@ public:
     Logger(Logger&&) = delete;
     auto operator=(Logger const&) -> Logger& = delete;
     auto operator=(Logger&&) -> Logger& = delete;
-    ~Logger() = default;
+    virtual ~Logger() = default;
 
     /**
      * @brief Construct a new %Logger object with specified logging level.

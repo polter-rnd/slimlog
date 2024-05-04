@@ -39,7 +39,7 @@ enum class Level {
  *       moving access functions to public part of a base class.
  */
 template<typename ThreadingPolicy>
-class LevelDriver { };
+class LevelDriver final { };
 
 /**
  * @brief Single-threaded log level driver.

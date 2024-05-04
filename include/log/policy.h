@@ -16,7 +16,7 @@ namespace PlainCloud::Log {
  *
  * Used to handle data manipulation without any locks or atomics.
  */
-struct SingleThreadedPolicy { };
+struct SingleThreadedPolicy final { };
 
 /**
  * @brief Multi-threaded policy.
@@ -35,6 +35,6 @@ template<
     typename WriteLock = std::unique_lock<Mutex>,
     std::memory_order LoadOrder = std::memory_order_relaxed,
     std::memory_order StoreOrder = std::memory_order_relaxed>
-struct MultiThreadedPolicy { };
+struct MultiThreadedPolicy final { };
 
 } // namespace PlainCloud::Log

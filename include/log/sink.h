@@ -65,7 +65,7 @@ public:
  *       moving access functions to public part of a base class.
  */
 template<typename String, typename ThreadingPolicy>
-class SinkDriver { };
+class SinkDriver final { };
 
 /**
  * @brief Single-threaded log sink driver.

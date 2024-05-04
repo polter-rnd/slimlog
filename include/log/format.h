@@ -46,7 +46,7 @@ using BasicFormatString = fmt::basic_format_string<T, Args...>;
  *       moving access functions to public part of a base class.
  */
 template<typename Char, typename... Args>
-struct BasicFormat {
+struct BasicFormat final {
 public:
     /**
      * @brief Construct a new BasicFormat object from format string and location.
