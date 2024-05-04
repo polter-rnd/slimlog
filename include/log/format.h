@@ -26,12 +26,12 @@ template<typename T, typename... Args>
 using BasicFormatString = fmt::basic_format_string<T, Args...>;
 #endif
 
-template<typename CharT, typename... Args>
+template<typename Char, typename... Args>
 struct BasicFormat {
 public:
     template<typename T>
-        requires(std::convertible_to<T, BasicFormatString<CharT, Args...>>
-                 || std::convertible_to<T, std::basic_string_view<CharT>>)
+        requires(std::convertible_to<T, BasicFormatString<Char, Args...>>
+                 || std::convertible_to<T, std::basic_string_view<Char>>)
     // NOLINTNEXTLINE(*-explicit-conversions)
     consteval BasicFormat(const T& fmt, const Location& loc = Location::current())
         : m_fmt(fmt)
@@ -57,7 +57,7 @@ public:
     }
 
 private:
-    const BasicFormatString<CharT, Args...> m_fmt;
+    const BasicFormatString<Char, Args...> m_fmt;
     const Location m_loc;
 };
 

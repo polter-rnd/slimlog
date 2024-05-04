@@ -75,12 +75,12 @@ private:
  */
 
 template<
-    typename MutexT,
-    typename ReadLockT,
-    typename WriteLockT,
+    typename Mutex,
+    typename ReadLock,
+    typename WriteLock,
     std::memory_order LoadOrder,
     std::memory_order StoreOrder>
-class LevelDriver<MultiThreadedPolicy<MutexT, ReadLockT, WriteLockT, LoadOrder, StoreOrder>> {
+class LevelDriver<MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>> {
 public:
     explicit LevelDriver(Level level) noexcept
         : m_level{level}
