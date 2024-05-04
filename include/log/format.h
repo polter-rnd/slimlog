@@ -1,3 +1,8 @@
+/**
+ * @file format.h
+ * @brief Contains definition of BasicFormatString, BasicFormat, Format and WideFormat classes.
+ */
+
 #pragma once
 
 #if __has_include(<format>)
@@ -26,9 +31,28 @@ template<typename T, typename... Args>
 using BasicFormatString = fmt::basic_format_string<T, Args...>;
 #endif
 
+/**
+ * @brief Wrapper class consisting of format string and location.
+ *
+ * This way it is possible to pass location as default constructor argument
+ * in template parameter pack (see Logger::emit).
+ *
+ * @tparam Char Character type of a format string (`char` or `wchar_t`)
+ * @tparam Args Format argument types. Should be specified explicitly.
+ *
+ * @note Class doesn't have a virtual destructor
+ *       as the intended usage scenario is to
+ *       use it as a private base class explicitly
+ *       moving access functions to public part of a base class.
+ */
 template<typename Char, typename... Args>
 struct BasicFormat {
 public:
+    /**
+     * @brief Construct a new BasicFormat object from format string and location.
+     *
+     * @tparam T Format string type. Deduced from argument.
+     */
     template<typename T>
         requires(std::convertible_to<T, BasicFormatString<Char, Args...>>
                  || std::convertible_to<T, std::basic_string_view<Char>>)
@@ -46,11 +70,21 @@ public:
     auto operator=(const BasicFormat&) -> BasicFormat& = delete;
     auto operator=(BasicFormat&&) -> BasicFormat& = delete;
 
+    /**
+     * @brief Get format string.
+     *
+     * @return Format string.
+     */
     [[nodiscard]] constexpr auto fmt() const noexcept -> const auto&
     {
         return m_fmt;
     }
 
+    /**
+     * @brief Get location.
+     *
+     * @return Location.
+     */
     [[nodiscard]] constexpr auto loc() const noexcept -> const auto&
     {
         return m_loc;
