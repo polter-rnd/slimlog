@@ -100,6 +100,16 @@ public:
     }
 
     /**
+     * @brief Get logger name
+     *
+     * @return %Logger name
+     */
+    auto name() const noexcept -> const String&
+    {
+        return m_name;
+    }
+
+    /**
      * @brief Add existing sink for this logger.
      *
      * @param sink Pointer to the sink.

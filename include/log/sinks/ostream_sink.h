@@ -53,7 +53,9 @@ public:
     {
     }
 
-    void emit(const Level level, const String& message, const Location& caller) const override
+    void
+    emit(const Level level, const String& category, const String& message, const Location& caller)
+        const override
     {
         std::basic_string_view<Char> level_string;
         if constexpr (std::is_same_v<Char, char>) {
@@ -78,7 +80,6 @@ public:
                 break;
             }
         } else if constexpr (std::is_same_v<Char, wchar_t>) {
-            std::wstring_view level_string;
             switch (level) {
             case Level::Fatal:
                 level_string = L"FATAL";
@@ -105,7 +106,7 @@ public:
                 "Only T = char, wchar_t are supported as underlying string type");
         }
 
-        m_ostream << "[" << level_string << "] <" << caller.file_name() << "|"
+        m_ostream << category << " [" << level_string << "] <" << caller.file_name() << "|"
                   << caller.function_name() << ":" << caller.line() << "> " << message << std::endl;
     }
 

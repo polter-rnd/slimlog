@@ -43,7 +43,9 @@ public:
      * @param message Log message.
      * @param location Caller location (file, line, function).
      */
-    virtual auto emit(Level level, const String& message, const Location& location) const -> void
+    virtual auto
+    emit(Level level, const String& category, const String& message, const Location& location) const
+        -> void
         = 0;
 
     /**
@@ -82,7 +84,7 @@ public:
      *
      * @param sinks Sinks to be added upon creation.
      */
-    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {}) noexcept
+    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {})
     {
         m_sinks.reserve(sinks.size());
         for (const auto& sink : sinks) {
@@ -198,7 +200,8 @@ public:
         for (const auto& sink : sinks) {
             if (sink.second) {
                 // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
-                sink.first->emit(level, callback(std::forward<Args>(args)...), location);
+                sink.first->emit(
+                    level, logger.name(), callback(std::forward<Args>(args)...), location);
             }
         }
     }
@@ -240,7 +243,7 @@ public:
      *
      * @param sinks Sinks to be added upon creation.
      */
-    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {}) noexcept
+    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {})
         : m_sinks(sinks)
     {
     }
