@@ -43,8 +43,8 @@ public:
      * @param message Log message.
      * @param location Caller location (file, line, function).
      */
-    virtual auto
-    emit(Level level, const String& category, const String& message, const Location& location) const
+    virtual auto message(
+        Level level, const String& category, const String& message, const Location& location) const
         -> void
         = 0;
 
@@ -180,7 +180,7 @@ public:
      */
     template<typename Logger, typename T, typename... Args>
         requires std::invocable<T, Args...>
-    auto emit(
+    auto message(
         const Logger& logger,
         const Level level,
         const T& callback,
@@ -200,7 +200,7 @@ public:
         for (const auto& sink : sinks) {
             if (sink.second) {
                 // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
-                sink.first->emit(
+                sink.first->message(
                     level, logger.name(), callback(std::forward<Args>(args)...), location);
             }
         }
@@ -333,7 +333,7 @@ public:
      */
     template<typename Logger, typename T, typename... Args>
         requires std::invocable<T, Args...>
-    auto emit(
+    auto message(
         const Logger& logger,
         const Level level,
         const T& callback,
@@ -341,7 +341,7 @@ public:
         Args&&... args) const -> void
     {
         ReadLock lock(m_mutex);
-        m_sinks.emit(logger, level, callback, location, std::forward<Args>(args)...);
+        m_sinks.message(logger, level, callback, location, std::forward<Args>(args)...);
     }
 
 private:

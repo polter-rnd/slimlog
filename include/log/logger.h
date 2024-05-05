@@ -15,10 +15,35 @@
 #include <cstddef>
 #include <initializer_list>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <utility>
 
 namespace PlainCloud::Log {
+
+/**
+ * @brief Convert from `std::string` to logger string type.
+ *
+ * Specialize this function for logger string type to be able
+ * to use compile-time formatting for non-standard string types.
+ *
+ * @param str Original string view.
+ * @return Converted string.
+ */
+template<typename String>
+[[maybe_unused]] constexpr auto from_std_string(const std::string& str) -> String;
+
+/**
+ * @brief Convert from `std::wstring` to logger string type.
+ *
+ * Specialize this function for logger string type to be able
+ * to use compile-time formatting for non-standard string types.
+ *
+ * @param str Original string view.
+ * @return Converted string.
+ */
+template<typename String>
+[[maybe_unused]] constexpr auto from_std_wstring(const std::wstring& str) -> String;
 
 /**
  * @brief A logger front-end class.
@@ -207,13 +232,13 @@ public:
      */
     template<typename T, typename... Args>
         requires std::invocable<T, Args...>
-    inline auto emit(
+    inline auto message(
         const Level level,
         const T& callback,
         const Location& location = Location::current(),
         Args&&... args) const -> void
     {
-        m_sinks.emit(*this, level, callback, location, std::forward<Args>(args)...);
+        m_sinks.message(*this, level, callback, location, std::forward<Args>(args)...);
     }
 
     /**
@@ -228,12 +253,12 @@ public:
      */
     template<typename T>
         requires(!std::invocable<T>)
-    inline auto
-    emit(const Level level, const T& message, const Location& location = Location::current()) const
+    inline auto message(
+        const Level level, const T& message, const Location& location = Location::current()) const
         -> void
     {
         auto callback = [](const T& message) -> const T& { return message; };
-        emit(level, callback, location, message);
+        this->message(level, callback, location, message);
     }
 
     /**
@@ -247,11 +272,16 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    inline void emit(Level level, const Format<Args...>& fmt, Args&&... args) const
+    inline void message(Level level, const Format<Args...>& fmt, Args&&... args) const
     {
-        auto callback
-            = [&fmt](Args&&... args) { return format(fmt.fmt(), std::forward<Args>(args)...); };
-        emit(level, callback, fmt.loc(), std::forward<Args>(args)...);
+        auto callback = [&fmt](Args&&... args) {
+            if constexpr (std::is_convertible_v<std::string, String>) {
+                return format(fmt.fmt(), std::forward<Args>(args)...);
+            } else {
+                return from_std_string<String>(format(fmt.fmt(), std::forward<Args>(args)...));
+            }
+        };
+        this->message(level, callback, fmt.loc(), std::forward<Args>(args)...);
     }
 
     /**
@@ -265,11 +295,16 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    inline void emit(Level level, const WideFormat<Args...>& fmt, Args&&... args) const
+    inline void message(Level level, const WideFormat<Args...>& fmt, Args&&... args) const
     {
-        auto callback
-            = [&fmt](Args&&... args) { return format(fmt.fmt(), std::forward<Args>(args)...); };
-        emit(level, callback, fmt.loc(), std::forward<Args>(args)...);
+        auto callback = [&fmt](Args&&... args) {
+            if constexpr (std::is_convertible_v<std::wstring, String>) {
+                return format(fmt.fmt(), std::forward<Args>(args)...);
+            } else {
+                return from_std_wstring<String>(format(fmt.fmt(), std::forward<Args>(args)...));
+            }
+        };
+        this->message(level, callback, fmt.loc(), std::forward<Args>(args)...);
     }
 
     /**
@@ -282,7 +317,7 @@ public:
     template<typename... Args>
     inline auto info(const Format<Args...>& fmt, Args&&... args) const -> void
     {
-        emit(Level::Info, fmt, std::forward<Args>(args)...);
+        this->message(Level::Info, fmt, std::forward<Args>(args)...);
     }
 
     /**
@@ -295,7 +330,7 @@ public:
     template<typename... Args>
     inline auto info(const WideFormat<Args...>& fmt, Args&&... args) const -> void
     {
-        emit(Level::Info, fmt, std::forward<Args>(args)...);
+        this->message(Level::Info, fmt, std::forward<Args>(args)...);
     }
 
     /**
@@ -312,7 +347,7 @@ public:
     template<typename T>
     inline auto info(const T& message, const Location& caller = Location::current()) const -> void
     {
-        emit(Level::Info, message, caller);
+        this->message(Level::Info, message, caller);
     }
 
 private:

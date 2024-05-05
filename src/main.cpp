@@ -43,11 +43,11 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         log3.info([]() { return "Hello from lambda!!!11"; });
 
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-        log.emit(Log::Level::Warning, "dsfsdf {}", 1234);
-        // log.emit(Log::Level::Warning, U"SUPER INICODE");
-        log.emit(Log::Level::Fatal, "hi hi hi");
+        log.message(Log::Level::Warning, "dsfsdf {}", 1234);
+        // log.message(Log::Level::Warning, U"SUPER INICODE");
+        log.message(Log::Level::Fatal, "hi hi hi");
         const char* kkkk = "My test format: {}";
-        log.emit(Log::Level::Info, kkkk);
+        log.message(Log::Level::Info, kkkk);
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
         log.info("Pipkanoid {}!", 123);
         log.info("Lalka pipka");
@@ -59,8 +59,8 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         log2.info(L"Lalka pipka");
         log2.info(L"Привет, {}", L"JOHN REED");
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
-        log2.emit(Log::Level::Info, L"Привет, {}", 24);
-        log2.emit(Log::Level::Info, L"Привет");
+        log2.message(Log::Level::Info, L"Привет, {}", 24);
+        log2.message(Log::Level::Info, L"Привет");
         log2.info([]() { return L"Hello from lambda!!!11"; });
         constexpr Log::BasicFormatString<wchar_t, std::wstring_view> Eeee2{L"Hello {}"};
         log2.info(Eeee2, std::wstring_view(L"pip"));

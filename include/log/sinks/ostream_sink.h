@@ -11,10 +11,10 @@
 
 namespace PlainCloud::Log {
 
+namespace {
 template<typename>
 struct AlwaysFalse : std::false_type { };
 
-namespace {
 template<typename T>
 struct Underlying {
     static_assert(AlwaysFalse<T>{}, "Not a supported string, array or pointer to integral type.");
@@ -53,9 +53,11 @@ public:
     {
     }
 
-    void
-    emit(const Level level, const String& category, const String& message, const Location& caller)
-        const override
+    void message(
+        const Level level,
+        const String& category,
+        const String& message,
+        const Location& caller) const override
     {
         std::basic_string_view<Char> level_string;
         if constexpr (std::is_same_v<Char, char>) {
