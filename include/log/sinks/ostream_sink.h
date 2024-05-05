@@ -5,6 +5,7 @@
 
 #include <log/sink.h>
 
+#include <concepts>
 #include <ostream>
 #include <string_view>
 #include <type_traits>
@@ -14,39 +15,15 @@ namespace PlainCloud::Log {
 namespace {
 template<typename>
 struct AlwaysFalse : std::false_type { };
-
-template<typename T>
-struct Underlying {
-    static_assert(AlwaysFalse<T>{}, "Not a supported string, array or pointer to integral type.");
-};
-
-template<typename T>
-    requires std::is_integral_v<typename std::remove_cvref_t<T>::value_type>
-struct Underlying<T> {
-    using type = typename std::remove_cvref_t<T>::value_type;
-};
-
-template<typename T>
-    requires std::is_array_v<std::remove_cvref_t<T>>
-struct Underlying<T> {
-    using type = typename std::remove_cvref_t<typename std::remove_all_extents_t<T>>;
-};
-
-template<typename T>
-    requires std::is_integral_v<typename std::remove_pointer_t<T>>
-struct Underlying<T> {
-    using type = typename std::remove_cvref_t<typename std::remove_pointer_t<T>>;
-};
-
-template<typename T>
-using UnderlyingType = typename Underlying<T>::type;
-
 } // namespace
 
 template<typename String>
+    requires(
+        std::convertible_to<String, std::string_view>
+        || std::convertible_to<String, std::wstring_view>)
 class OStreamSink : public Sink<String> {
 public:
-    using Char = UnderlyingType<String>;
+    using Char = typename std::remove_cvref_t<String>::value_type;
 
     OStreamSink(std::basic_ostream<Char>& ostream)
         : m_ostream(ostream)
