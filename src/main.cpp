@@ -1,7 +1,7 @@
 #include "log/format.h"
 #include "log/level.h"
 #include "log/logger.h"
-#include "log/sinks/console_sink.h"
+#include "log/sinks/ostream_sink.h"
 #include "util.h"
 
 #include <exception>
@@ -20,22 +20,23 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         const Util::ScopedGlobalLocale myloc("");
 
         Log::Logger log("test");
-        log.add_sink<Log::ConsoleSink>();
+        log.add_sink<Log::OStreamSink>(std::cerr);
+        log.info("hello!");
 
         auto log_root = std::make_shared<Log::Logger<std::string_view>>("kek_root");
-        auto root_sink = log_root->add_sink<Log::ConsoleSink>();
+        auto root_sink = log_root->add_sink<Log::OStreamSink>(std::cerr);
 
         const Log::Logger log_child("kek_child", log_root);
         log_child.info("Root sink enabled: {}", "Helloo!!");
         log_root->set_sink_enabled(root_sink, false);
         log_child.info("Root sink disabled!");
 
-        auto my_hdlr = std::make_shared<Log::ConsoleSink<std::wstring>>();
+        auto my_hdlr = std::make_shared<Log::OStreamSink<std::wstring>>(std::wcerr);
         const Log::Logger log2(std::wstring(L"test"), Log::Level::Info, {my_hdlr});
         log2.info(L"That's from log2!");
 
         Log::Logger log3("test", Log::Level::Info);
-        log3.add_sink<Log::ConsoleSink>();
+        log3.add_sink<Log::OStreamSink>(std::cerr);
 
         log3.info("Hello!");
         log3.info("Hello {}", "world");

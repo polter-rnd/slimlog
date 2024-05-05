@@ -30,7 +30,7 @@ namespace PlainCloud::Log {
  *
  * ```cpp
  * Log::Logger log("main");
- * log.add_sink<Log::ConsoleSink>();
+ * log.add_sink<Log::OStreamSink>(std::cerr);
  * log.info("Hello {}!", "World");
  * ```
  *
