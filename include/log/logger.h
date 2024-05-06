@@ -27,7 +27,8 @@ namespace PlainCloud::Log {
  * Specialize this function for logger string type to be able
  * to use compile-time formatting for non-standard string types.
  *
- * @param str Original string view.
+ * @tparam String Type of logger string.
+ * @param str Original string.
  * @return Converted string.
  */
 template<typename String>
@@ -39,7 +40,8 @@ template<typename String>
  * Specialize this function for logger string type to be able
  * to use compile-time formatting for non-standard string types.
  *
- * @param str Original string view.
+ * @tparam String Type of logger string.
+ * @param str Original string.
  * @return Converted string.
  */
 template<typename String>
