@@ -201,7 +201,7 @@ public:
             if (sink.second) {
                 // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                 sink.first->message(
-                    level, logger.name(), callback(std::forward<Args>(args)...), location);
+                    level, logger.category(), callback(std::forward<Args>(args)...), location);
             }
         }
     }

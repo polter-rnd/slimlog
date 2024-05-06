@@ -76,8 +76,8 @@ public:
     /**
      * @brief Construct a new %Logger object with specified logging level.
      *
-     * @tparam T String type for logger name. Can be deduced from argument.
-     * @param name %Logger name. Can be used in logger messages.
+     * @tparam T String type for logger category name. Can be deduced from argument.
+     * @param category %Logger category name. Can be used in logger messages.
      * @param level Logging level.
      * @param sinks Sinks to be added upon creation.
      */
@@ -87,7 +87,7 @@ public:
         const Level level = Level::Info,
         const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {})
         : m_parent(nullptr)
-        , m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
         , m_sinks(sinks)
     {
@@ -96,15 +96,15 @@ public:
     /**
      * @brief Construct a new child %Logger object.
      *
-     * @tparam T String type for logger name. Can be deduced from argument.
-     * @param name %Logger name. Can be used in logger messages.
+     * @tparam T String type for logger category name. Can be deduced from argument.
+     * @param name %Logger category name. Can be used in logger messages.
      * @param parent Parent logger to inherit sinks from.
      * @param level Logging level.
      */
     template<typename T>
     explicit Logger(T&& name, const std::shared_ptr<Logger<String>>& parent, const Level level)
         : m_parent(parent)
-        , m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
     {
     }
@@ -112,14 +112,14 @@ public:
     /**
      * @brief Construct a new child %Logger object.
      *
-     * @tparam T String type for logger name. Can be deduced from argument.
-     * @param name %Logger name. Can be used in logger messages.
+     * @tparam T String type for logger category name. Can be deduced from argument.
+     * @param name %Logger category name. Can be used in logger messages.
      * @param parent Parent logger to inherit sinks and logging level from.
      */
     template<typename T>
     explicit Logger(T&& name, const std::shared_ptr<Logger<String>>& parent)
         : m_parent(parent)
-        , m_name(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(parent->level())
     {
     }
@@ -129,9 +129,9 @@ public:
      *
      * @return %Logger name
      */
-    auto name() const noexcept -> const String&
+    auto category() const noexcept -> const String&
     {
-        return m_name;
+        return m_category;
     }
 
     /**
@@ -352,7 +352,7 @@ public:
 
 private:
     std::shared_ptr<Logger<String>> m_parent;
-    String m_name;
+    String m_category;
     LevelDriver<ThreadingPolicy> m_level;
     SinkDriver<String, ThreadingPolicy> m_sinks;
 
