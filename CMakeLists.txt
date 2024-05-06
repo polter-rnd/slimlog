@@ -54,15 +54,11 @@ if(ENABLE_ANALYZERS)
     set(CLANG_TIDY_MIN_VERSION 14.0)
     set(IWYU_MIN_VERSION 0.20)
     include(StaticCodeAnalysis)
-    # cmake-format: off
     enable_static_code_analysis(
-        IWYU_EXTRA_ARGS
-            --cxx17ns --quoted_includes_first --no_fwd_decls
-        CPPCHECK_EXTRA_ARGS
-            --enable=warning,performance,portability,information,missingInclude
-            --inline-suppr --suppress=missingIncludeSystem
+        IWYU_EXTRA_ARGS --cxx17ns --quoted_includes_first --no_fwd_decls
+        CPPCHECK_EXTRA_ARGS --enable=warning,performance,portability,information,missingInclude
+                            --inline-suppr --suppress=missingIncludeSystem
     )
-    # cmake-format: on
 endif()
 
 # Option for enabling / disabling sanitizers
@@ -82,13 +78,11 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
 
     if(ENABLE_COVERAGE)
         include(GcovrCodeCoverage)
-        # cmake-format: off
         add_gcovr_coverage_target(
             HTML COBERTURA COVERALLS SONARQUBE
             COVERAGE_TARGET coverage
             COVERAGE_INIT_TARGET coverage-clean
         )
-        # cmake-format: on
     endif()
 endif()
 

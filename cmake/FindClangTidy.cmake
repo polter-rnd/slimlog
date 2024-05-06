@@ -11,7 +11,11 @@
 
 include(Helpers)
 if(NOT LLVM_DIR AND NOT LLVM_ROOT)
-    set_versioned_compiler_names(ClangTidy COMPILER Clang NAMES clang-tidy)
+    set_versioned_compiler_names(
+        ClangTidy
+        COMPILER Clang
+        NAMES clang-tidy
+    )
 else()
     set_directory_hints(ClangTidy HINTS LLVM_DIR LLVM_ROOT)
     list(TRANSFORM ClangTidy_HINTS APPEND /bin)

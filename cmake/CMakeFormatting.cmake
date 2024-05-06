@@ -53,10 +53,10 @@ function(add_cmake_code_format_targets)
         foreach(file IN LISTS tmp_files)
             # cmake-format: off
             list(APPEND ARG_CHECK_COMMANDS
-                COMMAND ${CMakeFormat_EXECUTABLE} "${file}" | ${Diff_EXECUTABLE} -u "${file}" -
+                 COMMAND ${CMakeFormat_EXECUTABLE} "${file}" | ${Diff_EXECUTABLE} -u "${file}" -
             )
             list(APPEND ARG_FORMAT_COMMANDS
-                COMMAND ${CMakeFormat_EXECUTABLE} -i "${file}"
+                 COMMAND ${CMakeFormat_EXECUTABLE} -i "${file}"
             )
             # cmake-format: on
         endforeach()

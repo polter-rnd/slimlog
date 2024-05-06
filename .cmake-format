@@ -55,92 +55,181 @@ keyword_case = 'unchanged'
 
 # Specify structure for custom cmake functions
 additional_commands = {
-    "add_cmake_code_format_targets": {
-        "kwargs": {
-            "CHECK_TARGET": 1,
-            "EXCLUDE_DIRS": "+",
-            "FORMAT_TARGET": 1,
-            "SOURCE_DIRS": "+",
-        },
-        "pargs": {"flags": [], "nargs": "*"},
-    },
-    "add_code_format_targets": {
-        "kwargs": {
-            "CHECK_TARGET": 1,
-            "EXCLUDE_DIRS": "+",
-            "FORMAT_TARGET": 1,
-            "SOURCE_DIRS": "+",
-        },
-        "pargs": {"flags": [], "nargs": "*"},
-    },
-    "add_cpp_code_format_targets": {
-        "kwargs": {
-            "CHECK_TARGET": 1,
-            "EXCLUDE_DIRS": "+",
-            "FORMAT_TARGET": 1,
-            "SOURCE_DIRS": "+",
-        },
-        "pargs": {"flags": [], "nargs": "*"},
-    },
-    "add_doxygen_documentation_target": {
-        "kwargs": {
-            "CMAKE_DIRS": "+",
-            "DOXYGEN_IN": 1,
-            "DOXYGEN_OUT_DIR": 1,
-            "DOXYGEN_TARGET": 1,
-            "SOURCE_DIRS": "+",
-        },
-        "pargs": {"flags": [], "nargs": "*"},
-    },
-    "add_gcovr_coverage_target": {
-        "kwargs": {
-            "ARG_GCOVR_OPTIONS": "+",
-            "CHECK_TARGET": 1,
-            "COVERAGE_TARGET": 1,
-            "EXCLUDE": "+",
-            "FILTER": "+",
-            "GCOV_EXECUTABLE": 1,
-            "INIT_TARGET": 1,
-            "OUTPUT_DIRECTORY": 1,
-        },
-        "pargs": {
-            "flags": ["HTML", "COBERTURA", "COVERALLS", "SONARQUBE"],
-            "nargs": "*",
-        },
-    },
-    "add_static_analysis_targets": {
-        "kwargs": {
-            "ANALYSIS_TARGET": 1,
-            "CLANG_TIDY_EXTRA_ARGS": "+",
-            "CLANG_TIDY_HEADER_FILTER": "+",
-            "CPPCHECK_FLAGS": "+",
-            "CPPCHECK_SUPPRESSIONS_LISTS": "+",
-            "IWYU_MAPPING_FILES_ARGS": "+",
-            "TARGET": 1,
-        },
-        "pargs": {"flags": [], "nargs": "*"},
-    },
-    "dump_option_variables": {"pargs": {"nargs": 1}},
-    "set_directory_hints": {
-        "kwargs": {"HINTS": "*"},
-        "pargs": {"nargs": 1}
-    },
-    "enable_coverage": {"pargs": {"nargs": 0}},
-    "find_package_switchable": {
-        "kwargs": {"DEFAULT": 1, "DESCRIPTION": 1, "OPTION": 1, "PURPOSE": 1, "MIN_VERSION": 1},
-        "pargs": {"flags": [], "nargs": "1+"},
-    },
-    "parse_cmake_documentation": {
-        "kwargs": {"END_FLAG": 1, "EXCLUDES": "+", "INCLUDES": "+", "START_FLAG": 1},
-        "pargs": {"flags": [], "nargs": "*"},
-    },
-    "process_cmake_documentation": {"pargs": {"nargs": 3}},
-    "target_enable_coverage": {"pargs": {"nargs": 1}},
-    "target_enable_sanitizers": {"pargs": {"nargs": 1}},
-    "write_cmake_documentation": {
-        "kwargs": {"FOOTER": 1, "HEADER": 1},
-        "pargs": {"flags": ["SORTED"], "nargs": "1+"},
-    },
+   'add_clang_code_format_targets': {
+      'kwargs': {
+         'CHECK_TARGET': 1,
+         'EXCLUDE_DIRS': '+',
+         'FORMAT_TARGET': 1,
+         'SOURCE_DIRS': '+'
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '*'
+      }
+   },
+   'add_cmake_code_format_targets': {
+      'kwargs': {
+         'CHECK_TARGET': 1,
+         'EXCLUDE_DIRS': '+',
+         'FORMAT_TARGET': 1,
+         'SOURCE_DIRS': '+'
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '*'
+      }
+   },
+   'add_code_format_targets': {
+      'kwargs': {
+         'CHECK_TARGET': 1,
+         'EXCLUDE_DIRS': '+',
+         'FORMAT_TARGET': 1,
+         'SOURCE_DIRS': '+'
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '*'
+      }
+   },
+   'add_gcovr_coverage_target': {
+      'kwargs': {
+         'CHECK_TARGET': 1,
+         'COVERAGE_INIT_TARGET': 1,
+         'COVERAGE_TARGET': 1,
+         'GCOVR_EXCLUDE': '+',
+         'GCOVR_FILTER': '+',
+         'GCOVR_OPTIONS': '+',
+         'GCOV_LANGUAGES': '+',
+         'OUTPUT_DIRECTORY': 1
+      },
+      'pargs': {
+         'flags': [
+            'HTML',
+            'COBERTURA',
+            'COVERALLS',
+            'SONARQUBE'
+         ],
+         'nargs': '*'
+      }
+   },
+   'check_compiler_flags': {
+      'pargs': {
+         'nargs': 3
+      }
+   },
+   'check_compiler_flags_list': {
+      'pargs': {
+         'nargs': 3
+      }
+   },
+   'dump_option_variables': {
+      'pargs': {
+         'nargs': 1
+      }
+   },
+   'enable_static_code_analysis': {
+      'kwargs': {
+         'CLANG_TIDY_EXTRA_ARGS': '+',
+         'CPPCHECK_EXTRA_ARGS': '+',
+         'IWYU_EXTRA_ARGS': '+'
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '*'
+      }
+   },
+   'find_package_switchable': {
+      'kwargs': {
+         'DEFAULT': 1,
+         'DESCRIPTION': 1,
+         'MIN_VERSION': 1,
+         'OPTION': 1,
+         'PURPOSE': 1
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '1+'
+      }
+   },
+   'get_lang_of_source': {
+      'pargs': {
+         'nargs': 2
+      }
+   },
+   'get_target_compilers': {
+      'pargs': {
+         'nargs': 3
+      }
+   },
+   'parse_cmake_documentation': {
+      'kwargs': {
+         'END_FLAG': 1,
+         'EXCLUDES': '+',
+         'INCLUDES': '+',
+         'START_FLAG': 1
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '*'
+      }
+   },
+   'process_cmake_documentation': {
+      'pargs': {
+         'nargs': 3
+      }
+   },
+   'sanitizer_add_blacklist_file': {
+      'pargs': {
+         'nargs': 1
+      }
+   },
+   'sanitizer_add_flags': {
+      'pargs': {
+         'nargs': 4
+      }
+   },
+   'set_directory_hints': {
+      'kwargs': {
+         'HINTS': '+'
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '1+'
+      }
+   },
+   'set_versioned_compiler_names': {
+      'kwargs': {
+         'COMPILER': 1,
+         'LANGS': '+',
+         'NAMES': '+'
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '1+'
+      }
+   },
+   'target_enable_coverage': {
+      'pargs': {
+         'nargs': 1
+      }
+   },
+   'target_enable_sanitizers': {
+      'pargs': {
+         'nargs': 1
+      }
+   },
+   'write_cmake_documentation': {
+      'kwargs': {
+         'FOOTER': 1,
+         'HEADER': 1
+      },
+      'pargs': {
+         'flags': [
+            'SORTED'
+         ],
+         'nargs': '1+'
+      }
+   }
 }
 
 # A list of command names which should always be wrapped

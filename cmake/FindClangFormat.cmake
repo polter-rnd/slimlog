@@ -17,7 +17,11 @@
 
 include(Helpers)
 if(NOT LLVM_DIR AND NOT LLVM_ROOT)
-    set_versioned_compiler_names(ClangFormat COMPILER Clang NAMES clang-format)
+    set_versioned_compiler_names(
+        ClangFormat
+        COMPILER Clang
+        NAMES clang-format
+    )
 else()
     set_directory_hints(ClangFormat HINTS LLVM_DIR LLVM_ROOT)
     list(TRANSFORM ClangFormat_HINTS APPEND /bin)

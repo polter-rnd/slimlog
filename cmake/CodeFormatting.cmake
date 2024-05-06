@@ -74,14 +74,12 @@ function(add_code_format_targets)
 
     if(FORMAT_CLANG)
         include(ClangCodeFormatting)
-        # cmake-format: off
         add_clang_code_format_targets(
             FORMAT_TARGET ${ARG_FORMAT_TARGET}-clang
             CHECK_TARGET ${ARG_CHECK_TARGET}-clang
             EXCLUDE_DIRS ${ARG_EXCLUDE_DIRS}
             SOURCE_DIRS ${ARG_SOURCE_DIRS}
         )
-        # cmake-format: on
         add_dependencies(${ARG_FORMAT_TARGET} ${ARG_FORMAT_TARGET}-clang)
         add_dependencies(${ARG_CHECK_TARGET} ${ARG_CHECK_TARGET}-clang)
     endif()

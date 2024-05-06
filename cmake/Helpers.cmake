@@ -58,14 +58,12 @@ function(find_package_switchable package)
     endif()
 
     include(FeatureSummary)
-    # cmake-format: off
-    set_package_properties(${package}
-        PROPERTIES
-            TYPE RECOMMENDED
-            PURPOSE ${ARG_PURPOSE}
+    set_package_properties(
+        ${package} PROPERTIES
+        TYPE RECOMMENDED
+        PURPOSE ${ARG_PURPOSE}
         DESCRIPTION ${ARG_DESCRIPTION}
     )
-    # cmake-format: on
 
     if(NOT DEFINED ${ARG_OPTION})
         find_package(${package} ${ARG_MIN_VERSION})
