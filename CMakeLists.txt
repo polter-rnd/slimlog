@@ -40,6 +40,11 @@ if(ENABLE_FORMATTERS)
     )
 endif()
 
+# Reset all static analyzers by default
+unset(CMAKE_CXX_CPPCHECK CACHE)
+unset(CMAKE_CXX_CLANG_TIDY CACHE)
+unset(CMAKE_CXX_INCLUDE_WHAT_YOU_USE CACHE)
+
 # Option for enabling / disabling static analyzers
 option(ENABLE_ANALYZERS "Static code analyzers" OFF)
 add_feature_info("StaticCodeAnalysis" ENABLE_ANALYZERS "code linting and static analysis")
@@ -57,13 +62,6 @@ if(ENABLE_ANALYZERS)
             --inline-suppr --suppress=missingIncludeSystem
     )
     # cmake-format: on
-else()
-    # Reset all analyzers by default
-    foreach(language C CXX OBJC OBJCXX)
-        unset(CMAKE_${language}_CPPCHECK CACHE)
-        unset(CMAKE_${language}_CLANG_TIDY CACHE)
-        unset(CMAKE_${language}_INCLUDE_WHAT_YOU_USE CACHE)
-    endforeach()
 endif()
 
 # Option for enabling / disabling sanitizers

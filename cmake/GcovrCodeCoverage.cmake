@@ -211,7 +211,7 @@ function(target_enable_coverage targetName)
     # Coverage works only on GCC/LLVM
     set(coverage_flags "-O0 --coverage")
     if(${target_compiler} STREQUAL "GNU")
-        set(coverage_flags "${coverage_flags} -fprofile-abs-path")
+        #set(coverage_flags "${coverage_flags} -fprofile-abs-path")
     endif()
 
     # Check if compiler supports coverage flags
