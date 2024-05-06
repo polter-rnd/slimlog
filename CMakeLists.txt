@@ -31,6 +31,7 @@ include(Helpers)
 option(ENABLE_FORMATTERS "Code formatters" OFF)
 add_feature_info("CodeFormatting" ENABLE_FORMATTERS "formatting and checking code style")
 if(ENABLE_FORMATTERS)
+    set(CLANG_FORMAT_MIN_VERSION 15.0)
     include(CodeFormatting)
     add_code_format_targets(
         CHECK_TARGET formatcheck
@@ -107,12 +108,7 @@ if(BUILD_DOCS)
 
     # Write documentation for CMake files
     include(CMakeDocumentation)
-    parse_cmake_documentation(
-        INCLUDES ${ARG_CMAKE_INCLUDES}
-        EXCLUDES ${ARG_CMAKE_EXCLUDES}
-        START_FLAG "[cmake_documentation]"
-        END_FLAG "[/cmake_documentation]"
-    )
+    parse_cmake_documentation(INCLUDES "cmake/*")
     set(cmake_doxygen_file ${PROJECT_BINARY_DIR}/cmake.dox)
     write_cmake_documentation("${cmake_doxygen_file}" SORTED)
 

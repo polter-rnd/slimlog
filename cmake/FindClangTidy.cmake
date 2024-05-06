@@ -15,6 +15,7 @@ if(NOT LLVM_DIR AND NOT LLVM_ROOT)
 else()
     set_directory_hints(ClangTidy HINTS LLVM_DIR LLVM_ROOT)
     list(TRANSFORM ClangTidy_HINTS APPEND /bin)
+    unset(ClangTidy_EXECUTABLE CACHE)
 endif()
 
 find_program(

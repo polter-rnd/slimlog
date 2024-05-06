@@ -25,8 +25,10 @@
 # - @ref add_code_format_targets
 #
 # Uses the following parameters:
-# @arg __FORMAT_CLANG__: Enable source code formatting with clang-format
-# @arg __FORMAT_CMAKE__: Enable cmake files formatting with cmake-format
+# @arg __FORMAT_CLANG__:             Enable source code formatting with clang-format
+# @arg __FORMAT_CMAKE__:             Enable cmake files formatting with cmake-format
+# @arg __FORMAT_CLANG_MIN_VERSION__: Minimum required version for `clang-format`
+# @arg __FORMAT_CMAKE_MIN_VERSION__: Minimum required version for `cmake-format`
 # [/cmake_documentation]
 
 include(Helpers)
@@ -34,11 +36,13 @@ find_package_switchable(
     ClangFormat
     OPTION FORMAT_CLANG
     PURPOSE "Enable source code formatting with clang-format"
+    MIN_VERSION ${CLANG_FORMAT_MIN_VERSION}
 )
 find_package_switchable(
     CMakeFormat
     OPTION FORMAT_CMAKE
     PURPOSE "Enable cmake files formatting with cmake-format"
+    MIN_VERSION ${CMAKE_FORMAT_MIN_VERSION}
 )
 
 # [cmake_documentation] add_code_format_targets()
