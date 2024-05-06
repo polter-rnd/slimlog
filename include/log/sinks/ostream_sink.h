@@ -2,31 +2,21 @@
 
 #include "log/level.h"
 #include "log/location.h"
+#include "log/sinks/stringview_sink.h"
 
-#include <log/sink.h>
-
-#include <concepts>
 #include <ostream>
-#include <string_view>
-#include <type_traits>
 
 namespace PlainCloud::Log {
 
-namespace {
-template<typename>
-struct AlwaysFalse : std::false_type { };
-} // namespace
-
 template<typename String>
-    requires(
-        std::convertible_to<String, std::string_view>
-        || std::convertible_to<String, std::wstring_view>)
-class OStreamSink : public Sink<String> {
+class OStreamSink : public StringViewSink<String> {
 public:
-    using Char = typename std::remove_cvref_t<String>::value_type;
+    using typename StringViewSink<String>::CharType;
+    using typename StringViewSink<String>::Pattern;
 
-    OStreamSink(std::basic_ostream<Char>& ostream)
+    OStreamSink(std::basic_ostream<CharType>& ostream, const String& pattern = {})
         : m_ostream(ostream)
+        , m_pattern(pattern)
     {
     }
 
@@ -36,64 +26,23 @@ public:
         const String& message,
         const Location& caller) const override
     {
-        std::basic_string_view<Char> level_string;
-        if constexpr (std::is_same_v<Char, char>) {
-            switch (level) {
-            case Level::Fatal:
-                level_string = "FATAL";
-                break;
-            case Level::Error:
-                level_string = "ERROR";
-                break;
-            case Level::Warning:
-                level_string = "WARN ";
-                break;
-            case Level::Info:
-                level_string = "INFO ";
-                break;
-            case Level::Debug:
-                level_string = "DEBUG";
-                break;
-            case Level::Trace:
-                level_string = "TRACE";
-                break;
-            }
-        } else if constexpr (std::is_same_v<Char, wchar_t>) {
-            switch (level) {
-            case Level::Fatal:
-                level_string = L"FATAL";
-                break;
-            case Level::Error:
-                level_string = L"ERROR";
-                break;
-            case Level::Warning:
-                level_string = L"WARN ";
-                break;
-            case Level::Info:
-                level_string = L"INFO ";
-                break;
-            case Level::Debug:
-                level_string = L"DEBUG";
-                break;
-            case Level::Trace:
-                level_string = L"TRACE";
-                break;
-            }
-        } else {
-            static_assert(
-                AlwaysFalse<Char>{},
-                "Only T = char, wchar_t are supported as underlying string type");
-        }
-
-        m_ostream << category << " [" << level_string << "] <" << caller.file_name() << "|"
-                  << caller.function_name() << ":" << caller.line() << "> " << message << std::endl;
+        m_ostream
+            << (m_pattern.empty() ? message : m_pattern.compile(level, category, message, caller))
+            << '\n';
     }
 
     auto flush() -> void override
     {
+        m_ostream.flush();
+    }
+
+    auto set_pattern(const String& pattern) -> void override
+    {
+        m_pattern.set(pattern);
     }
 
 private:
-    std::basic_ostream<Char>& m_ostream;
+    std::basic_ostream<CharType>& m_ostream;
+    Pattern m_pattern;
 };
 } // namespace PlainCloud::Log

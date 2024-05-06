@@ -36,6 +36,8 @@ public:
     auto operator=(Sink&&) noexcept -> Sink& = default;
     virtual ~Sink() = default;
 
+    virtual auto set_pattern(const String& pattern) -> void = 0;
+
     /**
      * @brief Emit message.
      *
