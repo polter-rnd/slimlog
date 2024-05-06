@@ -18,7 +18,6 @@
 #include "location.h"
 
 #include <concepts>
-#include <string_view>
 #include <type_traits>
 
 namespace PlainCloud::Log {

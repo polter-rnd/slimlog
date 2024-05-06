@@ -17,26 +17,51 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
 
     try {
         // replace the C++ global locale and the "C" locale with the user-preferred locale
-        const Util::ScopedGlobalLocale myloc("");
+        // const Util::ScopedGlobalLocale myloc("");
 
         Log::Logger log("test");
         log.add_sink<Log::OStreamSink>(std::cerr);
         log.info("hello!");
 
         auto log_root = std::make_shared<Log::Logger<std::string_view>>("kek_root");
-        auto root_sink = log_root->add_sink<Log::OStreamSink>(std::cerr);
 
-        const Log::Logger log_child("kek_child", log_root);
+        auto root_sink = log_root->add_sink<Log::OStreamSink>(
+            std::cout,
+            "(%t) [%l] %F|%L: %m",
+            std::make_pair(Log::Level::Trace, "trc"),
+            std::make_pair(Log::Level::Debug, "dbg"),
+            std::make_pair(Log::Level::Warning, "wrn"),
+            std::make_pair(Log::Level::Error, "err"),
+            std::make_pair(Log::Level::Fatal, "ftl"));
+        log_root->message(Log::Level::Info, "Root!!!");
+
+        // log_root->info([](int dd) { return "123"; });
+
+        Log::Logger log_child("kek_child", Log::Level::Info);
+        log_child.add_sink(root_sink);
         log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+
         log_root->set_sink_enabled(root_sink, false);
         log_child.info("Root sink disabled!");
 
-        auto my_hdlr = std::make_shared<Log::OStreamSink<std::wstring>>(std::wcerr);
-        const Log::Logger log2(std::wstring(L"test"), Log::Level::Info, {my_hdlr});
+        auto my_hdlr = std::make_shared<
+            Log::OStreamSink<Log::Logger<std::wstring_view, wchar_t, Log::SingleThreadedPolicy>>>(
+            std::wcerr, L"W (%t) [%l] %F|%L: %m %o sdf%");
+        const Log::Logger<std::wstring_view, wchar_t, Log::SingleThreadedPolicy> log2(
+            L"test", Log::Level::Info, {my_hdlr});
         log2.info(L"That's from log2!");
 
         Log::Logger log3("test", Log::Level::Info);
-        log3.add_sink<Log::OStreamSink>(std::cerr);
+        log3.add_sink<Log::OStreamSink>(std::cerr)
+            ->set_pattern(">>>>> %l %F %m")
+            ->set_levels({{Log::Level::Info, "KEK"}});
 
         log3.info("Hello!");
         log3.info("Hello {}", "world");
@@ -56,14 +81,35 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
 
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
         log2.info(L"Pipkanoid {}!", 123);
+
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+
         log2.info(L"Lalka pipka");
         log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
         log2.message(Log::Level::Info, L"Привет, {}", 24);
         log2.message(Log::Level::Info, L"Привет");
-        log2.info([]() { return L"Hello from lambda!!!11"; });
+        // log2.info([]() { return L"Hello from lambda!!!11"; });
         constexpr Log::BasicFormatString<wchar_t, std::wstring_view> Eeee2{L"Hello {}"};
         log2.info(Eeee2, std::wstring_view(L"pip"));
+
+        log2.info([](auto& buf) { buf << L"KEKEKEKEKE 123"; });
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << '\n';
         return 1;

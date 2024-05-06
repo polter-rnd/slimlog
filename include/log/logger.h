@@ -15,37 +15,44 @@
 #include <cstddef>
 #include <initializer_list>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
 
 namespace PlainCloud::Log {
 
-/**
- * @brief Convert from `std::string` to logger string type.
- *
- * Specialize this function for logger string type to be able
- * to use compile-time formatting for non-standard string types.
- *
- * @tparam String Type of logger string.
- * @param str Original string.
- * @return Converted string.
- */
-template<typename String>
-[[maybe_unused]] constexpr auto from_std_string(const std::string& str) -> String;
+namespace {
 
-/**
- * @brief Convert from `std::wstring` to logger string type.
- *
- * Specialize this function for logger string type to be able
- * to use compile-time formatting for non-standard string types.
- *
- * @tparam String Type of logger string.
- * @param str Original string.
- * @return Converted string.
- */
-template<typename String>
-[[maybe_unused]] constexpr auto from_std_wstring(const std::wstring& str) -> String;
+template<typename>
+struct AlwaysFalse : std::false_type { };
+
+template<typename T>
+struct Underlying {
+    static_assert(AlwaysFalse<T>{}, "Not a supported string, array or pointer to integral type.");
+};
+
+template<typename T>
+    requires std::is_integral_v<typename std::remove_cvref_t<T>::value_type>
+struct Underlying<T> {
+    using type = typename std::remove_cvref_t<T>::value_type;
+};
+
+template<typename T>
+    requires std::is_array_v<std::remove_cvref_t<T>>
+struct Underlying<T> {
+    using type = typename std::remove_cvref_t<typename std::remove_all_extents_t<T>>;
+};
+
+template<typename T>
+    requires std::is_integral_v<typename std::remove_pointer_t<T>>
+struct Underlying<T> {
+    using type = typename std::remove_cvref_t<typename std::remove_pointer_t<T>>;
+};
+
+template<typename T>
+using UnderlyingType = typename Underlying<T>::type;
+} // namespace
 
 /**
  * @brief A logger front-end class.
@@ -66,9 +73,16 @@ template<typename String>
  * @tparam ThreadingPolicy Threading policy used for operating over sinks and log level
  *                         (e.g. SingleThreadedPolicy or MultiThreadedPolicy).
  */
-template<typename String, typename ThreadingPolicy = MultiThreadedPolicy<>>
+template<
+    typename String,
+    typename Char = UnderlyingType<String>,
+    typename ThreadingPolicy = MultiThreadedPolicy<>>
 class Logger {
 public:
+    using StringType = String;
+    using CharType = Char;
+    using StreamBuffer = std::basic_stringstream<Char>;
+
     Logger(Logger const&) = delete;
     Logger(Logger&&) = delete;
     auto operator=(Logger const&) -> Logger& = delete;
@@ -87,7 +101,7 @@ public:
     explicit Logger(
         T&& name,
         const Level level = Level::Info,
-        const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {})
+        const std::initializer_list<std::shared_ptr<Sink<Logger>>>& sinks = {})
         : m_parent(nullptr)
         , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
@@ -104,7 +118,7 @@ public:
      * @param level Logging level.
      */
     template<typename T>
-    explicit Logger(T&& name, const std::shared_ptr<Logger<String>>& parent, const Level level)
+    explicit Logger(T&& name, const std::shared_ptr<Logger>& parent, const Level level)
         : m_parent(parent)
         , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
@@ -119,7 +133,7 @@ public:
      * @param parent Parent logger to inherit sinks and logging level from.
      */
     template<typename T>
-    explicit Logger(T&& name, const std::shared_ptr<Logger<String>>& parent)
+    explicit Logger(T&& name, const std::shared_ptr<Logger>& parent)
         : m_parent(parent)
         , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(parent->level())
@@ -143,7 +157,7 @@ public:
      * @return \b true if sink was actually inserted.
      * @return \b false if sink is already present in this logger.
      */
-    auto add_sink(const std::shared_ptr<Sink<String>>& sink) -> bool
+    auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         return m_sinks.add_sink(sink);
     }
@@ -157,9 +171,9 @@ public:
      * @return Pointer to the created sink.
      */
     template<template<typename> class T, typename... Args>
-    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<String>>
+    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Logger>>
     {
-        return m_sinks.template add_sink<T<String>>(std::forward<Args>(args)...);
+        return m_sinks.template add_sink<T<Logger>>(std::forward<Args>(args)...);
     }
 
     /**
@@ -169,7 +183,7 @@ public:
      * @return \b true if sink was actually removed.
      * @return \b false if sink does not exist in this logger.
      */
-    auto remove_sink(const std::shared_ptr<Sink<String>>& sink) -> bool
+    auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         return m_sinks.remove_sink(sink);
     }
@@ -182,7 +196,7 @@ public:
      * @return \b true if sink exists and enabled.
      * @return \b false if sink does not exist in this logger.
      */
-    auto set_sink_enabled(const std::shared_ptr<Sink<String>>& sink, bool enabled) -> bool
+    auto set_sink_enabled(const std::shared_ptr<Sink<Logger>>& sink, bool enabled) -> bool
     {
         return m_sinks.set_sink_enabled(sink, enabled);
     }
@@ -194,7 +208,7 @@ public:
      * @return \b true if sink is enabled.
      * @return \b false if sink is disabled.
      */
-    auto sink_enabled(const std::shared_ptr<Sink<String>>& sink) -> bool
+    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         return m_sinks.sink_enabled(sink);
     }
@@ -233,7 +247,6 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T, typename... Args>
-        requires std::invocable<T, Args...>
     inline auto message(
         const Level level,
         const T& callback,
@@ -241,26 +254,6 @@ public:
         Args&&... args) const -> void
     {
         m_sinks.message(*this, level, callback, location, std::forward<Args>(args)...);
-    }
-
-    /**
-     * @brief Emit new log message if it fits for specified logging level.
-     *
-     * Basic method to emit any message that is convertible to logger string type.
-     *
-     * @tparam T String type for the message. Deduced from argument.
-     * @param level Logging level.
-     * @param message Log message.
-     * @param location Caller location (file, line, function).
-     */
-    template<typename T>
-        requires(!std::invocable<T>)
-    inline auto message(
-        const Level level, const T& message, const Location& location = Location::current()) const
-        -> void
-    {
-        auto callback = [](const T& message) -> const T& { return message; };
-        this->message(level, callback, location, message);
     }
 
     /**
@@ -274,22 +267,21 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
+        requires std::same_as<CharType, char>
     inline void message(Level level, const Format<Args...>& fmt, Args&&... args) const
     {
-        auto callback = [&fmt](Args&&... args) {
-            if constexpr (std::is_convertible_v<std::string, String>) {
-                return format(fmt.fmt(), std::forward<Args>(args)...);
-            } else {
-                return from_std_string<String>(format(fmt.fmt(), std::forward<Args>(args)...));
-            }
+        auto callback = [&fmt](auto& buffer, Args&&... args) {
+            format_to(std::ostreambuf_iterator(buffer), fmt.fmt(), std::forward<Args>(args)...);
         };
+
         this->message(level, callback, fmt.loc(), std::forward<Args>(args)...);
     }
 
     /**
      * @brief Emit new formatted wide string log message if it fits for specified logging level.
      *
-     * Method to emit compile-time wide string formatted messages wich basic format argument checks.
+     * Method to emit compile-time wide string formatted messages wich basic format argument
+     * checks.
      *
      * @tparam Args Format argument types. Deduced from arguments.
      * @param level Logging level.
@@ -297,15 +289,18 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
+        requires std::same_as<CharType, wchar_t>
     inline void message(Level level, const WideFormat<Args...>& fmt, Args&&... args) const
     {
-        auto callback = [&fmt](Args&&... args) {
-            if constexpr (std::is_convertible_v<std::wstring, String>) {
-                return format(fmt.fmt(), std::forward<Args>(args)...);
-            } else {
-                return from_std_wstring<String>(format(fmt.fmt(), std::forward<Args>(args)...));
-            }
+        auto callback = [&fmt](auto& buffer, Args&&... args) {
+#ifdef __cpp_lib_format
+            format_to(std::ostreambuf_iterator(buffer), fmt.fmt(), std::forward<Args>(args)...);
+#else
+            format_to(
+                std::ostreambuf_iterator(buffer), fmt.fmt().get(), std::forward<Args>(args)...);
+#endif
         };
+
         this->message(level, callback, fmt.loc(), std::forward<Args>(args)...);
     }
 
@@ -353,25 +348,29 @@ public:
     }
 
 private:
-    std::shared_ptr<Logger<String>> m_parent;
+    std::shared_ptr<Logger> m_parent;
     String m_category;
     LevelDriver<ThreadingPolicy> m_level;
-    SinkDriver<String, ThreadingPolicy> m_sinks;
+    SinkDriver<Logger, ThreadingPolicy> m_sinks;
 
-    template<typename T, typename Policy>
+    template<typename Logger, typename Policy>
     friend class SinkDriver;
 };
 
-template<typename T, typename SinksT = std::initializer_list<std::shared_ptr<Sink<T>>>>
-Logger(T, Level = Level::Info, SinksT = SinksT{}) -> Logger<T>;
+template<
+    typename String,
+    typename Char,
+    typename Sinks = std::initializer_list<std::shared_ptr<Sink<Logger<String, Char>>>>>
+Logger(String, Char, Level = Level::Info, Sinks = Sinks{}) -> Logger<String, Char>;
 
 template<
-    typename T,
-    typename SinksT = std::initializer_list<std::shared_ptr<Sink<T>>>,
+    typename String,
+    typename Char = String,
+    typename Sinks = std::initializer_list<std::shared_ptr<Sink<Logger<String, Char>>>>,
     size_t N>
 Logger(
-    const T (&)[N], // NOLINT(*-avoid-c-arrays)
+    const String (&)[N], // NOLINT(*-avoid-c-arrays)
     Level = Level::Info,
-    SinksT = SinksT{}) -> Logger<std::basic_string_view<T>>;
+    Sinks = Sinks{}) -> Logger<std::basic_string_view<String>, Char>;
 
 } // namespace PlainCloud::Log
