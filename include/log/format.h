@@ -12,7 +12,7 @@
 #ifndef __cpp_lib_format
 #include <fmt/core.h> // IWYU pragma: export
 #include <fmt/format.h> // IWYU pragma: export
-#include <fmt/xchar.h>
+#include <fmt/xchar.h> // IWYU pragma: export
 #endif
 
 #include "location.h"

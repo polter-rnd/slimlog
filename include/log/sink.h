@@ -207,12 +207,14 @@ public:
     }
 
 protected:
-    std::unordered_map<std::shared_ptr<Sink<String>>, bool>::const_iterator cbegin() const noexcept
+    typename std::unordered_map<std::shared_ptr<Sink<String>>, bool>::const_iterator
+    cbegin() const noexcept
     {
         return m_sinks.cbegin();
     }
 
-    std::unordered_map<std::shared_ptr<Sink<String>>, bool>::const_iterator cend() const noexcept
+    typename std::unordered_map<std::shared_ptr<Sink<String>>, bool>::const_iterator
+    cend() const noexcept
     {
         return m_sinks.cend();
     }
