@@ -54,8 +54,9 @@ public:
      * @tparam T Format string type. Deduced from argument.
      */
     template<typename T>
-        requires(std::convertible_to<T, BasicFormatString<Char, Args...>>
-                 || std::convertible_to<T, std::basic_string_view<Char>>)
+        requires(std::constructible_from<BasicFormatString<Char, Args...>, T>
+                 || std::same_as<std::decay_t<T>, const Char*>
+                 || std::same_as<std::decay_t<T>, Char*>)
     // NOLINTNEXTLINE(*-explicit-conversions)
     consteval BasicFormat(const T& fmt, const Location& loc = Location::current())
         : m_fmt(fmt)
