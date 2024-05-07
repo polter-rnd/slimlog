@@ -27,7 +27,7 @@ namespace PlainCloud::Log {
  * @tparam String Base string type used for log messages.
  */
 template<typename String>
-class Sink {
+class Sink : public std::enable_shared_from_this<Sink<String>> {
 public:
     Sink() = default;
     Sink(Sink const&) = default;
@@ -36,7 +36,11 @@ public:
     auto operator=(Sink&&) noexcept -> Sink& = default;
     virtual ~Sink() = default;
 
-    virtual auto set_pattern(const String& pattern) -> void = 0;
+    virtual auto set_pattern(const String& pattern) -> std::shared_ptr<Sink<String>> = 0;
+
+    virtual auto set_levels(const std::initializer_list<std::pair<Level, String>>& levels)
+        -> std::shared_ptr<Sink<String>>
+        = 0;
 
     /**
      * @brief Emit message.
@@ -45,8 +49,8 @@ public:
      * @param message Log message.
      * @param location Caller location (file, line, function).
      */
-    virtual auto message(
-        Level level, const String& category, const String& message, const Location& location) const
+    virtual auto
+    message(Level level, const String& category, const String& message, const Location& location)
         -> void
         = 0;
 

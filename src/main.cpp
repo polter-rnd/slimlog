@@ -17,15 +17,22 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
 
     try {
         // replace the C++ global locale and the "C" locale with the user-preferred locale
-        const Util::ScopedGlobalLocale myloc("");
+        // const Util::ScopedGlobalLocale myloc("");
 
         Log::Logger log("test");
         log.add_sink<Log::OStreamSink>(std::cerr);
         log.info("hello!");
 
         auto log_root = std::make_shared<Log::Logger<std::string_view>>("kek_root");
+
         auto root_sink = log_root->add_sink<Log::OStreamSink>(
-            std::cerr, "(#topic#) [#level#] #file#|#line#: #message#");
+            std::cerr,
+            "(%t) [%l] %F|%L: %m",
+            std::make_pair(Log::Level::Trace, "trc"),
+            std::make_pair(Log::Level::Debug, "dbg"),
+            std::make_pair(Log::Level::Warning, "wrn"),
+            std::make_pair(Log::Level::Error, "err"),
+            std::make_pair(Log::Level::Fatal, "ftl"));
         log_root->info("Root!!!");
 
         const Log::Logger log_child("kek_child", log_root);
@@ -33,12 +40,15 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         log_root->set_sink_enabled(root_sink, false);
         log_child.info("Root sink disabled!");
 
-        auto my_hdlr = std::make_shared<Log::OStreamSink<std::wstring>>(std::wcerr);
+        auto my_hdlr = std::make_shared<Log::OStreamSink<std::wstring>>(
+            std::wcerr, L"W (%t) [%l] %F|%L: %m %o sdf%");
         const Log::Logger log2(std::wstring(L"test"), Log::Level::Info, {my_hdlr});
         log2.info(L"That's from log2!");
 
         Log::Logger log3("test", Log::Level::Info);
-        log3.add_sink<Log::OStreamSink>(std::cerr);
+        log3.add_sink<Log::OStreamSink>(std::cerr)
+            ->set_pattern(">>>>> %l %F %m")
+            ->set_levels({{Log::Level::Info, "KEK"}});
 
         log3.info("Hello!");
         log3.info("Hello {}", "world");

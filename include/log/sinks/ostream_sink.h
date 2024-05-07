@@ -12,23 +12,23 @@ template<typename String>
 class OStreamSink : public StringViewSink<String> {
 public:
     using typename StringViewSink<String>::CharType;
-    using typename StringViewSink<String>::Pattern;
+    using Pattern = typename StringViewSink<String>::Pattern;
 
-    OStreamSink(std::basic_ostream<CharType>& ostream, const String& pattern = {})
-        : m_ostream(ostream)
-        , m_pattern(pattern)
+    template<typename... Args>
+    OStreamSink(std::basic_ostream<CharType>& ostream, Args&&... args)
+        : StringViewSink<String>(std::forward<Args>(args)...)
+        , m_ostream(ostream)
     {
     }
 
-    void message(
-        const Level level,
-        const String& category,
-        const String& message,
-        const Location& caller) const override
+    auto message(
+        const Level level, const String& category, const String& message, const Location& caller)
+        -> void override
     {
-        m_ostream
-            << (m_pattern.empty() ? message : m_pattern.compile(level, category, message, caller))
-            << '\n';
+        static thread_local std::basic_stringstream<CharType> result;
+        this->format(result, level, category, message, caller);
+        m_ostream << result.view();
+        result.str(std::basic_string<CharType>{});
     }
 
     auto flush() -> void override
@@ -36,13 +36,7 @@ public:
         m_ostream.flush();
     }
 
-    auto set_pattern(const String& pattern) -> void override
-    {
-        m_pattern.set(pattern);
-    }
-
 private:
     std::basic_ostream<CharType>& m_ostream;
-    Pattern m_pattern;
 };
 } // namespace PlainCloud::Log
