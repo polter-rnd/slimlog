@@ -8,6 +8,11 @@
 
 namespace PlainCloud::Log {
 
+namespace {
+template<typename>
+struct AlwaysFalse : std::false_type { };
+} // namespace
+
 template<typename String>
 class OStreamSink : public StringViewSink<String> {
 public:
@@ -25,10 +30,16 @@ public:
         const Level level, const String& category, const String& message, const Location& caller)
         -> void override
     {
-        static thread_local std::basic_stringstream<CharType> result;
-        this->format(result, level, category, message, caller);
-        m_ostream << result.view();
-        result.str(std::basic_string<CharType>{});
+        Sink<String>::template stream_buf<CharType>() << message;
+        this->message(level, category, caller);
+    }
+
+    auto message(const Level level, const String& category, const Location& caller) -> void override
+    {
+        auto& buffer = Sink<String>::template stream_buf<CharType>();
+        this->format(buffer, level, category, caller);
+        m_ostream << buffer.rdbuf();
+        buffer.str(std::basic_string<CharType>{});
     }
 
     auto flush() -> void override

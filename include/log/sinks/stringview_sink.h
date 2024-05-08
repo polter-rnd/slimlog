@@ -82,13 +82,13 @@ public:
             std::basic_stringstream<CharType>& result,
             const Level level,
             const String& category,
-            const String& message,
             const Location& caller) const -> void
         {
-            if (m_pattern.empty()) {
-                result << message;
-            } else {
+            const auto message = result.view();
+
+            if (!m_pattern.empty()) {
                 std::basic_string_view<CharType> pattern{m_pattern};
+                result.seekg(result.tellp());
 
                 for (;;) {
                     const auto pos = pattern.find('%');
@@ -132,7 +132,7 @@ public:
                             result << message;
                             break;
                         case Flag::File:
-                            result << caller.file_name();
+                            // result << caller.file_name();
                             break;
                         case Flag::Line:
                             result << caller.line();
@@ -212,10 +212,9 @@ public:
         std::basic_stringstream<CharType>& result,
         const Level level,
         const String& category,
-        const String& message,
         const Location& caller) const -> void
     {
-        m_pattern.format(result, level, category, message, caller);
+        m_pattern.format(result, level, category, caller);
     }
 
 private:

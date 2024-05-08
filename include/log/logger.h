@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <initializer_list>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -32,7 +33,10 @@ namespace PlainCloud::Log {
  * @return Converted string.
  */
 template<typename String>
-[[maybe_unused]] constexpr auto from_std_string(const std::string& str) -> String;
+[[maybe_unused]] constexpr auto from_std_string(const std::string& str) -> String
+{
+    return str;
+}
 
 /**
  * @brief Convert from `std::wstring` to logger string type.
@@ -45,7 +49,10 @@ template<typename String>
  * @return Converted string.
  */
 template<typename String>
-[[maybe_unused]] constexpr auto from_std_wstring(const std::wstring& str) -> String;
+[[maybe_unused]] constexpr auto from_std_wstring(const std::wstring& str) -> String
+{
+    return str;
+}
 
 /**
  * @brief A logger front-end class.
@@ -69,6 +76,8 @@ template<typename String>
 template<typename String, typename ThreadingPolicy = MultiThreadedPolicy<>>
 class Logger {
 public:
+    using StringType = String;
+
     Logger(Logger const&) = delete;
     Logger(Logger&&) = delete;
     auto operator=(Logger const&) -> Logger& = delete;
@@ -259,8 +268,7 @@ public:
         const Level level, const T& message, const Location& location = Location::current()) const
         -> void
     {
-        auto callback = [](const T& message) -> const T& { return message; };
-        this->message(level, callback, location, message);
+        m_sinks.message(*this, level, message, location);
     }
 
     /**
@@ -277,12 +285,10 @@ public:
     inline void message(Level level, const Format<Args...>& fmt, Args&&... args) const
     {
         auto callback = [&fmt](Args&&... args) {
-            if constexpr (std::is_convertible_v<std::string, String>) {
-                return format(fmt.fmt(), std::forward<Args>(args)...);
-            } else {
-                return from_std_string<String>(format(fmt.fmt(), std::forward<Args>(args)...));
-            }
+            auto& buffer = Sink<String>::template stream_buf<char>();
+            format_to(std::ostreambuf_iterator(buffer), fmt.fmt(), std::forward<Args>(args)...);
         };
+
         this->message(level, callback, fmt.loc(), std::forward<Args>(args)...);
     }
 
@@ -300,12 +306,15 @@ public:
     inline void message(Level level, const WideFormat<Args...>& fmt, Args&&... args) const
     {
         auto callback = [&fmt](Args&&... args) {
-            if constexpr (std::is_convertible_v<std::wstring, String>) {
-                return format(fmt.fmt(), std::forward<Args>(args)...);
-            } else {
-                return from_std_wstring<String>(format(fmt.fmt(), std::forward<Args>(args)...));
-            }
+            auto& buffer = Sink<String>::template stream_buf<wchar_t>();
+#ifdef __cpp_lib_format
+            format_to(std::ostreambuf_iterator(buffer), fmt.fmt(), std::forward<Args>(args)...);
+#else
+            format_to(
+                std::ostreambuf_iterator(buffer), fmt.fmt().get(), std::forward<Args>(args)...);
+#endif
         };
+
         this->message(level, callback, fmt.loc(), std::forward<Args>(args)...);
     }
 

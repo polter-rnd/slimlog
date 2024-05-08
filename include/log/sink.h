@@ -12,6 +12,7 @@
 #include <atomic>
 #include <concepts>
 #include <initializer_list>
+#include <iostream>
 #include <memory>
 #include <unordered_map>
 #include <utility>
@@ -54,10 +55,24 @@ public:
         -> void
         = 0;
 
+    virtual auto message(Level level, const String& category, const Location& location) -> void = 0;
+
     /**
      * @brief Flush message cache, if any.
      */
     virtual auto flush() -> void = 0;
+
+protected:
+    template<typename CharType>
+    static auto stream_buf() -> std::basic_stringstream<CharType>&
+    {
+        static thread_local std::basic_stringstream<CharType> buffer;
+        return buffer;
+    }
+
+private:
+    template<typename T, typename Policy>
+    friend class Logger;
 };
 
 /**
@@ -197,17 +212,46 @@ public:
             return;
         }
 
-        auto sinks{m_sinks};
+        /*auto sinks{m_sinks};
         for (auto parent{logger.m_parent}; parent; parent = parent->m_parent) {
             if (static_cast<Level>(parent->m_level) >= level) {
                 sinks.insert(parent->m_sinks.m_sinks.cbegin(), parent->m_sinks.m_sinks.cend());
             }
-        }
-        for (const auto& sink : sinks) {
+        }*/
+        for (const auto& sink : m_sinks) {
             if (sink.second) {
-                // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
-                sink.first->message(
-                    level, logger.category(), callback(std::forward<Args>(args)...), location);
+                if constexpr (std::is_void_v<std::invoke_result_t<T, Args...>>) {
+                    callback(std::forward<Args>(args)...);
+                    sink.first->message(level, logger.category(), location);
+                } else {
+                    sink.first->message(
+                        level, logger.category(), callback(std::forward<Args>(args)...), location);
+                }
+            }
+        }
+    }
+
+    template<typename Logger, typename T>
+        requires(!std::invocable<T>)
+    auto message(
+        const Logger& logger,
+        const Level level,
+        const T& message,
+        const Location& location = Location::current()) const -> void
+    {
+        if (static_cast<Level>(logger.m_level) < level) {
+            return;
+        }
+
+        /*auto sinks{m_sinks};
+        for (auto parent{logger.m_parent}; parent; parent = parent->m_parent) {
+            if (static_cast<Level>(parent->m_level) >= level) {
+                sinks.insert(parent->m_sinks.m_sinks.cbegin(), parent->m_sinks.m_sinks.cend());
+            }
+        }*/
+        for (const auto& sink : m_sinks) {
+            if (sink.second) {
+                sink.first->message(level, logger.category(), message, location);
             }
         }
     }
@@ -350,6 +394,18 @@ public:
     {
         ReadLock lock(m_mutex);
         m_sinks.message(logger, level, callback, location, std::forward<Args>(args)...);
+    }
+
+    template<typename Logger, typename T>
+        requires(!std::invocable<T>)
+    auto message(
+        const Logger& logger,
+        const Level level,
+        const T& message,
+        const Location& location = Location::current()) const -> void
+    {
+        ReadLock lock(m_mutex);
+        m_sinks.message(logger, level, message, location);
     }
 
 private:

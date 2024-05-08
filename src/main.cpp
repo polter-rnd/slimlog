@@ -35,14 +35,24 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
             std::make_pair(Log::Level::Fatal, "ftl"));
         log_root->info("Root!!!");
 
-        const Log::Logger log_child("kek_child", log_root);
+        Log::Logger log_child("kek_child", Log::Level::Info);
+        log_child.add_sink(root_sink);
         log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+        log_child.info("Root sink enabled: {}", "Helloo!!");
+
         log_root->set_sink_enabled(root_sink, false);
         log_child.info("Root sink disabled!");
 
-        auto my_hdlr = std::make_shared<Log::OStreamSink<std::wstring>>(
+        auto my_hdlr = std::make_shared<Log::OStreamSink<std::wstring_view>>(
             std::wcerr, L"W (%t) [%l] %F|%L: %m %o sdf%");
-        const Log::Logger log2(std::wstring(L"test"), Log::Level::Info, {my_hdlr});
+        const Log::Logger<std::wstring_view, Log::SingleThreadedPolicy> log2(
+            L"test", Log::Level::Info, {my_hdlr});
         log2.info(L"That's from log2!");
 
         Log::Logger log3("test", Log::Level::Info);
@@ -68,8 +78,28 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
 
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
         log2.info(L"Pipkanoid {}!", 123);
+
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+        log2.info(L"Pipkanoid!");
+
         log2.info(L"Lalka pipka");
         log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+        log2.info(L"Привет, {}", L"JOHN REED");
+
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
         log2.message(Log::Level::Info, L"Привет, {}", 24);
         log2.message(Log::Level::Info, L"Привет");
