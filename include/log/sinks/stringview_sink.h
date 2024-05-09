@@ -84,11 +84,11 @@ public:
             const String& category,
             const Location& caller) const -> void
         {
-            const auto message = result.view();
-
             if (!m_pattern.empty()) {
                 std::basic_string_view<CharType> pattern{m_pattern};
-                result.seekg(result.tellp());
+
+                const auto mypos = result.tellp();
+                result.seekg(mypos);
 
                 for (;;) {
                     const auto pos = pattern.find('%');
@@ -129,7 +129,9 @@ public:
                             result << category;
                             break;
                         case Flag::Message:
-                            result << message;
+                            result.seekg(0);
+                            result << result.view().substr(0, mypos);
+                            result.seekg(mypos);
                             break;
                         case Flag::File:
                             // result << caller.file_name();
