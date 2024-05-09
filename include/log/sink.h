@@ -18,6 +18,8 @@
 #include <utility>
 
 namespace PlainCloud::Log {
+template<typename>
+struct AlwaysFalse : std::false_type { };
 
 /**
  * @brief Base abstract sink class.
@@ -200,7 +202,7 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename Logger, typename T, typename... Args>
-        requires std::invocable<T, Args...>
+        requires(std::invocable<T, Args...> || std::invocable<T, int, Args...>)
     auto message(
         const Logger& logger,
         const Level level,
@@ -218,9 +220,19 @@ public:
                 sinks.insert(parent->m_sinks.m_sinks.cbegin(), parent->m_sinks.m_sinks.cend());
             }
         }*/
+
+        int dd = 123;
         for (const auto& sink : m_sinks) {
             if (sink.second) {
-                if constexpr (std::is_void_v<std::invoke_result_t<T, Args...>>) {
+                if constexpr (std::is_invocable_v<T, int, Args...>) {
+                    // if constexpr (std::is_void_v<typename std::invoke_result_t<T, int, Args...>>)
+                    // {
+                    callback(dd, std::forward<Args>(args)...);
+                    sink.first->message(level, logger.category(), location);
+                    //} else {
+                    //    static_assert(AlwaysFalse<T>(), "Lambda should not return a value");
+                    //}
+                } else if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
                     callback(std::forward<Args>(args)...);
                     sink.first->message(level, logger.category(), location);
                 } else {
@@ -232,7 +244,7 @@ public:
     }
 
     template<typename Logger, typename T>
-        requires(!std::invocable<T>)
+        requires(!std::invocable<T> && !std::invocable<T, int>)
     auto message(
         const Logger& logger,
         const Level level,
@@ -384,7 +396,7 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename Logger, typename T, typename... Args>
-        requires std::invocable<T, Args...>
+        requires(std::invocable<T, Args...> || std::invocable<T, int, Args...>)
     auto message(
         const Logger& logger,
         const Level level,

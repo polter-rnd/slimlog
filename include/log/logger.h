@@ -242,7 +242,7 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T, typename... Args>
-        requires std::invocable<T, Args...>
+        requires(std::invocable<T, Args...> || std::invocable<T, int, Args...>)
     inline auto message(
         const Level level,
         const T& callback,
@@ -284,7 +284,8 @@ public:
     template<typename... Args>
     inline void message(Level level, const Format<Args...>& fmt, Args&&... args) const
     {
-        auto callback = [&fmt](Args&&... args) {
+        // int dd = 5;
+        auto callback = [&fmt](int dd, Args&&... args) {
             auto& buffer = Sink<String>::template stream_buf<char>();
             format_to(std::ostreambuf_iterator(buffer), fmt.fmt(), std::forward<Args>(args)...);
         };
@@ -295,7 +296,8 @@ public:
     /**
      * @brief Emit new formatted wide string log message if it fits for specified logging level.
      *
-     * Method to emit compile-time wide string formatted messages wich basic format argument checks.
+     * Method to emit compile-time wide string formatted messages wich basic format argument
+     * checks.
      *
      * @tparam Args Format argument types. Deduced from arguments.
      * @param level Logging level.
@@ -305,7 +307,8 @@ public:
     template<typename... Args>
     inline void message(Level level, const WideFormat<Args...>& fmt, Args&&... args) const
     {
-        auto callback = [&fmt](Args&&... args) {
+        // int dd = 5;
+        auto callback = [&fmt](int dd, Args&&... args) {
             auto& buffer = Sink<String>::template stream_buf<wchar_t>();
 #ifdef __cpp_lib_format
             format_to(std::ostreambuf_iterator(buffer), fmt.fmt(), std::forward<Args>(args)...);

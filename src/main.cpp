@@ -26,14 +26,16 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         auto log_root = std::make_shared<Log::Logger<std::string_view>>("kek_root");
 
         auto root_sink = log_root->add_sink<Log::OStreamSink>(
-            std::cerr,
+            std::cout,
             "(%t) [%l] %F|%L: %m",
             std::make_pair(Log::Level::Trace, "trc"),
             std::make_pair(Log::Level::Debug, "dbg"),
             std::make_pair(Log::Level::Warning, "wrn"),
             std::make_pair(Log::Level::Error, "err"),
             std::make_pair(Log::Level::Fatal, "ftl"));
-        log_root->info("Root!!!");
+        log_root->message(Log::Level::Info, "Root!!!");
+
+        log_root->info([](int dd) { return "123"; });
 
         Log::Logger log_child("kek_child", Log::Level::Info);
         log_child.add_sink(root_sink);
@@ -103,7 +105,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         // NOLINTNEXTLINE(cppcoreguidelines-avoid-magic-numbers,readability-magic-numbers)
         log2.message(Log::Level::Info, L"Привет, {}", 24);
         log2.message(Log::Level::Info, L"Привет");
-        log2.info([]() { return L"Hello from lambda!!!11"; });
+        // log2.info([]() { return L"Hello from lambda!!!11"; });
         constexpr Log::BasicFormatString<wchar_t, std::wstring_view> Eeee2{L"Hello {}"};
         log2.info(Eeee2, std::wstring_view(L"pip"));
     } catch (const std::exception& e) {
