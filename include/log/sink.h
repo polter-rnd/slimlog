@@ -29,9 +29,13 @@ struct AlwaysFalse : std::false_type { };
  *
  * @tparam String Base string type used for log messages.
  */
-template<typename String>
-class Sink : public std::enable_shared_from_this<Sink<String>> {
+template<typename Logger>
+class Sink : public std::enable_shared_from_this<Sink<Logger>> {
 public:
+    using String = Logger::StringType;
+    using Char = Logger::CharType;
+    using StreamBuffer = Logger::StreamBuffer;
+
     Sink() = default;
     Sink(Sink const&) = default;
     Sink(Sink&&) noexcept = default;
@@ -39,11 +43,10 @@ public:
     auto operator=(Sink&&) noexcept -> Sink& = default;
     virtual ~Sink() = default;
 
-    virtual auto set_pattern(const String& pattern) -> std::shared_ptr<Sink<String>> = 0;
+    virtual auto set_pattern(const String& pattern) -> std::shared_ptr<Sink<Logger>> = 0;
 
     virtual auto set_levels(const std::initializer_list<std::pair<Level, String>>& levels)
-        -> std::shared_ptr<Sink<String>>
-        = 0;
+        -> std::shared_ptr<Sink<Logger>> = 0;
 
     /**
      * @brief Emit message.
@@ -52,29 +55,21 @@ public:
      * @param message Log message.
      * @param location Caller location (file, line, function).
      */
-    virtual auto
-    message(Level level, const String& category, const String& message, const Location& location)
-        -> void
-        = 0;
+    virtual auto message(
+        StreamBuffer& buffer,
+        Level level,
+        const String& category,
+        const String& message,
+        const Location& location) -> void = 0;
 
-    virtual auto message(Level level, const String& category, const Location& location) -> void = 0;
+    virtual auto message(
+        StreamBuffer& buffer, Level level, const String& category, const Location& location) -> void
+        = 0;
 
     /**
      * @brief Flush message cache, if any.
      */
     virtual auto flush() -> void = 0;
-
-protected:
-    template<typename CharType>
-    static auto stream_buf() -> std::basic_stringstream<CharType>&
-    {
-        static thread_local std::basic_stringstream<CharType> buffer;
-        return buffer;
-    }
-
-private:
-    template<typename T, typename Policy>
-    friend class Logger;
 };
 
 /**
@@ -99,15 +94,15 @@ class SinkDriver final { };
  *
  * @tparam String Base string type used for log messages.
  */
-template<typename String>
-class SinkDriver<String, SingleThreadedPolicy> final {
+template<typename Logger>
+class SinkDriver<Logger, SingleThreadedPolicy> final {
 public:
     /**
      * @brief Construct a new SinkDriver object
      *
      * @param sinks Sinks to be added upon creation.
      */
-    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {})
+    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<Logger>>>& sinks = {})
     {
         m_sinks.reserve(sinks.size());
         for (const auto& sink : sinks) {
@@ -122,7 +117,7 @@ public:
      * @return \b true if sink was actually inserted.
      * @return \b false if sink is already present in this logger.
      */
-    auto add_sink(const std::shared_ptr<Sink<String>>& sink) -> bool
+    auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         return m_sinks.insert_or_assign(sink, true).second;
     }
@@ -136,7 +131,7 @@ public:
      * @return Pointer to the created sink.
      */
     template<typename T, typename... Args>
-    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<String>>
+    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Logger>>
     {
         return m_sinks.insert_or_assign(std::make_shared<T>(std::forward<Args>(args)...), true)
             .first->first;
@@ -149,7 +144,7 @@ public:
      * @return \b true if sink was actually removed.
      * @return \b false if sink does not exist in this logger.
      */
-    auto remove_sink(const std::shared_ptr<Sink<String>>& sink) -> bool
+    auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         return m_sinks.erase(sink) == 1;
     }
@@ -162,7 +157,7 @@ public:
      * @return \b true if sink exists and enabled.
      * @return \b false if sink does not exist in this logger.
      */
-    auto set_sink_enabled(const std::shared_ptr<Sink<String>>& sink, bool enabled) -> bool
+    auto set_sink_enabled(const std::shared_ptr<Sink<Logger>>& sink, bool enabled) -> bool
     {
         if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
             itr->second = enabled;
@@ -178,12 +173,18 @@ public:
      * @return \b true if sink is enabled.
      * @return \b false if sink is disabled.
      */
-    auto sink_enabled(const std::shared_ptr<Sink<String>>& sink) -> bool
+    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
             return itr->second;
         }
         return false;
+    }
+
+    auto buffer() const -> auto&
+    {
+        static thread_local std::basic_stringstream<typename Logger::CharType> buffer;
+        return buffer;
     }
 
     /**
@@ -201,9 +202,9 @@ public:
      * @param callback Log callback.
      * @param location Caller location (file, line, function).
      */
-    template<typename Logger, typename T, typename... Args>
-        requires(std::invocable<T, Args...> || std::invocable<T, int, Args...>)
+    template<typename T, typename... Args>
     auto message(
+        auto& buffer,
         const Logger& logger,
         const Level level,
         const T& callback,
@@ -221,68 +222,57 @@ public:
             }
         }*/
 
-        int dd = 123;
         for (const auto& sink : m_sinks) {
             if (sink.second) {
-                if constexpr (std::is_invocable_v<T, int, Args...>) {
-                    // if constexpr (std::is_void_v<typename std::invoke_result_t<T, int, Args...>>)
-                    // {
-                    callback(dd, std::forward<Args>(args)...);
-                    sink.first->message(level, logger.category(), location);
-                    //} else {
-                    //    static_assert(AlwaysFalse<T>(), "Lambda should not return a value");
-                    //}
-                } else if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
-                    callback(std::forward<Args>(args)...);
-                    sink.first->message(level, logger.category(), location);
+                if constexpr (std::is_invocable_v<T, typename Logger::StreamBuffer&, Args...>) {
+                    callback(buffer, std::forward<Args>(args)...);
+                    sink.first->message(buffer, level, logger.category(), location);
+                } else if constexpr (std::is_invocable_v<T, Args...>) {
+                    if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
+                        callback(std::forward<Args>(args)...);
+                        sink.first->message(buffer, level, logger.category(), location);
+                    } else {
+                        sink.first->message(
+                            buffer,
+                            level,
+                            logger.category(),
+                            callback(std::forward<Args>(args)...),
+                            location);
+                    }
                 } else {
-                    sink.first->message(
-                        level, logger.category(), callback(std::forward<Args>(args)...), location);
+                    sink.first->message(buffer, level, logger.category(), callback, location);
                 }
+                buffer.str(std::basic_string<typename Logger::CharType>{});
             }
         }
     }
 
-    template<typename Logger, typename T>
-        requires(!std::invocable<T> && !std::invocable<T, int>)
+    template<typename T, typename... Args>
     auto message(
         const Logger& logger,
         const Level level,
         const T& message,
-        const Location& location = Location::current()) const -> void
+        const Location& location = Location::current(),
+        Args&&... args) const -> void
     {
-        if (static_cast<Level>(logger.m_level) < level) {
-            return;
-        }
-
-        /*auto sinks{m_sinks};
-        for (auto parent{logger.m_parent}; parent; parent = parent->m_parent) {
-            if (static_cast<Level>(parent->m_level) >= level) {
-                sinks.insert(parent->m_sinks.m_sinks.cbegin(), parent->m_sinks.m_sinks.cend());
-            }
-        }*/
-        for (const auto& sink : m_sinks) {
-            if (sink.second) {
-                sink.first->message(level, logger.category(), message, location);
-            }
-        }
+        this->message(buffer(), logger, level, message, location, std::forward<Args>(args)...);
     }
 
 protected:
-    typename std::unordered_map<std::shared_ptr<Sink<String>>, bool>::const_iterator
+    typename std::unordered_map<std::shared_ptr<Sink<Logger>>, bool>::const_iterator
     cbegin() const noexcept
     {
         return m_sinks.cbegin();
     }
 
-    typename std::unordered_map<std::shared_ptr<Sink<String>>, bool>::const_iterator
+    typename std::unordered_map<std::shared_ptr<Sink<Logger>>, bool>::const_iterator
     cend() const noexcept
     {
         return m_sinks.cend();
     }
 
 private:
-    std::unordered_map<std::shared_ptr<Sink<String>>, bool> m_sinks;
+    std::unordered_map<std::shared_ptr<Sink<Logger>>, bool> m_sinks;
 };
 
 /**
@@ -293,13 +283,13 @@ private:
  * @tparam String Base string type used for log messages.
  */
 template<
-    typename String,
+    typename Logger,
     typename Mutex,
     typename ReadLock,
     typename WriteLock,
     std::memory_order LoadOrder,
     std::memory_order StoreOrder>
-class SinkDriver<String, MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>>
+class SinkDriver<Logger, MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>>
     final {
 public:
     /**
@@ -307,7 +297,7 @@ public:
      *
      * @param sinks Sinks to be added upon creation.
      */
-    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<String>>>& sinks = {})
+    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<Logger>>>& sinks = {})
         : m_sinks(sinks)
     {
     }
@@ -319,7 +309,7 @@ public:
      * @return \b true if sink was actually inserted.
      * @return \b false if sink is already present in this logger.
      */
-    auto add_sink(const std::shared_ptr<Sink<String>>& sink) -> bool
+    auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         WriteLock lock(m_mutex);
         return m_sinks.add_sink(sink);
@@ -334,7 +324,7 @@ public:
      * @return Pointer to the created sink.
      */
     template<typename T, typename... Args>
-    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<String>>
+    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Logger>>
     {
         WriteLock lock(m_mutex);
         return m_sinks.template add_sink<T>(std::forward<Args>(args)...);
@@ -347,7 +337,7 @@ public:
      * @return \b true if sink was actually removed.
      * @return \b false if sink does not exist in this logger.
      */
-    auto remove_sink(const std::shared_ptr<Sink<String>>& sink) -> bool
+    auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         WriteLock lock(m_mutex);
         return m_sinks.remove_sink(sink);
@@ -361,7 +351,7 @@ public:
      * @return \b true if sink exists and enabled.
      * @return \b false if sink does not exist in this logger.
      */
-    auto set_sink_enabled(const std::shared_ptr<Sink<String>>& sink, bool enabled) -> bool
+    auto set_sink_enabled(const std::shared_ptr<Sink<Logger>>& sink, bool enabled) -> bool
     {
         WriteLock lock(m_mutex);
         return m_sinks.set_sink_enabled(sink, enabled);
@@ -374,10 +364,16 @@ public:
      * @return \b true if sink is enabled.
      * @return \b false if sink is disabled.
      */
-    auto sink_enabled(const std::shared_ptr<Sink<String>>& sink) -> bool
+    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         ReadLock lock(m_mutex);
         return m_sinks.sink_enabled(sink);
+    }
+
+    auto buffer() const -> auto&
+    {
+        static std::basic_stringstream<typename Logger::CharType> buffer;
+        return buffer;
     }
 
     /**
@@ -392,39 +388,26 @@ public:
      * @tparam Args Format argument types. Deduced from arguments.
      * @param logger %Logger object.
      * @param level Logging level.
-     * @param callback Log callback.
+     * @param message Log message or callback.
      * @param location Caller location (file, line, function).
      */
-    template<typename Logger, typename T, typename... Args>
-        requires(std::invocable<T, Args...> || std::invocable<T, int, Args...>)
-    auto message(
-        const Logger& logger,
-        const Level level,
-        const T& callback,
-        const Location& location = Location::current(),
-        Args&&... args) const -> void
-    {
-        ReadLock lock(m_mutex);
-        m_sinks.message(logger, level, callback, location, std::forward<Args>(args)...);
-    }
-
-    template<typename Logger, typename T>
-        requires(!std::invocable<T>)
+    template<typename T, typename... Args>
     auto message(
         const Logger& logger,
         const Level level,
         const T& message,
-        const Location& location = Location::current()) const -> void
+        const Location& location = Location::current(),
+        Args&&... args) const -> void
     {
         ReadLock lock(m_mutex);
-        m_sinks.message(logger, level, message, location);
+        m_sinks.message(buffer(), logger, level, message, location, std::forward<Args>(args)...);
     }
 
 private:
     mutable Mutex m_mutex;
-    SinkDriver<String, SingleThreadedPolicy> m_sinks;
+    SinkDriver<Logger, SingleThreadedPolicy> m_sinks;
 
-    friend class SinkDriver<String, SingleThreadedPolicy>;
+    friend class SinkDriver<Logger, SingleThreadedPolicy>;
 };
 
 } // namespace PlainCloud::Log

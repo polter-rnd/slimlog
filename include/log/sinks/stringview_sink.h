@@ -56,18 +56,19 @@ struct Levels<wchar_t> {
 };
 } // namespace
 
-template<typename String>
+template<typename Logger>
     requires(
-        std::convertible_to<String, std::string_view>
-        || std::convertible_to<String, std::wstring_view>)
-class StringViewSink : public Sink<String> {
+        std::convertible_to<typename Logger::StringType, std::string_view>
+        || std::convertible_to<typename Logger::StringType, std::wstring_view>)
+class StringViewSink : public Sink<Logger> {
 public:
-    using CharType = typename std::remove_cvref_t<String>::value_type;
+    using CharType = typename Logger::CharType;
+    using StringType = typename Logger::StringType;
 
     class Pattern {
     public:
         template<typename... Args>
-        Pattern(const String& pattern = {}, Args&&... args)
+        Pattern(const StringType& pattern = {}, Args&&... args)
             : m_pattern(pattern)
         {
             set_levels({std::forward<Args>(args)...});
@@ -81,7 +82,7 @@ public:
         auto format(
             std::basic_stringstream<CharType>& result,
             const Level level,
-            const String& category,
+            const StringType& category,
             const Location& caller) const -> void
         {
             if (!m_pattern.empty()) {
@@ -93,7 +94,7 @@ public:
                 for (;;) {
                     const auto pos = pattern.find('%');
                     const auto len = pattern.size();
-                    if (pos == String::npos || pos == len - 1) {
+                    if (pos == pattern.npos || pos == len - 1) {
                         result << pattern;
                         break;
                     }
@@ -155,12 +156,12 @@ public:
             result << '\n';
         }
 
-        auto set_pattern(const String& pattern)
+        auto set_pattern(const StringType& pattern)
         {
             m_pattern = pattern;
         }
 
-        auto set_levels(const std::initializer_list<std::pair<Level, String>>& levels)
+        auto set_levels(const std::initializer_list<std::pair<Level, StringType>>& levels)
         {
             for (const auto& level : levels) {
                 switch (level.first) {
@@ -187,7 +188,7 @@ public:
         }
 
     private:
-        String m_pattern;
+        StringType m_pattern;
         Levels<CharType> m_levels;
     };
 
@@ -197,14 +198,14 @@ public:
     {
     }
 
-    auto set_pattern(const String& pattern) -> std::shared_ptr<Sink<String>> override
+    auto set_pattern(const StringType& pattern) -> std::shared_ptr<Sink<Logger>> override
     {
         m_pattern.set_pattern(pattern);
         return this->shared_from_this();
     }
 
-    auto set_levels(const std::initializer_list<std::pair<Level, String>>& levels)
-        -> std::shared_ptr<Sink<String>> override
+    auto set_levels(const std::initializer_list<std::pair<Level, StringType>>& levels)
+        -> std::shared_ptr<Sink<Logger>> override
     {
         m_pattern.set_levels(levels);
         return this->shared_from_this();
@@ -213,7 +214,7 @@ public:
     auto format(
         std::basic_stringstream<CharType>& result,
         const Level level,
-        const String& category,
+        const StringType& category,
         const Location& caller) const -> void
     {
         m_pattern.format(result, level, category, caller);
