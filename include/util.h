@@ -6,9 +6,13 @@
 #pragma once
 
 #include <locale>
+#include <type_traits>
 #include <utility>
 
 namespace PlainCloud::Util {
+
+template<typename>
+struct AlwaysFalse : std::false_type { };
 
 /**
  * @brief RAII wrapper for `std::locale::global`
@@ -32,7 +36,7 @@ public:
     template<typename... Args>
     explicit ScopedGlobalLocale(Args&&... args)
         : m_old_locale(std::locale::global(std::locale(
-            std::forward<Args>(args)...))) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+              std::forward<Args>(args)...))) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
     {
     }
 

@@ -29,15 +29,11 @@ public:
 #if __has_builtin(__builtin_FILE) and __has_builtin(__builtin_FUNCTION)                            \
         and __has_builtin(__builtin_LINE)                                                          \
     or defined(_MSC_VER) and _MSC_VER > 192
-        // NOLINTNEXTLINE(*-easily-swappable-parameters)
         const char* file = __builtin_FILE(),
         const char* function = __builtin_FUNCTION(),
         int line = __builtin_LINE()
 #else
-        // NOLINTNEXTLINE(*-easily-swappable-parameters)
-        const char* file = "unknown",
-        const char* function = "unknown",
-        int line = {}
+        const char* file = "unknown", const char* function = "unknown", int line = -1
 #endif
             ) noexcept
     {

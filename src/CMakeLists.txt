@@ -6,12 +6,23 @@ target_include_directories(${TARGET} PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
 include(CheckCXXSymbolExists)
 check_cxx_symbol_exists(__cpp_lib_format "format" HAS_CXX20_LIBFORMAT)
-if(NOT HAS_CXX20_LIBFORMAT)
-    find_package(fmt 9.1.0 REQUIRED)
 
-    if(COMMAND set_package_properties)
-        set_package_properties(fmt PROPERTIES PURPOSE "Implementation of std::format from C++20")
-    endif()
+if(NOT HAS_CXX20_LIBFORMAT)
+    set(ENABLE_FMTLIB ON)
+endif()
+
+find_package_switchable(
+    fmt 9.1.0
+    MIN_VERSION
+    OPTION ENABLE_FMTLIB
+    DEFAULT ENABLE_FMTLIB
+    PURPOSE "Implementation of std::format from C++20"
+)
+
+set(ENABLE_FMTLIB ${ENABLE_FMTLIB} PARENT_SCOPE)
+if(ENABLE_FMTLIB)
+    find_package(fmt 9.1.0 REQUIRED)
+    add_compile_definitions(${TARGET} ENABLE_FMTLIB)
     target_link_libraries(${TARGET} PRIVATE fmt::fmt-header-only)
 endif()
 

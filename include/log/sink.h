@@ -5,15 +5,18 @@
 
 #pragma once
 
+#include "format.h"
 #include "level.h"
 #include "location.h"
+#include "pattern.h"
 #include "policy.h"
 
 #include <atomic>
-#include <concepts>
 #include <initializer_list>
-#include <iostream>
+#include <iterator>
 #include <memory>
+#include <string>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
@@ -32,21 +35,45 @@ struct AlwaysFalse : std::false_type { };
 template<typename Logger>
 class Sink : public std::enable_shared_from_this<Sink<Logger>> {
 public:
-    using String = Logger::StringType;
-    using Char = Logger::CharType;
-    using StreamBuffer = Logger::StreamBuffer;
+    using StringType = typename Logger::StringType;
+    using CharType = typename Logger::CharType;
 
-    Sink() = default;
+    template<typename... Args>
+    explicit Sink(Args&&... args)
+        // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
+        : m_pattern(std::forward<Args>(args)...)
+    {
+    }
+
     Sink(Sink const&) = default;
     Sink(Sink&&) noexcept = default;
     auto operator=(Sink const&) -> Sink& = default;
     auto operator=(Sink&&) noexcept -> Sink& = default;
     virtual ~Sink() = default;
 
-    virtual auto set_pattern(const String& pattern) -> std::shared_ptr<Sink<Logger>> = 0;
+    virtual auto set_pattern(const typename Pattern<CharType>::StringType& pattern)
+        -> std::shared_ptr<Sink<Logger>>
+    {
+        m_pattern.set_pattern(pattern);
+        return this->shared_from_this();
+    }
 
-    virtual auto set_levels(const std::initializer_list<std::pair<Level, String>>& levels)
-        -> std::shared_ptr<Sink<Logger>> = 0;
+    virtual auto set_levels(
+        const std::initializer_list<std::pair<Level, typename Pattern<CharType>::StringType>>&
+            levels) -> std::shared_ptr<Sink<Logger>>
+    {
+        m_pattern.set_levels(levels);
+        return this->shared_from_this();
+    }
+
+    auto format(
+        FormatBuffer<CharType>& result,
+        const Level level,
+        const StringType& category,
+        const Location& caller) const -> void
+    {
+        m_pattern.format(result, level, category, caller);
+    }
 
     /**
      * @brief Emit message.
@@ -56,20 +83,25 @@ public:
      * @param location Caller location (file, line, function).
      */
     virtual auto message(
-        StreamBuffer& buffer,
+        FormatBuffer<CharType>& buffer,
         Level level,
-        const String& category,
-        const String& message,
+        const StringType& category,
+        const StringType& message,
         const Location& location) -> void = 0;
 
     virtual auto message(
-        StreamBuffer& buffer, Level level, const String& category, const Location& location) -> void
-        = 0;
+        FormatBuffer<CharType>& buffer,
+        Level level,
+        const StringType& category,
+        const Location& location) -> void = 0;
 
     /**
      * @brief Flush message cache, if any.
      */
     virtual auto flush() -> void = 0;
+
+private:
+    Pattern<CharType> m_pattern;
 };
 
 /**
@@ -97,6 +129,8 @@ class SinkDriver final { };
 template<typename Logger>
 class SinkDriver<Logger, SingleThreadedPolicy> final {
 public:
+    using CharType = typename Logger::CharType;
+
     /**
      * @brief Construct a new SinkDriver object
      *
@@ -183,7 +217,7 @@ public:
 
     auto buffer() const -> auto&
     {
-        static thread_local std::basic_stringstream<typename Logger::CharType> buffer;
+        static thread_local FormatBuffer<CharType> buffer;
         return buffer;
     }
 
@@ -204,7 +238,7 @@ public:
      */
     template<typename T, typename... Args>
     auto message(
-        auto& buffer,
+        FormatBuffer<CharType>& buffer,
         const Logger& logger,
         const Level level,
         const T& callback,
@@ -224,7 +258,7 @@ public:
 
         for (const auto& sink : m_sinks) {
             if (sink.second) {
-                if constexpr (std::is_invocable_v<T, typename Logger::StreamBuffer&, Args...>) {
+                if constexpr (std::is_invocable_v<T, decltype(buffer), Args...>) {
                     callback(buffer, std::forward<Args>(args)...);
                     sink.first->message(buffer, level, logger.category(), location);
                 } else if constexpr (std::is_invocable_v<T, Args...>) {
@@ -240,9 +274,10 @@ public:
                             location);
                     }
                 } else {
+                    // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                     sink.first->message(buffer, level, logger.category(), callback, location);
                 }
-                buffer.str(std::basic_string<typename Logger::CharType>{});
+                buffer.str(std::basic_string<CharType>{});
             }
         }
     }
@@ -259,14 +294,14 @@ public:
     }
 
 protected:
-    typename std::unordered_map<std::shared_ptr<Sink<Logger>>, bool>::const_iterator
-    cbegin() const noexcept
+    auto cbegin() const noexcept ->
+        typename std::unordered_map<std::shared_ptr<Sink<Logger>>, bool>::const_iterator
     {
         return m_sinks.cbegin();
     }
 
-    typename std::unordered_map<std::shared_ptr<Sink<Logger>>, bool>::const_iterator
-    cend() const noexcept
+    auto cend() const noexcept ->
+        typename std::unordered_map<std::shared_ptr<Sink<Logger>>, bool>::const_iterator
     {
         return m_sinks.cend();
     }
@@ -370,9 +405,9 @@ public:
         return m_sinks.sink_enabled(sink);
     }
 
-    auto buffer() const -> auto&
+    auto buffer() const -> FormatBuffer<typename Logger::CharType>&
     {
-        static std::basic_stringstream<typename Logger::CharType> buffer;
+        static FormatBuffer<typename Logger::CharType> buffer;
         return buffer;
     }
 

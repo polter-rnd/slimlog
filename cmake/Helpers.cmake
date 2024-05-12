@@ -101,6 +101,7 @@ endfunction()
 function(dump_option_variables filter)
     get_cmake_property(_var_names VARIABLES)
     list(SORT _var_names)
+    list(REMOVE_DUPLICATES _var_names)
     foreach(_var_name ${_var_names})
         if(filter)
             # cmake-format: off

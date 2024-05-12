@@ -1,33 +1,34 @@
 /**
  * @file format.h
- * @brief Contains definition of BasicFormatString, BasicFormat, Format and WideFormat classes.
+ * @brief Contains definition of FormatString, FormatBuffer and Format classes.
  */
 
 #pragma once
 
-#if __has_include(<format>)
-#include <format> // IWYU pragma: export
-#endif
-
-#ifndef __cpp_lib_format
-#include <fmt/core.h> // IWYU pragma: export
-#include <fmt/format.h> // IWYU pragma: export
-#include <fmt/xchar.h> // IWYU pragma: export
+#ifdef ENABLE_FMTLIB
+#include <fmt/core.h>
+#include <fmt/format.h>
+#include <fmt/xchar.h>
+#else
+#include <format>
 #endif
 
 #include "location.h"
 
 #include <concepts>
+#include <iterator>
+#include <sstream>
 #include <type_traits>
+#include <utility>
 
 namespace PlainCloud::Log {
 
-#ifdef __cpp_lib_format
+#ifdef ENABLE_FMTLIB
 template<typename T, typename... Args>
-using BasicFormatString = std::basic_format_string<T, Args...>;
+using FormatString = fmt::basic_format_string<T, Args...>;
 #else
 template<typename T, typename... Args>
-using BasicFormatString = fmt::basic_format_string<T, Args...>;
+using FormatString = std::basic_format_string<T, Args...>;
 #endif
 
 /**
@@ -45,30 +46,30 @@ using BasicFormatString = fmt::basic_format_string<T, Args...>;
  *       moving access functions to public part of a base class.
  */
 template<typename Char, typename... Args>
-struct BasicFormat final {
+class Format final {
 public:
     /**
-     * @brief Construct a new BasicFormat object from format string and location.
+     * @brief Construct a new Format object from format string and location.
      *
      * @tparam T Format string type. Deduced from argument.
      */
     template<typename T>
-        requires(std::constructible_from<BasicFormatString<Char, Args...>, T>
+        requires(std::constructible_from<FormatString<Char, Args...>, T>
                  || std::same_as<std::decay_t<T>, const Char*>
                  || std::same_as<std::decay_t<T>, Char*>)
     // NOLINTNEXTLINE(*-explicit-conversions)
-    consteval BasicFormat(const T& fmt, const Location& loc = Location::current())
+    consteval Format(const T& fmt, const Location& loc = Location::current())
         : m_fmt(fmt)
         , m_loc(loc)
     {
     }
 
-    BasicFormat(const BasicFormat&) = delete;
-    BasicFormat(BasicFormat&&) = delete;
-    ~BasicFormat() = default;
+    Format(const Format&) = delete;
+    Format(Format&&) = delete;
+    ~Format() = default;
 
-    auto operator=(const BasicFormat&) -> BasicFormat& = delete;
-    auto operator=(BasicFormat&&) -> BasicFormat& = delete;
+    auto operator=(const Format&) -> Format& = delete;
+    auto operator=(Format&&) -> Format& = delete;
 
     /**
      * @brief Get format string.
@@ -91,14 +92,30 @@ public:
     }
 
 private:
-    const BasicFormatString<Char, Args...> m_fmt;
+    const FormatString<Char, Args...> m_fmt;
     const Location m_loc;
 };
 
-template<typename... Args>
-using Format = BasicFormat<char, std::type_identity_t<Args>...>;
+template<typename Char>
+using Buffer = typename std::basic_stringstream<Char>;
 
-template<typename... Args>
-using WideFormat = BasicFormat<wchar_t, std::type_identity_t<Args>...>;
+template<typename Char>
+class FormatBuffer final : public Buffer<Char> {
+public:
+    template<typename... Args>
+    auto format(const Format<Char, std::type_identity_t<Args>...>& fmt, Args&&... args) -> void
+    {
+#ifdef ENABLE_FMTLIB
+        if constexpr (std::is_same_v<Char, char>) {
+            fmt::format_to(std::ostreambuf_iterator(*this), fmt.fmt(), std::forward<Args>(args)...);
+        } else {
+            fmt::format_to(
+                std::ostreambuf_iterator(*this), fmt.fmt().get(), std::forward<Args>(args)...);
+        }
+#else
+        std::format_to(std::ostreambuf_iterator(*this), fmt.fmt(), std::forward<Args>(args)...);
+#endif
+    }
+};
 
 } // namespace PlainCloud::Log
