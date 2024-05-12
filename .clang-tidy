@@ -6,6 +6,7 @@ Checks: '*,
         -google-*,
         -llvm*,
         -zircon-*,
+        -bugprone-easily-swappable-parameters
 '
 
 WarningsAsErrors: '*'

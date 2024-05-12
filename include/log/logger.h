@@ -11,48 +11,39 @@
 #include "policy.h"
 #include "sink.h"
 
-#include <concepts>
 #include <cstddef>
-#include <initializer_list>
 #include <memory>
-#include <sstream>
-#include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace PlainCloud::Log {
 
-namespace {
-
-template<typename>
-struct AlwaysFalse : std::false_type { };
-
 template<typename T>
-struct Underlying {
-    static_assert(AlwaysFalse<T>{}, "Not a supported string, array or pointer to integral type.");
+struct UnderlyingChar {
+    static_assert(AlwaysFalse<T>{}, "Unable to deduce underlying char type");
 };
 
 template<typename T>
     requires std::is_integral_v<typename std::remove_cvref_t<T>::value_type>
-struct Underlying<T> {
-    using type = typename std::remove_cvref_t<T>::value_type;
+struct UnderlyingChar<T> {
+    using Type = typename std::remove_cvref_t<T>::value_type;
 };
 
 template<typename T>
     requires std::is_array_v<std::remove_cvref_t<T>>
-struct Underlying<T> {
-    using type = typename std::remove_cvref_t<typename std::remove_all_extents_t<T>>;
+struct UnderlyingChar<T> {
+    using Type = typename std::remove_cvref_t<typename std::remove_all_extents_t<T>>;
 };
 
 template<typename T>
     requires std::is_integral_v<typename std::remove_pointer_t<T>>
-struct Underlying<T> {
-    using type = typename std::remove_cvref_t<typename std::remove_pointer_t<T>>;
+struct UnderlyingChar<T> {
+    using Type = typename std::remove_cvref_t<typename std::remove_pointer_t<T>>;
 };
 
 template<typename T>
-using UnderlyingType = typename Underlying<T>::type;
-} // namespace
+using UnderlyingCharType = typename UnderlyingChar<T>::Type;
 
 /**
  * @brief A logger front-end class.
@@ -75,13 +66,12 @@ using UnderlyingType = typename Underlying<T>::type;
  */
 template<
     typename String,
-    typename Char = UnderlyingType<String>,
+    typename Char = UnderlyingCharType<String>,
     typename ThreadingPolicy = MultiThreadedPolicy<>>
 class Logger {
 public:
     using StringType = String;
     using CharType = Char;
-    using StreamBuffer = std::basic_stringstream<Char>;
 
     Logger(Logger const&) = delete;
     Logger(Logger&&) = delete;
@@ -98,14 +88,10 @@ public:
      * @param sinks Sinks to be added upon creation.
      */
     template<typename T>
-    explicit Logger(
-        T&& name,
-        const Level level = Level::Info,
-        const std::initializer_list<std::shared_ptr<Sink<Logger>>>& sinks = {})
+    explicit Logger(T&& name, const Level level = Level::Info)
         : m_parent(nullptr)
         , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
-        , m_sinks(sinks)
     {
     }
 
@@ -145,7 +131,7 @@ public:
      *
      * @return %Logger name
      */
-    auto category() const noexcept -> const String&
+    [[nodiscard]] auto category() const noexcept -> const String&
     {
         return m_category;
     }
@@ -267,38 +253,12 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-        requires std::same_as<CharType, char>
-    inline void message(Level level, const Format<Args...>& fmt, Args&&... args) const
+    inline void
+    message(Level level, const Format<CharType, std::type_identity_t<Args>...>& fmt, Args&&... args)
+        const
     {
         auto callback = [&fmt](auto& buffer, Args&&... args) {
-            format_to(std::ostreambuf_iterator(buffer), fmt.fmt(), std::forward<Args>(args)...);
-        };
-
-        this->message(level, callback, fmt.loc(), std::forward<Args>(args)...);
-    }
-
-    /**
-     * @brief Emit new formatted wide string log message if it fits for specified logging level.
-     *
-     * Method to emit compile-time wide string formatted messages wich basic format argument
-     * checks.
-     *
-     * @tparam Args Format argument types. Deduced from arguments.
-     * @param level Logging level.
-     * @param fmt Format wide string. See `fmt::format` documentation for details.
-     * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
-     */
-    template<typename... Args>
-        requires std::same_as<CharType, wchar_t>
-    inline void message(Level level, const WideFormat<Args...>& fmt, Args&&... args) const
-    {
-        auto callback = [&fmt](auto& buffer, Args&&... args) {
-#ifdef __cpp_lib_format
-            format_to(std::ostreambuf_iterator(buffer), fmt.fmt(), std::forward<Args>(args)...);
-#else
-            format_to(
-                std::ostreambuf_iterator(buffer), fmt.fmt().get(), std::forward<Args>(args)...);
-#endif
+            buffer.format(fmt, std::forward<Args>(args)...);
         };
 
         this->message(level, callback, fmt.loc(), std::forward<Args>(args)...);
@@ -312,20 +272,8 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    inline auto info(const Format<Args...>& fmt, Args&&... args) const -> void
-    {
-        this->message(Level::Info, fmt, std::forward<Args>(args)...);
-    }
-
-    /**
-     * @brief Emit informational wide string message.
-     *
-     * @tparam Args Format argument types. Deduced from arguments.
-     * @param fmt Format wide string. See `fmt::format` documentation for details.
-     * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
-     */
-    template<typename... Args>
-    inline auto info(const WideFormat<Args...>& fmt, Args&&... args) const -> void
+    inline auto
+    info(const Format<CharType, std::type_identity_t<Args>...>& fmt, Args&&... args) const -> void
     {
         this->message(Level::Info, fmt, std::forward<Args>(args)...);
     }
@@ -348,8 +296,8 @@ public:
     }
 
 private:
-    std::shared_ptr<Logger> m_parent;
-    String m_category;
+    const std::shared_ptr<Logger> m_parent;
+    const String m_category;
     LevelDriver<ThreadingPolicy> m_level;
     SinkDriver<Logger, ThreadingPolicy> m_sinks;
 
@@ -357,20 +305,12 @@ private:
     friend class SinkDriver;
 };
 
-template<
-    typename String,
-    typename Char,
-    typename Sinks = std::initializer_list<std::shared_ptr<Sink<Logger<String, Char>>>>>
-Logger(String, Char, Level = Level::Info, Sinks = Sinks{}) -> Logger<String, Char>;
+template<typename String>
+Logger(String, Level = Level::Info) -> Logger<String>;
 
-template<
-    typename String,
-    typename Char = String,
-    typename Sinks = std::initializer_list<std::shared_ptr<Sink<Logger<String, Char>>>>,
-    size_t N>
+template<typename Char, size_t N>
 Logger(
-    const String (&)[N], // NOLINT(*-avoid-c-arrays)
-    Level = Level::Info,
-    Sinks = Sinks{}) -> Logger<std::basic_string_view<String>, Char>;
+    const Char (&)[N], // NOLINT(*-avoid-c-arrays)
+    Level = Level::Info) -> Logger<std::basic_string_view<Char>>;
 
 } // namespace PlainCloud::Log

@@ -1,29 +1,42 @@
 #pragma once
 
+#include "log/format.h"
 #include "log/level.h"
 #include "log/location.h"
-#include "log/sinks/stringview_sink.h"
+#include "log/sink.h" // IWYU pragma: export
 
+#include <concepts>
 #include <ostream>
+#include <string_view>
+#include <utility>
 
 namespace PlainCloud::Log {
 
 template<typename Logger>
-class OStreamSink : public StringViewSink<Logger> {
+    requires(std::convertible_to<
+             typename Logger::StringType,
+             std::basic_string_view<typename Logger::CharType>>)
+class OStreamSink : public Sink<Logger> {
 public:
-    using typename StringViewSink<Logger>::CharType;
-    using typename StringViewSink<Logger>::StringType;
-    using typename StringViewSink<Logger>::Pattern;
+    using typename Sink<Logger>::CharType;
+    using typename Sink<Logger>::StringType;
 
     template<typename... Args>
-    OStreamSink(std::basic_ostream<CharType>& ostream, Args&&... args)
-        : StringViewSink<Logger>(std::forward<Args>(args)...)
+    explicit OStreamSink(const std::basic_ostream<CharType>& ostream, Args&&... args)
+        : Sink<Logger>(std::forward<Args>(args)...)
+        , m_ostream(ostream.rdbuf())
+    {
+    }
+
+    template<typename... Args>
+    explicit OStreamSink(std::basic_streambuf<CharType>* ostream, Args&&... args)
+        : Sink<Logger>(std::forward<Args>(args)...)
         , m_ostream(ostream)
     {
     }
 
     auto message(
-        Logger::StreamBuffer& buffer,
+        FormatBuffer<CharType>& buffer,
         const Level level,
         const StringType& category,
         const StringType& message,
@@ -34,13 +47,13 @@ public:
     }
 
     auto message(
-        Logger::StreamBuffer& buffer,
+        FormatBuffer<CharType>& buffer,
         const Level level,
         const StringType& category,
         const Location& caller) -> void override
     {
         this->format(buffer, level, category, caller);
-        m_ostream << buffer.rdbuf();
+        m_ostream << buffer.rdbuf() << static_cast<CharType>('\n');
     }
 
     auto flush() -> void override
@@ -49,6 +62,6 @@ public:
     }
 
 private:
-    std::basic_ostream<CharType>& m_ostream;
+    std::basic_ostream<CharType> m_ostream;
 };
 } // namespace PlainCloud::Log
