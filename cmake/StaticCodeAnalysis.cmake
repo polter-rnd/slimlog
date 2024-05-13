@@ -58,7 +58,6 @@ function(enable_static_code_analysis)
     get_property(enabled_languages GLOBAL PROPERTY ENABLED_LANGUAGES)
 
     if(ANALYZE_CPPCHECK)
-        find_program(Cppcheck_EXECUTABLE NAMES cppcheck REQUIRED)
         foreach(language ${enabled_languages})
             if(language MATCHES "^C|CXX$")
                 set(CMAKE_${language}_CPPCHECK

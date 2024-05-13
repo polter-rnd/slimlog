@@ -27,8 +27,8 @@
 # Uses the following parameters:
 # @arg __FORMAT_CLANG__:             Enable source code formatting with clang-format
 # @arg __FORMAT_CMAKE__:             Enable cmake files formatting with cmake-format
-# @arg __FORMAT_CLANG_MIN_VERSION__: Minimum required version for `clang-format`
-# @arg __FORMAT_CMAKE_MIN_VERSION__: Minimum required version for `cmake-format`
+# @arg __CLANG_FORMAT_MIN_VERSION__: Minimum required version for `clang-format`
+# @arg __CMAKE_FORMAT_MIN_VERSION__: Minimum required version for `cmake-format`
 # [/cmake_documentation]
 
 include(Helpers)
