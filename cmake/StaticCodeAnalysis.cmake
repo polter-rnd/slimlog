@@ -70,16 +70,10 @@ function(enable_static_code_analysis)
     endif()
 
     if(ANALYZE_CLANG_TIDY)
-        if(ARG_CLANG_TIDY_EXTRA_ARGS)
-            set(clang_tidy_extra_args "")
-            foreach(extra_arg ${ARG_CLANG_TIDY_EXTRA_ARGS})
-                list(APPEND clang_tidy_extra_args -extra-arg=${extra_arg})
-            endforeach()
-        endif()
         foreach(language ${enabled_languages})
             if(language MATCHES "^C|CXX|OBJC|OBJCXX$")
                 set(CMAKE_${language}_CLANG_TIDY
-                    ${ClangTidy_EXECUTABLE} ${clang_tidy_extra_args}
+                    ${ClangTidy_EXECUTABLE} ${ARG_CLANG_TIDY_EXTRA_ARGS}
                     CACHE STRING ""
                 )
             endif()
