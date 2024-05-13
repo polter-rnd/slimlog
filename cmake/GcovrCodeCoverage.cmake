@@ -81,25 +81,11 @@ function(add_gcovr_coverage_target)
         endif()
     endforeach()
 
-    if(compiler_version)
-        string(REGEX REPLACE "([0-9]+)\\..*" "\\1" compiler_version_major ${compiler_version})
-    endif()
-
     if(compiler_id MATCHES "Clang")
-        set_directory_hints(LlvmCov HINTS LLVM_DIR LLVM_ROOT)
-        find_program(
-            LlvmCov_EXECUTABLE
-            NAMES llvm-cov-${compiler_version_major} llvm-cov
-            HINTS ${LlvmCov_HINTS}
-            DOC "llvm-cov executable"
-        )
+        find_package(LlvmCov REQUIRED)
         set(ARG_GCOV_EXECUTABLE "${LlvmCov_EXECUTABLE} gcov")
     elseif(compiler_id MATCHES "GNU")
-        find_program(
-            Gcov_EXECUTABLE
-            NAMES gcov-${compiler_version_major} gcov
-            DOC "gcov executable"
-        )
+        find_package(Gcov REQUIRED)
         set(ARG_GCOV_EXECUTABLE "${Gcov_EXECUTABLE}")
     else()
         message(WARNING "Coverage supported only for GCC or Clang compilers")
