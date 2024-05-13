@@ -15,7 +15,6 @@
 # @param EXCLUDE_DIRS  List of directories to be excluded from formatting
 # [/cmake_documentation]
 function(add_cmake_code_format_targets)
-    find_package(CMakeFormat REQUIRED)
     find_program(Diff_EXECUTABLE diff REQUIRED)
 
     set(options "")
