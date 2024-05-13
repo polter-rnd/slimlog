@@ -55,6 +55,7 @@ if(ENABLE_ANALYZERS)
     set(IWYU_MIN_VERSION 0.20)
     include(StaticCodeAnalysis)
     enable_static_code_analysis(
+        CLANG_TIDY_EXTRA_ARGS -header-filter=.*
         IWYU_EXTRA_ARGS --cxx17ns --quoted_includes_first --no_fwd_decls
         CPPCHECK_EXTRA_ARGS --enable=warning,performance,portability,information,missingInclude
                             --inline-suppr --suppress=missingIncludeSystem
