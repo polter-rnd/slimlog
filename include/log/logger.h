@@ -10,6 +10,7 @@
 #include "location.h"
 #include "policy.h"
 #include "sink.h"
+#include "util.h"
 
 #include <cstddef>
 #include <memory>
@@ -21,7 +22,7 @@ namespace PlainCloud::Log {
 
 template<typename T>
 struct UnderlyingChar {
-    static_assert(AlwaysFalse<T>{}, "Unable to deduce the underlying char type");
+    static_assert(Util::AlwaysFalse<T>{}, "Unable to deduce the underlying char type");
 };
 
 template<typename T>
