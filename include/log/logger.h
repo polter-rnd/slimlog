@@ -21,7 +21,7 @@ namespace PlainCloud::Log {
 
 template<typename T>
 struct UnderlyingChar {
-    static_assert(AlwaysFalse<T>{}, "Unable to deduce underlying char type");
+    static_assert(AlwaysFalse<T>{}, "Unable to deduce the underlying char type");
 };
 
 template<typename T>

@@ -8,6 +8,7 @@
 #include <exception>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string_view>
 #include <utility>
 
@@ -111,6 +112,13 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
 
         static constexpr auto SomeConstant = 1234;
         log2.info([](auto& buf) { buf.format(L"KEKEKEKEKE {}", SomeConstant); });
+
+        const std::basic_stringstream<wchar_t> keklal;
+        Log::Logger log9{L"logger"};
+        log9.add_sink<Log::OStreamSink>(keklal)->set_pattern(L"(%t) [%l] %F|%L: %m");
+        log9.info(L"Ой лол 😃");
+        log9.info(L"Hello guys!!!");
+        std::wcout << keklal.view();
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << '\n';
         return 1;

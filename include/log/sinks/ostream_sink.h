@@ -53,7 +53,8 @@ public:
         const Location& caller) -> void override
     {
         this->format(buffer, level, category, caller);
-        m_ostream << buffer.rdbuf() << static_cast<CharType>('\n');
+        buffer << static_cast<CharType>('\n');
+        m_ostream << buffer.rdbuf();
     }
 
     auto flush() -> void override
