@@ -5,6 +5,7 @@
 #include "location.h"
 
 #include <array>
+#include <cuchar>
 #include <initializer_list>
 #include <iterator>
 #include <string>
@@ -64,74 +65,101 @@ public:
         const String& category,
         const Location& caller) const -> void
     {
-        if (!m_pattern.empty()) {
-            StringType pattern{m_pattern};
+        if (empty()) {
+            return;
+        }
 
-            const auto result_pos = result.tellp();
-            result.seekg(result_pos);
+        StringType pattern{m_pattern};
 
-            auto append = [&pattern, &result](auto pos, auto data) {
-                result << pattern.substr(0, pos) << data;
-                pattern = pattern.substr(pos + 2);
-            };
-            auto skip = [&pattern, &result](auto pos, auto flag) {
-                result << pattern.substr(0, pos + 1);
-                pattern = pattern.substr(pos + (flag == '%' ? 2 : 1));
-            };
+        const auto result_pos = result.tellp();
+        result.seekg(result_pos);
 
-            for (;;) {
-                const auto pos = pattern.find('%');
-                const auto len = pattern.size();
-                if (pos == pattern.npos || pos == len - 1) {
-                    result << pattern;
+        auto append = [&pattern, &result](auto pos, auto data) {
+            using DataType = typename std::remove_cv_t<std::remove_pointer_t<decltype(data)>>;
+            using IsDigit = std::is_arithmetic<decltype(data)>;
+            using IsPointer = std::is_pointer<decltype(data)>;
+            using ToWideChar = std::
+                conjunction<std::is_same<DataType, char>, std::negation<std::is_same<Char, char>>>;
+            using ToMultiByte = std::
+                conjunction<std::is_same<Char, char>, std::negation<std::is_same<DataType, char>>>;
+
+            result << pattern.substr(0, pos);
+
+            if constexpr (IsPointer::value && ToWideChar::value) {
+                to_widechar(result, data);
+            } else if constexpr (IsPointer::value && ToMultiByte::value) {
+                to_multibyte(result, data);
+            } else if constexpr (std::is_same_v<Char, char8_t>) {
+                result.format(u8"{}", data);
+            } else if constexpr (std::is_same_v<Char, char16_t>) {
+                result.format(u"{}", data);
+            } else if constexpr (std::is_same_v<Char, char32_t>) {
+                result.format(U"{}", data);
+            } else if constexpr (std::is_same_v<Char, wchar_t>) {
+                result.format(L"{}", data);
+            } else {
+                result.format("{}", data);
+            }
+
+            pattern = pattern.substr(pos + 2);
+        };
+        auto skip = [&pattern, &result](auto pos, auto flag) {
+            result << pattern.substr(0, pos + 1);
+            pattern = pattern.substr(pos + (flag == '%' ? 2 : 1));
+        };
+
+        for (;;) {
+            const auto pos = pattern.find('%');
+            const auto len = pattern.size();
+            if (pos == pattern.npos || pos == len - 1) {
+                result << pattern;
+                break;
+            }
+
+            const auto chr = pattern.at(pos + 1);
+            switch (static_cast<Flag>(chr)) {
+            case Flag::Level:
+                switch (level) {
+                case Level::Fatal:
+                    append(pos, m_levels.fatal);
+                    break;
+                case Level::Error:
+                    append(pos, m_levels.error);
+                    break;
+                case Level::Warning:
+                    append(pos, m_levels.warning);
+                    break;
+                case Level::Info:
+                    append(pos, m_levels.info);
+                    break;
+                case Level::Debug:
+                    append(pos, m_levels.debug);
+                    break;
+                case Level::Trace:
+                    append(pos, m_levels.trace);
                     break;
                 }
-
-                const auto chr = pattern.at(pos + 1);
-                switch (static_cast<Flag>(chr)) {
-                case Flag::Level:
-                    switch (level) {
-                    case Level::Fatal:
-                        append(pos, m_levels.fatal);
-                        break;
-                    case Level::Error:
-                        append(pos, m_levels.error);
-                        break;
-                    case Level::Warning:
-                        append(pos, m_levels.warning);
-                        break;
-                    case Level::Info:
-                        append(pos, m_levels.info);
-                        break;
-                    case Level::Debug:
-                        append(pos, m_levels.debug);
-                        break;
-                    case Level::Trace:
-                        append(pos, m_levels.trace);
-                        break;
-                    }
-                    break;
-                case Flag::Topic:
-                    append(pos, category);
-                    break;
-                case Flag::Message:
-                    result.seekg(0);
-                    append(pos, result.view().substr(0, result_pos));
-                    result.seekg(result_pos);
-                    break;
-                    /*case Flag::File:
-                    append(pos, caller.file_name());
-                    break;*/
-                case Flag::Line:
-                    append(pos, caller.line());
-                    break;
-                case Flag::Function:
-                    append(pos, caller.function_name());
-                    break;
-                default:
-                    skip(pos, chr);
-                    break;
-                }
+                break;
+            case Flag::Topic:
+                append(pos, category);
+                break;
+            case Flag::Message:
+                result.seekg(0);
+                append(pos, result.view().substr(0, result_pos));
+                result.seekg(result_pos);
+                break;
+            case Flag::File:
+                append(pos, caller.file_name());
+                break;
+            case Flag::Line:
+                append(pos, caller.line());
+                break;
+            case Flag::Function:
+                append(pos, caller.function_name());
+                break;
+            default:
+                skip(pos, chr);
+                break;
             }
         }
     }
@@ -164,6 +192,53 @@ public:
                 m_levels.trace = level.second;
                 break;
             }
+        }
+    }
+
+protected:
+    template<typename T>
+    static void to_widechar(FormatBuffer<Char>& result, const T* data)
+    {
+        // Convert multi-byte to wide char
+        Char wchr;
+        auto len = std::char_traits<T>::length(data);
+        auto state = std::mbstate_t();
+        size_t (*towc_func)(Char*, const T*, size_t, mbstate_t*) = nullptr;
+        if constexpr (std::is_same_v<Char, wchar_t>) {
+            towc_func = std::mbrtowc;
+        } else if constexpr (std::is_same_v<Char, char8_t>) {
+            towc_func = std::mbrtoc8;
+        } else if constexpr (std::is_same_v<Char, char16_t>) {
+            towc_func = std::mbrtoc16;
+        } else if constexpr (std::is_same_v<Char, char32_t>) {
+            towc_func = std::mbrtoc32;
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        for (int ret{}; (ret = towc_func(&wchr, data, len, &state)) > 0; data += ret, len -= ret) {
+            result.put(wchr);
+        }
+    }
+
+    template<typename T>
+    static void to_multibyte(FormatBuffer<Char>& result, const T* data)
+    {
+        // Convert wide char to multi-byte
+        std::basic_string<Char> mbstr(MB_CUR_MAX, '\0');
+        auto state = std::mbstate_t();
+        auto len = std::char_traits<T>::length(data);
+        size_t (*tomb_func)(Char*, T, mbstate_t*) = nullptr;
+        if constexpr (std::is_same_v<T, wchar_t>) {
+            tomb_func = std::wcrtomb;
+        } else if constexpr (std::is_same_v<T, char8_t>) {
+            tomb_func = std::c8rtomb;
+        } else if constexpr (std::is_same_v<T, char16_t>) {
+            tomb_func = std::c16rtomb;
+        } else if constexpr (std::is_same_v<T, char32_t>) {
+            tomb_func = std::c32rtomb;
+        }
+        for (int ret{}; (ret = tomb_func(mbstr.data(), *data, &state)) > 0 && len != 0;
+             data++, len--) {
+            result.write(mbstr.c_str(), ret);
         }
     }
 
