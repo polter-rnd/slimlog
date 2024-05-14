@@ -21,8 +21,6 @@
 #include <utility>
 
 namespace PlainCloud::Log {
-template<typename>
-struct AlwaysFalse : std::false_type { };
 
 /**
  * @brief Base abstract sink class.
