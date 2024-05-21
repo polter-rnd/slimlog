@@ -11,10 +11,13 @@
 #include "pattern.h"
 #include "policy.h"
 
+#include <algorithm>
 #include <atomic>
 #include <initializer_list>
+#include <iostream>
 #include <iterator>
 #include <memory>
+#include <memory_resource>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -213,12 +216,6 @@ public:
         return false;
     }
 
-    auto buffer() const -> auto&
-    {
-        static thread_local FormatBuffer<CharType> buffer;
-        return buffer;
-    }
-
     /**
      * @brief Emit new callback-based log message if it fits for specified logging level.
      *
@@ -243,18 +240,18 @@ public:
         const Location& location = Location::current(),
         Args&&... args) const -> void
     {
-        if (static_cast<Level>(logger.m_level) < level) {
-            return;
+        // USE NORM MEMORY POOL! Pass memory pool instead of buffer in arg.
+        std::pmr::unordered_map<std::shared_ptr<Sink<Logger>>, bool> sinks{memory_pool()};
+        if (should_sink(logger, level)) {
+            sinks.insert(m_sinks.cbegin(), m_sinks.cend());
         }
-
-        /*auto sinks{m_sinks};
         for (auto parent{logger.m_parent}; parent; parent = parent->m_parent) {
-            if (static_cast<Level>(parent->m_level) >= level) {
+            if (should_sink(*parent, level)) {
                 sinks.insert(parent->m_sinks.m_sinks.cbegin(), parent->m_sinks.m_sinks.cend());
             }
-        }*/
+        }
 
-        for (const auto& sink : m_sinks) {
+        for (const auto& sink : sinks) {
             if (sink.second) {
                 if constexpr (std::is_invocable_v<T, decltype(buffer), Args...>) {
                     callback(buffer, std::forward<Args>(args)...);
@@ -275,7 +272,6 @@ public:
                     // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                     sink.first->message(buffer, level, logger.category(), callback, location);
                 }
-                buffer.str(std::basic_string<CharType>{});
             }
         }
     }
@@ -288,18 +284,30 @@ public:
         const Location& location = Location::current(),
         Args&&... args) const -> void
     {
-        this->message(buffer(), logger, level, message, location, std::forward<Args>(args)...);
+        FormatBuffer<CharType> buffer{memory_pool()};
+        this->message(buffer, logger, level, message, location, std::forward<Args>(args)...);
+        memory_pool()->release();
     }
 
 protected:
-    auto cbegin() const noexcept ->
-        typename std::unordered_map<std::shared_ptr<Sink<Logger>>, bool>::const_iterator
+    inline auto should_sink(const Logger& logger, const Level level) const noexcept -> bool
+    {
+        return static_cast<Level>(logger.m_level) >= level;
+    }
+
+    auto memory_pool() const -> std::pmr::monotonic_buffer_resource*
+    {
+        static char buf[4096];
+        static std::pmr::monotonic_buffer_resource pool{buf, sizeof(buf)};
+        return &pool;
+    }
+
+    inline auto cbegin() const noexcept
     {
         return m_sinks.cbegin();
     }
 
-    auto cend() const noexcept ->
-        typename std::unordered_map<std::shared_ptr<Sink<Logger>>, bool>::const_iterator
+    inline auto cend() const noexcept
     {
         return m_sinks.cend();
     }
@@ -325,6 +333,8 @@ template<
 class SinkDriver<Logger, MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>>
     final {
 public:
+    using CharType = typename Logger::CharType;
+
     /**
      * @brief Construct a new SinkDriver object
      *
@@ -403,12 +413,6 @@ public:
         return m_sinks.sink_enabled(sink);
     }
 
-    auto buffer() const -> FormatBuffer<typename Logger::CharType>&
-    {
-        static FormatBuffer<typename Logger::CharType> buffer;
-        return buffer;
-    }
-
     /**
      * @brief Emit new callback-based log message if it fits for specified logging level.
      *
@@ -433,7 +437,17 @@ public:
         Args&&... args) const -> void
     {
         ReadLock lock(m_mutex);
-        m_sinks.message(buffer(), logger, level, message, location, std::forward<Args>(args)...);
+        FormatBuffer<CharType> buffer{memory_pool()};
+        m_sinks.message(buffer, logger, level, message, location, std::forward<Args>(args)...);
+        memory_pool()->release();
+    }
+
+protected:
+    auto memory_pool() const -> std::pmr::monotonic_buffer_resource*
+    {
+        static thread_local char buf[4096];
+        static thread_local std::pmr::monotonic_buffer_resource pool{buf, sizeof(buf)};
+        return &pool;
     }
 
 private:

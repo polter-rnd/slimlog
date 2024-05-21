@@ -71,8 +71,7 @@ public:
 
         StringType pattern{m_pattern};
 
-        const auto result_pos = result.tellp();
-        result.seekg(result_pos);
+        const auto result_pos = result.size();
 
         auto append = [&pattern, &result](auto pos, auto data) {
             using DataType = typename std::remove_cv_t<std::remove_pointer_t<decltype(data)>>;
@@ -83,7 +82,7 @@ public:
             using ToMultiByte = std::
                 conjunction<std::is_same<Char, char>, std::negation<std::is_same<DataType, char>>>;
 
-            result << pattern.substr(0, pos);
+            result += pattern.substr(0, pos);
 
             if constexpr (IsPointer::value && ToWideChar::value) {
                 to_widechar(result, data);
@@ -104,7 +103,7 @@ public:
             pattern = pattern.substr(pos + 2);
         };
         auto skip = [&pattern, &result](auto pos, auto flag) {
-            result << pattern.substr(0, pos + 1);
+            result += pattern.substr(0, pos + 1);
             pattern = pattern.substr(pos + (flag == '%' ? 2 : 1));
         };
 
@@ -112,7 +111,7 @@ public:
             const auto pos = pattern.find('%');
             const auto len = pattern.size();
             if (pos == pattern.npos || pos == len - 1) {
-                result << pattern;
+                result += pattern;
                 break;
             }
 
@@ -144,9 +143,8 @@ public:
                 append(pos, category);
                 break;
             case Flag::Message:
-                result.seekg(0);
-                append(pos, result.view().substr(0, result_pos));
-                result.seekg(result_pos);
+                append(pos, std::basic_string_view<CharType>(result.c_str(), result_pos));
+                result.erase(0, result_pos);
                 break;
             case Flag::File:
                 append(pos, caller.file_name());
@@ -215,7 +213,7 @@ protected:
         }
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         for (int ret{}; (ret = towc_func(&wchr, data, len, &state)) > 0; data += ret, len -= ret) {
-            result.put(wchr);
+            result += wchr;
         }
     }
 
