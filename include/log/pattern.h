@@ -3,6 +3,7 @@
 #include "format.h"
 #include "level.h"
 #include "location.h"
+#include "util.h"
 
 #include <array>
 #include <cuchar>
@@ -13,6 +14,35 @@
 #include <utility>
 
 namespace PlainCloud::Log {
+
+#ifdef __cpp_lib_char8_t
+
+namespace Char8Fallbacks {
+template<typename T = char8_t>
+size_t mbrtoc8(T*, const char*, size_t, mbstate_t*)
+{
+    static_assert(
+        Util::AlwaysFalse<T>{},
+        "C++ compiler does not support std::mbrtoc8(char8_t*, const char*, size_t, mbstate_t*)");
+    return -1;
+};
+
+template<typename T = char8_t>
+size_t c8rtomb(char*, T, mbstate_t*)
+{
+    static_assert(
+        Util::AlwaysFalse<T>{},
+        "C++ compiler does not support std::c8rtomb(char*, char8_t, mbstate_t*)");
+    return -1;
+}
+} // namespace Char8Fallbacks
+
+namespace Char8 {
+using namespace Char8Fallbacks;
+using namespace std;
+} // namespace Char8
+
+#endif
 
 template<typename Char>
 class Pattern {
@@ -88,8 +118,9 @@ public:
                 to_widechar(result, data);
             } else if constexpr (IsPointer::value && ToMultiByte::value) {
                 to_multibyte(result, data);
+#ifdef __cpp_lib_char8_t
             } else if constexpr (std::is_same_v<Char, char8_t>) {
-                result.format(u8"{}", data);
+#endif
             } else if constexpr (std::is_same_v<Char, char16_t>) {
                 result.format(u"{}", data);
             } else if constexpr (std::is_same_v<Char, char32_t>) {
@@ -204,8 +235,10 @@ protected:
         size_t (*towc_func)(Char*, const T*, size_t, mbstate_t*) = nullptr;
         if constexpr (std::is_same_v<Char, wchar_t>) {
             towc_func = std::mbrtowc;
+#ifdef __cpp_lib_char8_t
         } else if constexpr (std::is_same_v<Char, char8_t>) {
-            towc_func = std::mbrtoc8;
+            towc_func = Char8::mbrtoc8;
+#endif
         } else if constexpr (std::is_same_v<Char, char16_t>) {
             towc_func = std::mbrtoc16;
         } else if constexpr (std::is_same_v<Char, char32_t>) {
@@ -227,8 +260,10 @@ protected:
         size_t (*tomb_func)(Char*, T, mbstate_t*) = nullptr;
         if constexpr (std::is_same_v<T, wchar_t>) {
             tomb_func = std::wcrtomb;
+#ifdef __cpp_lib_char8_t
         } else if constexpr (std::is_same_v<T, char8_t>) {
-            tomb_func = std::c8rtomb;
+            tomb_func = Char8::c8rtomb;
+#endif
         } else if constexpr (std::is_same_v<T, char16_t>) {
             tomb_func = std::c16rtomb;
         } else if constexpr (std::is_same_v<T, char32_t>) {
