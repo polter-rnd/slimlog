@@ -25,6 +25,14 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         log.add_sink<Log::OStreamSink>(std::cerr);
         log.info("hello!");
 
+        std::basic_stringstream<char8_t> mystream;
+        Log::Logger log19{u8"uchar8 log"};
+        log19.add_sink<Log::OStreamSink>(mystream, u8"(%t) [%l] %F|%L: %m");
+        log19.info(u8"hello from u8!");
+        std::cout << std::string_view(
+            reinterpret_cast<const char*>(mystream.view().data()), mystream.view().size())
+                  << std::endl;
+
         auto log_root = std::make_shared<Log::Logger<std::string_view>>("kek_root");
 
         auto root_sink = log_root->add_sink<Log::OStreamSink>(
