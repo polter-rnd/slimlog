@@ -17,6 +17,7 @@
 
 #include <concepts>
 #include <iterator>
+#include <memory_resource>
 #include <sstream>
 #include <type_traits>
 #include <utility>
@@ -97,23 +98,24 @@ private:
 };
 
 template<typename Char>
-using Buffer = typename std::basic_stringstream<Char>;
+using Buffer = typename std::pmr::basic_string<Char>;
 
 template<typename Char>
 class FormatBuffer final : public Buffer<Char> {
 public:
+    using Buffer<Char>::Buffer;
+
     template<typename... Args>
     auto format(const Format<Char, std::type_identity_t<Args>...>& fmt, Args&&... args) -> void
     {
 #ifdef ENABLE_FMTLIB
         if constexpr (std::is_same_v<Char, char>) {
-            fmt::format_to(std::ostreambuf_iterator(*this), fmt.fmt(), std::forward<Args>(args)...);
+            fmt::format_to(std::back_inserter(*this), fmt.fmt(), std::forward<Args>(args)...);
         } else {
-            fmt::format_to(
-                std::ostreambuf_iterator(*this), fmt.fmt().get(), std::forward<Args>(args)...);
+            fmt::format_to(std::back_inserter(*this), fmt.fmt().get(), std::forward<Args>(args)...);
         }
 #else
-        std::format_to(std::ostreambuf_iterator(*this), fmt.fmt(), std::forward<Args>(args)...);
+        std::format_to(std::back_inserter(*this), fmt.fmt(), std::forward<Args>(args)...);
 #endif
     }
 };

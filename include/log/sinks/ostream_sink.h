@@ -42,7 +42,7 @@ public:
         const StringType& message,
         const Location& caller) -> void override
     {
-        buffer << message;
+        buffer.assign(message);
         this->message(buffer, level, category, caller);
     }
 
@@ -53,8 +53,8 @@ public:
         const Location& caller) -> void override
     {
         this->format(buffer, level, category, caller);
-        buffer << static_cast<CharType>('\n');
-        m_ostream << buffer.rdbuf();
+        buffer.push_back('\n');
+        m_ostream << buffer;
     }
 
     auto flush() -> void override
