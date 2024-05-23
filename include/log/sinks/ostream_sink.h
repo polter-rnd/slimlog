@@ -1,6 +1,5 @@
 #pragma once
 
-#include "log/format.h"
 #include "log/level.h"
 #include "log/location.h"
 #include "log/sink.h" // IWYU pragma: export
@@ -20,6 +19,7 @@ class OStreamSink : public Sink<Logger> {
 public:
     using typename Sink<Logger>::CharType;
     using typename Sink<Logger>::StringType;
+    using typename Sink<Logger>::FormatBufferType;
 
     template<typename... Args>
     explicit OStreamSink(const std::basic_ostream<CharType>& ostream, Args&&... args)
@@ -36,7 +36,7 @@ public:
     }
 
     auto message(
-        FormatBuffer<CharType>& buffer,
+        FormatBufferType& buffer,
         const Level level,
         const StringType& category,
         const StringType& message,
@@ -47,7 +47,7 @@ public:
     }
 
     auto message(
-        FormatBuffer<CharType>& buffer,
+        FormatBufferType& buffer,
         const Level level,
         const StringType& category,
         const Location& caller) -> void override
