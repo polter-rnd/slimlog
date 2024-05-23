@@ -11,17 +11,18 @@
 #include "pattern.h"
 #include "policy.h"
 
-#include <algorithm>
+#include <array>
 #include <atomic>
 #include <initializer_list>
-#include <iostream>
-#include <iterator>
 #include <memory>
 #include <memory_resource>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
+
+// Suppress include for std::equal_to() which is not used directly
+// IWYU pragma: no_include <functional>
 
 namespace PlainCloud::Log {
 
@@ -38,6 +39,10 @@ class Sink : public std::enable_shared_from_this<Sink<Logger>> {
 public:
     using StringType = typename Logger::StringType;
     using CharType = typename Logger::CharType;
+    using FormatBufferType = FormatBuffer<
+        CharType,
+        std::char_traits<CharType>,
+        std::pmr::polymorphic_allocator<CharType>>;
 
     template<typename... Args>
     explicit Sink(Args&&... args)
@@ -68,7 +73,7 @@ public:
     }
 
     auto format(
-        FormatBuffer<CharType>& result,
+        FormatBufferType& result,
         const Level level,
         const StringType& category,
         const Location& caller) const -> void
@@ -84,14 +89,14 @@ public:
      * @param location Caller location (file, line, function).
      */
     virtual auto message(
-        FormatBuffer<CharType>& buffer,
+        FormatBufferType& buffer,
         Level level,
         const StringType& category,
         const StringType& message,
         const Location& location) -> void = 0;
 
     virtual auto message(
-        FormatBuffer<CharType>& buffer,
+        FormatBufferType& buffer,
         Level level,
         const StringType& category,
         const Location& location) -> void = 0;
@@ -131,19 +136,8 @@ template<typename Logger>
 class SinkDriver<Logger, SingleThreadedPolicy> final {
 public:
     using CharType = typename Logger::CharType;
-
-    /**
-     * @brief Construct a new SinkDriver object
-     *
-     * @param sinks Sinks to be added upon creation.
-     */
-    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<Logger>>>& sinks = {})
-    {
-        m_sinks.reserve(sinks.size());
-        for (const auto& sink : sinks) {
-            m_sinks.emplace(sink, true);
-        }
-    }
+    using BufferType = typename std::array<char, Logger::BufferSize>;
+    using FormatBufferType = typename Sink<Logger>::FormatBufferType;
 
     /**
      * @brief Add existing sink.
@@ -233,15 +227,17 @@ public:
      */
     template<typename T, typename... Args>
     auto message(
-        FormatBuffer<CharType>& buffer,
+        BufferType& buffer,
         const Logger& logger,
         const Level level,
         const T& callback,
         const Location& location = Location::current(),
         Args&&... args) const -> void
     {
-        // USE NORM MEMORY POOL! Pass memory pool instead of buffer in arg.
-        std::pmr::unordered_map<std::shared_ptr<Sink<Logger>>, bool> sinks{memory_pool()};
+        std::pmr::monotonic_buffer_resource pool{buffer.data(), buffer.size()};
+        std::pmr::unordered_map<std::shared_ptr<Sink<Logger>>, bool> sinks{&pool};
+        FormatBufferType fmt_buffer{&pool};
+
         if (should_sink(logger, level)) {
             sinks.insert(m_sinks.cbegin(), m_sinks.cend());
         }
@@ -253,16 +249,17 @@ public:
 
         for (const auto& sink : sinks) {
             if (sink.second) {
-                if constexpr (std::is_invocable_v<T, decltype(buffer), Args...>) {
-                    callback(buffer, std::forward<Args>(args)...);
-                    sink.first->message(buffer, level, logger.category(), location);
+                using BufferRefType = std::add_lvalue_reference_t<decltype(fmt_buffer)>;
+                if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
+                    callback(fmt_buffer, std::forward<Args>(args)...);
+                    sink.first->message(fmt_buffer, level, logger.category(), location);
                 } else if constexpr (std::is_invocable_v<T, Args...>) {
                     if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
                         callback(std::forward<Args>(args)...);
-                        sink.first->message(buffer, level, logger.category(), location);
+                        sink.first->message(fmt_buffer, level, logger.category(), location);
                     } else {
                         sink.first->message(
-                            buffer,
+                            fmt_buffer,
                             level,
                             logger.category(),
                             callback(std::forward<Args>(args)...),
@@ -270,10 +267,12 @@ public:
                     }
                 } else {
                     // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
-                    sink.first->message(buffer, level, logger.category(), callback, location);
+                    sink.first->message(fmt_buffer, level, logger.category(), callback, location);
                 }
             }
         }
+
+        pool.release();
     }
 
     template<typename T, typename... Args>
@@ -284,9 +283,8 @@ public:
         const Location& location = Location::current(),
         Args&&... args) const -> void
     {
-        FormatBuffer<CharType> buffer{memory_pool()};
-        this->message(buffer, logger, level, message, location, std::forward<Args>(args)...);
-        memory_pool()->release();
+        this->message(
+            static_buffer(), logger, level, message, location, std::forward<Args>(args)...);
     }
 
 protected:
@@ -295,11 +293,10 @@ protected:
         return static_cast<Level>(logger.m_level) >= level;
     }
 
-    auto memory_pool() const -> std::pmr::monotonic_buffer_resource*
+    [[nodiscard]] auto static_buffer() const -> auto&
     {
-        static char buf[4096];
-        static std::pmr::monotonic_buffer_resource pool{buf, sizeof(buf)};
-        return &pool;
+        static BufferType buffer;
+        return buffer;
     }
 
     inline auto cbegin() const noexcept
@@ -333,17 +330,9 @@ template<
 class SinkDriver<Logger, MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>>
     final {
 public:
-    using CharType = typename Logger::CharType;
-
-    /**
-     * @brief Construct a new SinkDriver object
-     *
-     * @param sinks Sinks to be added upon creation.
-     */
-    SinkDriver(const std::initializer_list<std::shared_ptr<Sink<Logger>>>& sinks = {})
-        : m_sinks(sinks)
-    {
-    }
+    using CharType = typename SinkDriver<Logger, SingleThreadedPolicy>::CharType;
+    using BufferType = typename SinkDriver<Logger, SingleThreadedPolicy>::BufferType;
+    using FormatBufferType = typename SinkDriver<Logger, SingleThreadedPolicy>::FormatBufferType;
 
     /**
      * @brief Add existing sink.
@@ -437,17 +426,15 @@ public:
         Args&&... args) const -> void
     {
         ReadLock lock(m_mutex);
-        FormatBuffer<CharType> buffer{memory_pool()};
-        m_sinks.message(buffer, logger, level, message, location, std::forward<Args>(args)...);
-        memory_pool()->release();
+        m_sinks.message(
+            static_buffer(), logger, level, message, location, std::forward<Args>(args)...);
     }
 
 protected:
-    auto memory_pool() const -> std::pmr::monotonic_buffer_resource*
+    auto static_buffer() const -> auto&
     {
-        static thread_local char buf[4096];
-        static thread_local std::pmr::monotonic_buffer_resource pool{buf, sizeof(buf)};
-        return &pool;
+        static thread_local BufferType buffer;
+        return buffer;
     }
 
 private:

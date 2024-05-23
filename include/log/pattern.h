@@ -1,25 +1,29 @@
 #pragma once
 
-#include "format.h"
 #include "level.h"
 #include "location.h"
 #include "util.h"
 
 #include <array>
+#include <cstdlib>
 #include <cuchar>
+#include <cwchar>
 #include <initializer_list>
-#include <iterator>
+#include <iosfwd>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace PlainCloud::Log {
 
 #ifdef __cpp_lib_char8_t
 
+namespace Detail {
 namespace Char8Fallbacks {
 template<typename T = char8_t>
-size_t mbrtoc8(T*, const char*, size_t, mbstate_t*)
+auto mbrtoc8(T* /*unused*/, const char* /*unused*/, size_t /*unused*/, mbstate_t* /*unused*/)
+    -> size_t
 {
     static_assert(
         Util::AlwaysFalse<T>{},
@@ -28,7 +32,7 @@ size_t mbrtoc8(T*, const char*, size_t, mbstate_t*)
 };
 
 template<typename T = char8_t>
-size_t c8rtomb(char*, T, mbstate_t*)
+auto c8rtomb(char* /*unused*/, T /*unused*/, mbstate_t* /*unused*/) -> size_t
 {
     static_assert(
         Util::AlwaysFalse<T>{},
@@ -41,6 +45,8 @@ namespace Char8 {
 using namespace Char8Fallbacks;
 using namespace std;
 } // namespace Char8
+
+} // namespace Detail
 
 #endif
 
@@ -89,11 +95,8 @@ public:
     }
 
     template<typename String>
-    auto format(
-        FormatBuffer<Char>& result,
-        const Level level,
-        const String& category,
-        const Location& caller) const -> void
+    auto format(auto& result, const Level level, const String& category, const Location& caller)
+        const -> void
     {
         if (empty()) {
             return;
@@ -226,7 +229,7 @@ public:
 
 protected:
     template<typename T>
-    static void to_widechar(FormatBuffer<Char>& result, const T* data)
+    static void to_widechar(auto& result, const T* data)
     {
         // Convert multi-byte to wide char
         Char wchr;
@@ -237,7 +240,7 @@ protected:
             towc_func = std::mbrtowc;
 #ifdef __cpp_lib_char8_t
         } else if constexpr (std::is_same_v<Char, char8_t>) {
-            towc_func = Char8::mbrtoc8;
+            towc_func = Detail::Char8::mbrtoc8;
 #endif
         } else if constexpr (std::is_same_v<Char, char16_t>) {
             towc_func = std::mbrtoc16;
@@ -251,7 +254,7 @@ protected:
     }
 
     template<typename T>
-    static void to_multibyte(FormatBuffer<Char>& result, const T* data)
+    static void to_multibyte(auto& result, const T* data)
     {
         // Convert wide char to multi-byte
         std::basic_string<Char> mbstr(MB_CUR_MAX, '\0');
@@ -262,7 +265,7 @@ protected:
             tomb_func = std::wcrtomb;
 #ifdef __cpp_lib_char8_t
         } else if constexpr (std::is_same_v<T, char8_t>) {
-            tomb_func = Char8::c8rtomb;
+            tomb_func = Detail::Char8::c8rtomb;
 #endif
         } else if constexpr (std::is_same_v<T, char16_t>) {
             tomb_func = std::c16rtomb;

@@ -20,6 +20,8 @@
 
 namespace PlainCloud::Log {
 
+static constexpr size_t DefaultBufferSize = 4096;
+
 template<typename T>
 struct UnderlyingChar {
     static_assert(Util::AlwaysFalse<T>{}, "Unable to deduce the underlying char type");
@@ -68,11 +70,14 @@ using UnderlyingCharType = typename UnderlyingChar<T>::Type;
 template<
     typename String,
     typename Char = UnderlyingCharType<String>,
-    typename ThreadingPolicy = MultiThreadedPolicy<>>
+    typename ThreadingPolicy = MultiThreadedPolicy<>,
+    size_t StaticBufferSize = DefaultBufferSize>
 class Logger {
 public:
     using StringType = String;
     using CharType = Char;
+
+    static constexpr auto BufferSize = StaticBufferSize;
 
     Logger(Logger const&) = delete;
     Logger(Logger&&) = delete;
@@ -105,7 +110,8 @@ public:
      * @param level Logging level.
      */
     template<typename T>
-    explicit Logger(T&& name, const std::shared_ptr<Logger>& parent, const Level level)
+    explicit Logger(
+        T&& name, const std::shared_ptr<Logger>& parent, const Level level = Level::Info)
         : m_parent(parent)
         , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)

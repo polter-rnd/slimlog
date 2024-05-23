@@ -1,0 +1,34 @@
+[
+    {
+        "symbol": [
+            "std::pair",
+            "private",
+            "<utility>",
+            "public"
+        ]
+    },
+    {
+        "include": [
+            "<bits/types/mbstate_t.h>",
+            "private",
+            "<cwchar>",
+            "public"
+        ]
+    },
+    {
+        "include": [
+            "<bits/types/mbstate_t.h>",
+            "private",
+            "<cuchar>",
+            "public"
+        ]
+    },
+    {
+        "include": [
+            "<bits/memory_resource.h>",
+            "private",
+            "<memory_resource>",
+            "public"
+        ]
+    }
+]

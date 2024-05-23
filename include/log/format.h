@@ -7,8 +7,8 @@
 
 #ifdef ENABLE_FMTLIB
 #include <fmt/core.h>
-#include <fmt/format.h>
-#include <fmt/xchar.h>
+#include <fmt/format.h> // IWYU pragma: keep
+#include <fmt/xchar.h> // IWYU pragma: keep
 #else
 #include <format>
 #endif
@@ -17,8 +17,7 @@
 
 #include <concepts>
 #include <iterator>
-#include <memory_resource>
-#include <sstream>
+#include <string>
 #include <type_traits>
 #include <utility>
 
@@ -97,13 +96,13 @@ private:
     const Location m_loc;
 };
 
-template<typename Char>
-using Buffer = typename std::pmr::basic_string<Char>;
-
-template<typename Char>
-class FormatBuffer final : public Buffer<Char> {
+template<
+    typename Char,
+    typename Traits = std::char_traits<Char>,
+    typename Allocator = std::allocator<Char>>
+class FormatBuffer final : public std::basic_string<Char, Traits, Allocator> {
 public:
-    using Buffer<Char>::Buffer;
+    using std::basic_string<Char, Traits, Allocator>::basic_string;
 
     template<typename... Args>
     auto format(const Format<Char, std::type_identity_t<Args>...>& fmt, Args&&... args) -> void
