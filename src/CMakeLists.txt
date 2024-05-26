@@ -4,6 +4,11 @@ add_executable(${TARGET} main.cpp)
 
 target_include_directories(${TARGET} PUBLIC ${PROJECT_SOURCE_DIR}/include)
 
+target_compile_options(${TARGET} PRIVATE
+  $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+  $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
+)
+
 include(CheckCXXSymbolExists)
 check_cxx_symbol_exists(__cpp_lib_format "format" HAS_CXX20_LIBFORMAT)
 
