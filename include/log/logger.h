@@ -20,7 +20,10 @@
 
 namespace PlainCloud::Log {
 
+/** Default buffer size is equal to typical memory page size */
 static constexpr size_t DefaultBufferSize = 4096;
+
+namespace Detail {
 
 template<typename T>
 struct UnderlyingChar {
@@ -48,6 +51,8 @@ struct UnderlyingChar<T> {
 template<typename T>
 using UnderlyingCharType = typename UnderlyingChar<T>::Type;
 
+} // namespace Detail
+
 /**
  * @brief A logger front-end class.
  *
@@ -69,7 +74,7 @@ using UnderlyingCharType = typename UnderlyingChar<T>::Type;
  */
 template<
     typename String,
-    typename Char = UnderlyingCharType<String>,
+    typename Char = Detail::UnderlyingCharType<String>,
     typename ThreadingPolicy = MultiThreadedPolicy<>,
     size_t StaticBufferSize = DefaultBufferSize>
 class Logger {

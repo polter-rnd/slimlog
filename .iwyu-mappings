@@ -1,13 +1,5 @@
 [
     {
-        "symbol": [
-            "std::pair",
-            "private",
-            "<utility>",
-            "public"
-        ]
-    },
-    {
         "include": [
             "<bits/types/mbstate_t.h>",
             "private",
