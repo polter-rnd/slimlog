@@ -5,7 +5,6 @@
 #include "util.h"
 
 #include <array>
-#include <cstdlib>
 #include <cuchar>
 #include <cwchar>
 #include <initializer_list>
@@ -17,10 +16,10 @@
 
 namespace PlainCloud::Log {
 
+namespace Detail {
 #ifdef __cpp_lib_char8_t
 
-namespace Detail {
-namespace Char8Fallbacks {
+namespace Char8Fallback {
 template<typename T = char8_t>
 auto mbrtoc8(T* /*unused*/, const char* /*unused*/, size_t /*unused*/, mbstate_t* /*unused*/)
     -> size_t
@@ -30,25 +29,15 @@ auto mbrtoc8(T* /*unused*/, const char* /*unused*/, size_t /*unused*/, mbstate_t
         "C++ compiler does not support std::mbrtoc8(char8_t*, const char*, size_t, mbstate_t*)");
     return -1;
 };
-
-template<typename T = char8_t>
-auto c8rtomb(char* /*unused*/, T /*unused*/, mbstate_t* /*unused*/) -> size_t
-{
-    static_assert(
-        Util::AlwaysFalse<T>{},
-        "C++ compiler does not support std::c8rtomb(char*, char8_t, mbstate_t*)");
-    return -1;
-}
-} // namespace Char8Fallbacks
+} // namespace Char8Fallback
 
 namespace Char8 {
-using namespace Char8Fallbacks;
+using namespace Char8Fallback;
 using namespace std;
 } // namespace Char8
 
-} // namespace Detail
-
 #endif
+} // namespace Detail
 
 template<typename Char>
 class Pattern {
@@ -107,22 +96,17 @@ public:
         const auto result_pos = result.size();
 
         auto append = [&pattern, &result](auto pos, auto data) {
-            using DataType = typename std::remove_cv_t<std::remove_pointer_t<decltype(data)>>;
-            using IsDigit = std::is_arithmetic<decltype(data)>;
-            using IsPointer = std::is_pointer<decltype(data)>;
-            using ToWideChar = std::
-                conjunction<std::is_same<DataType, char>, std::negation<std::is_same<Char, char>>>;
-            using ToMultiByte = std::
-                conjunction<std::is_same<Char, char>, std::negation<std::is_same<DataType, char>>>;
-
             result += pattern.substr(0, pos);
 
-            if constexpr (IsPointer::value && ToWideChar::value) {
-                to_widechar(result, data);
-            } else if constexpr (IsPointer::value && ToMultiByte::value) {
-                to_multibyte(result, data);
+            using Data = decltype(data);
+            using DataChar = typename std::remove_cv_t<std::remove_pointer_t<decltype(data)>>;
+            if constexpr (
+                std::is_pointer_v<Data> && std::is_same_v<DataChar, char>
+                && !std::is_same_v<Char, char>) {
+                from_multibyte(result, data);
 #ifdef __cpp_lib_char8_t
             } else if constexpr (std::is_same_v<Char, char8_t>) {
+                result.format(u8"{}", data);
 #endif
             } else if constexpr (std::is_same_v<Char, char16_t>) {
                 result.format(u"{}", data);
@@ -229,7 +213,7 @@ public:
 
 protected:
     template<typename T>
-    static void to_widechar(auto& result, const T* data)
+    static void from_multibyte(auto& result, const T* data)
     {
         // Convert multi-byte to wide char
         Char wchr;
@@ -250,31 +234,6 @@ protected:
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         for (int ret{}; (ret = towc_func(&wchr, data, len, &state)) > 0; data += ret, len -= ret) {
             result += wchr;
-        }
-    }
-
-    template<typename T>
-    static void to_multibyte(auto& result, const T* data)
-    {
-        // Convert wide char to multi-byte
-        std::basic_string<Char> mbstr(MB_CUR_MAX, '\0');
-        auto state = std::mbstate_t();
-        auto len = std::char_traits<T>::length(data);
-        size_t (*tomb_func)(Char*, T, mbstate_t*) = nullptr;
-        if constexpr (std::is_same_v<T, wchar_t>) {
-            tomb_func = std::wcrtomb;
-#ifdef __cpp_lib_char8_t
-        } else if constexpr (std::is_same_v<T, char8_t>) {
-            tomb_func = Detail::Char8::c8rtomb;
-#endif
-        } else if constexpr (std::is_same_v<T, char16_t>) {
-            tomb_func = std::c16rtomb;
-        } else if constexpr (std::is_same_v<T, char32_t>) {
-            tomb_func = std::c32rtomb;
-        }
-        for (int ret{}; (ret = tomb_func(mbstr.data(), *data, &state)) > 0 && len != 0;
-             data++, len--) {
-            result.write(mbstr.c_str(), ret);
         }
     }
 
