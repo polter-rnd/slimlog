@@ -226,7 +226,7 @@ public:
      *
      * @return Logging level for this logger.
      */
-    auto level() const -> Level
+    [[nodiscard]] auto level() const -> Level
     {
         return static_cast<Level>(m_level);
     }
@@ -267,10 +267,11 @@ public:
      */
     template<typename... Args>
     inline void
-    message(Level level, Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const
+    message(Level level, const Format<CharType, std::type_identity_t<Args>...>& fmt, Args&&... args)
+        const
     {
-        auto callback = [&fmt = fmt.fmt()](auto& buffer, Args&&... args) {
-            buffer.format(fmt, std::forward<Args>(args)...);
+        auto callback = [fmt = std::move(fmt.fmt())](auto& buffer, Args&&... args) {
+            buffer.format(std::move(fmt), std::forward<Args>(args)...);
         };
 
         this->message(level, std::move(callback), fmt.loc(), std::forward<Args>(args)...);
@@ -285,9 +286,9 @@ public:
      */
     template<typename... Args>
     inline auto
-    info(Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    info(const Format<CharType, std::type_identity_t<Args>...>& fmt, Args&&... args) const -> void
     {
-        this->message(Level::Info, std::move(fmt), std::forward<Args>(args)...);
+        this->message(Level::Info, fmt, std::forward<Args>(args)...);
     }
 
     /**
