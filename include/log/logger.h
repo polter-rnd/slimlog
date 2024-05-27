@@ -143,7 +143,7 @@ public:
      *
      * @return %Logger name
      */
-    [[nodiscard]] auto category() const noexcept -> const String&
+    [[nodiscard]] auto category() const -> String
     {
         return m_category;
     }
@@ -206,7 +206,7 @@ public:
      * @return \b true if sink is enabled.
      * @return \b false if sink is disabled.
      */
-    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool
+    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) const -> bool
     {
         return m_sinks.sink_enabled(sink);
     }
@@ -226,7 +226,7 @@ public:
      *
      * @return Logging level for this logger.
      */
-    auto level() -> Level
+    auto level() const -> Level
     {
         return static_cast<Level>(m_level);
     }
@@ -247,11 +247,12 @@ public:
     template<typename T, typename... Args>
     inline auto message(
         const Level level,
-        const T& callback,
-        const Location& location = Location::current(),
+        T&& callback,
+        Location location = Location::current(),
         Args&&... args) const -> void
     {
-        m_sinks.message(*this, level, callback, location, std::forward<Args>(args)...);
+        m_sinks.message(
+            *this, level, std::forward<T>(callback), location, std::forward<Args>(args)...);
     }
 
     /**
@@ -266,14 +267,13 @@ public:
      */
     template<typename... Args>
     inline void
-    message(Level level, const Format<CharType, std::type_identity_t<Args>...>& fmt, Args&&... args)
-        const
+    message(Level level, Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const
     {
-        auto callback = [&fmt](auto& buffer, Args&&... args) {
+        auto callback = [&fmt = fmt.fmt()](auto& buffer, Args&&... args) {
             buffer.format(fmt, std::forward<Args>(args)...);
         };
 
-        this->message(level, callback, fmt.loc(), std::forward<Args>(args)...);
+        this->message(level, std::move(callback), fmt.loc(), std::forward<Args>(args)...);
     }
 
     /**
@@ -285,9 +285,9 @@ public:
      */
     template<typename... Args>
     inline auto
-    info(const Format<CharType, std::type_identity_t<Args>...>& fmt, Args&&... args) const -> void
+    info(Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
     {
-        this->message(Level::Info, fmt, std::forward<Args>(args)...);
+        this->message(Level::Info, std::move(fmt), std::forward<Args>(args)...);
     }
 
     /**
@@ -302,9 +302,9 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T>
-    inline auto info(const T& message, const Location& caller = Location::current()) const -> void
+    inline auto info(T&& message, Location caller = Location::current()) const -> void
     {
-        this->message(Level::Info, message, caller);
+        this->message(Level::Info, std::forward<T>(message), caller);
     }
 
 private:

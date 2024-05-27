@@ -58,25 +58,25 @@ public:
                  || std::same_as<std::decay_t<T>, const Char*>
                  || std::same_as<std::decay_t<T>, Char*>)
     // NOLINTNEXTLINE(*-explicit-conversions)
-    consteval Format(const T& fmt, const Location& loc = Location::current())
-        : m_fmt(fmt)
+    consteval Format(T&& fmt, const Location& loc = Location::current())
+        : m_fmt(std::forward<T>(fmt))
         , m_loc(loc)
     {
     }
 
-    Format(const Format&) = delete;
-    Format(Format&&) = delete;
+    // Format(const Format&) = delete;
+    // Format(Format&&) = delete;
     ~Format() = default;
 
-    auto operator=(const Format&) -> Format& = delete;
-    auto operator=(Format&&) -> Format& = delete;
+    // auto operator=(const Format&) -> Format& = delete;
+    // auto operator=(Format&&) -> Format& = delete;
 
     /**
      * @brief Get format string.
      *
      * @return Format string.
      */
-    [[nodiscard]] constexpr auto fmt() const noexcept -> const auto&
+    [[nodiscard]] constexpr auto fmt() const -> const FormatString<Char, Args...>
     {
         return m_fmt;
     }
@@ -86,7 +86,7 @@ public:
      *
      * @return Location.
      */
-    [[nodiscard]] constexpr auto loc() const noexcept -> const auto&
+    [[nodiscard]] constexpr auto loc() const -> const Location
     {
         return m_loc;
     }
@@ -105,16 +105,16 @@ public:
     using std::basic_string<Char, Traits, Allocator>::basic_string;
 
     template<typename... Args>
-    auto format(const Format<Char, std::type_identity_t<Args>...>& fmt, Args&&... args) -> void
+    auto format(FormatString<Char, std::type_identity_t<Args>...> fmt, Args&&... args) -> void
     {
 #ifdef ENABLE_FMTLIB
         if constexpr (std::is_same_v<Char, char>) {
-            fmt::format_to(std::back_inserter(*this), fmt.fmt(), std::forward<Args>(args)...);
+            fmt::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);
         } else {
-            fmt::format_to(std::back_inserter(*this), fmt.fmt().get(), std::forward<Args>(args)...);
+            fmt::format_to(std::back_inserter(*this), fmt.get(), std::forward<Args>(args)...);
         }
 #else
-        std::format_to(std::back_inserter(*this), fmt.fmt(), std::forward<Args>(args)...);
+        std::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);
 #endif
     }
 };

@@ -37,22 +37,19 @@ public:
 
     auto message(
         FormatBufferType& buffer,
-        const Level level,
-        const StringType& category,
-        const StringType& message,
-        const Location& caller) -> void override
+        Level level,
+        StringType category,
+        StringType message,
+        Location caller) -> void override
     {
-        buffer.assign(message);
-        this->message(buffer, level, category, caller);
+        buffer.assign(std::move(message));
+        this->message(buffer, level, std::move(category), caller);
     }
 
-    auto message(
-        FormatBufferType& buffer,
-        const Level level,
-        const StringType& category,
-        const Location& caller) -> void override
+    auto message(FormatBufferType& buffer, Level level, StringType category, Location caller)
+        -> void override
     {
-        this->format(buffer, level, category, caller);
+        this->format(buffer, level, std::move(category), caller);
         buffer.push_back('\n');
         m_ostream << buffer;
     }
