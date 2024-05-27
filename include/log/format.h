@@ -58,25 +58,25 @@ public:
                  || std::same_as<std::decay_t<T>, const Char*>
                  || std::same_as<std::decay_t<T>, Char*>)
     // NOLINTNEXTLINE(*-explicit-conversions)
-    consteval Format(T&& fmt, const Location& loc = Location::current())
-        : m_fmt(std::forward<T>(fmt))
+    consteval Format(T fmt, Location loc = Location::current())
+        : m_fmt(std::move(fmt))
         , m_loc(loc)
     {
     }
 
-    // Format(const Format&) = delete;
-    // Format(Format&&) = delete;
+    Format(const Format&) = default;
+    Format(Format&&) noexcept = default;
     ~Format() = default;
 
-    // auto operator=(const Format&) -> Format& = delete;
-    // auto operator=(Format&&) -> Format& = delete;
+    auto operator=(const Format&) -> Format& = default;
+    auto operator=(Format&&) noexcept -> Format& = default;
 
     /**
      * @brief Get format string.
      *
      * @return Format string.
      */
-    [[nodiscard]] constexpr auto fmt() const -> const FormatString<Char, Args...>
+    [[nodiscard]] constexpr auto fmt() const -> auto
     {
         return m_fmt;
     }
@@ -86,7 +86,7 @@ public:
      *
      * @return Location.
      */
-    [[nodiscard]] constexpr auto loc() const -> const Location
+    [[nodiscard]] constexpr auto loc() const -> auto
     {
         return m_loc;
     }

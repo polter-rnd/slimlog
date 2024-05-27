@@ -282,7 +282,7 @@ public:
             static_buffer(),
             logger,
             level,
-            std::forward<T>(message),
+            std::forward<T>(message), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
             location,
             std::forward<Args>(args)...);
     }
@@ -430,7 +430,7 @@ public:
             static_buffer(),
             logger,
             level,
-            std::forward<T>(message),
+            std::forward<T>(message), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
             location,
             std::forward<Args>(args)...);
     }
