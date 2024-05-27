@@ -72,8 +72,8 @@ public:
     };
 
     template<typename... Args>
-    explicit Pattern(const StringType& pattern = {}, Args&&... args)
-        : m_pattern(pattern)
+    explicit Pattern(StringType pattern = {}, Args&&... args)
+        : m_pattern(std::move(pattern))
     {
         set_levels({std::forward<Args>(args)...});
     }
@@ -84,8 +84,7 @@ public:
     }
 
     template<typename String>
-    auto format(auto& result, const Level level, const String& category, const Location& caller)
-        const -> void
+    auto format(auto& result, Level level, String category, Location caller) const -> void
     {
         if (empty()) {
             return;
@@ -182,10 +181,10 @@ public:
 
     auto set_pattern(StringType pattern)
     {
-        m_pattern = pattern;
+        m_pattern = std::move(pattern);
     }
 
-    auto set_levels(const std::initializer_list<std::pair<Level, StringType>>& levels)
+    auto set_levels(std::initializer_list<std::pair<Level, StringType>> levels)
     {
         for (const auto& level : levels) {
             switch (level.first) {

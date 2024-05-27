@@ -57,28 +57,25 @@ public:
     auto operator=(Sink&&) noexcept -> Sink& = default;
     virtual ~Sink() = default;
 
-    virtual auto set_pattern(const typename Pattern<CharType>::StringType& pattern)
-        -> std::shared_ptr<Sink<Logger>>
+    virtual auto
+    set_pattern(typename Pattern<CharType>::StringType pattern) -> std::shared_ptr<Sink<Logger>>
     {
-        m_pattern.set_pattern(pattern);
+        m_pattern.set_pattern(std::move(pattern));
         return this->shared_from_this();
     }
 
     virtual auto set_levels(
-        const std::initializer_list<std::pair<Level, typename Pattern<CharType>::StringType>>&
-            levels) -> std::shared_ptr<Sink<Logger>>
+        std::initializer_list<std::pair<Level, typename Pattern<CharType>::StringType>> levels)
+        -> std::shared_ptr<Sink<Logger>>
     {
-        m_pattern.set_levels(levels);
+        m_pattern.set_levels(std::move(levels));
         return this->shared_from_this();
     }
 
-    auto format(
-        FormatBufferType& result,
-        const Level level,
-        const StringType& category,
-        const Location& caller) const -> void
+    auto format(FormatBufferType& result, Level level, StringType category, Location caller) const
+        -> void
     {
-        m_pattern.format(result, level, category, caller);
+        m_pattern.format(result, level, std::move(category), caller);
     }
 
     /**
@@ -91,15 +88,13 @@ public:
     virtual auto message(
         FormatBufferType& buffer,
         Level level,
-        const StringType& category,
-        const StringType& message,
-        const Location& location) -> void = 0;
+        StringType category,
+        StringType message,
+        Location location) -> void = 0;
 
-    virtual auto message(
-        FormatBufferType& buffer,
-        Level level,
-        const StringType& category,
-        const Location& location) -> void = 0;
+    virtual auto
+    message(FormatBufferType& buffer, Level level, StringType category, Location location) -> void
+        = 0;
 
     /**
      * @brief Flush message cache, if any.
@@ -230,8 +225,8 @@ public:
         BufferType& buffer,
         const Logger& logger,
         const Level level,
-        const T& callback,
-        const Location& location = Location::current(),
+        T callback,
+        Location location = Location::current(),
         Args&&... args) const -> void
     {
         std::pmr::monotonic_buffer_resource pool{buffer.data(), buffer.size()};
@@ -279,12 +274,17 @@ public:
     auto message(
         const Logger& logger,
         const Level level,
-        const T& message,
-        const Location& location = Location::current(),
+        T&& message,
+        Location location = Location::current(),
         Args&&... args) const -> void
     {
         this->message(
-            static_buffer(), logger, level, message, location, std::forward<Args>(args)...);
+            static_buffer(),
+            logger,
+            level,
+            std::forward<T>(message),
+            location,
+            std::forward<Args>(args)...);
     }
 
 protected:
@@ -421,13 +421,18 @@ public:
     auto message(
         const Logger& logger,
         const Level level,
-        const T& message,
-        const Location& location = Location::current(),
+        T&& message,
+        Location location = Location::current(),
         Args&&... args) const -> void
     {
         ReadLock lock(m_mutex);
         m_sinks.message(
-            static_buffer(), logger, level, message, location, std::forward<Args>(args)...);
+            static_buffer(),
+            logger,
+            level,
+            std::forward<T>(message),
+            location,
+            std::forward<Args>(args)...);
     }
 
 protected:
