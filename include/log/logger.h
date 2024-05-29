@@ -63,14 +63,17 @@ using UnderlyingCharType = typename UnderlyingChar<T>::Type;
  *
  * ```cpp
  * Log::Logger log("main");
- * log.add_sink<Log::OStreamSink>(std::cerr);
+ * log.add_sink<Log::OStreamSink>(std::cerr, "(%t) [%l] %F|%L: %m");
  * log.info("Hello {}!", "World");
  * ```
  *
  * @tparam String String type for logging messages (e.g. `std::string`).
  *                Can be deduced from logger name.
+ * @tparam Char Underlying char type for the string.
+ *              Deduced automatically for standard C++ string types and for plain C strings.
  * @tparam ThreadingPolicy Threading policy used for operating over sinks and log level
  *                         (e.g. SingleThreadedPolicy or MultiThreadedPolicy).
+ * @tparam StaticBufferSize Size of internal pre-allocated buffer. Defaults to 4096 bytes.
  */
 template<
     typename String,
@@ -96,10 +99,9 @@ public:
      * @tparam T String type for logger category name. Can be deduced from argument.
      * @param category %Logger category name. Can be used in logger messages.
      * @param level Logging level.
-     * @param sinks Sinks to be added upon creation.
      */
     template<typename T>
-    explicit Logger(T&& name, const Level level = Level::Info)
+    explicit Logger(T&& name, Level level = Level::Info)
         : m_parent(nullptr)
         , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
@@ -115,8 +117,7 @@ public:
      * @param level Logging level.
      */
     template<typename T>
-    explicit Logger(
-        T&& name, const std::shared_ptr<Logger>& parent, const Level level = Level::Info)
+    explicit Logger(T&& name, const std::shared_ptr<Logger>& parent, Level level = Level::Info)
         : m_parent(parent)
         , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
@@ -245,11 +246,8 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T, typename... Args>
-    auto message(
-        const Level level,
-        T&& callback,
-        Location location = Location::current(),
-        Args&&... args) const -> void
+    auto message(Level level, T&& callback, Location location = Location::current(), Args&&... args)
+        const -> void
     {
         m_sinks.message(
             *this, level, std::forward<T>(callback), location, std::forward<Args>(args)...);
