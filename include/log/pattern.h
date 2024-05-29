@@ -45,7 +45,7 @@ public:
     using CharType = Char;
     using StringType = typename std::basic_string_view<Char>;
 
-    enum class Flag {
+    enum class Flag : char {
         Level = 'l',
         Topic = 't',
         Message = 'm',
