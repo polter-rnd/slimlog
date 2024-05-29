@@ -52,7 +52,7 @@ add_feature_info("StaticCodeAnalysis" ENABLE_ANALYZERS "code linting and static 
 if(ENABLE_ANALYZERS)
     set(CPPCHECK_MIN_VERSION 2.10)
     set(CLANG_TIDY_MIN_VERSION 14.0)
-    set(IWYU_MIN_VERSION 0.20)
+    set(IWYU_MIN_VERSION 0.21)
     include(StaticCodeAnalysis)
     enable_static_code_analysis(
         CLANG_TIDY_EXTRA_ARGS -header-filter=.*
