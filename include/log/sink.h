@@ -288,7 +288,7 @@ public:
     }
 
 protected:
-    inline auto should_sink(const Logger& logger, const Level level) const noexcept -> bool
+    auto should_sink(const Logger& logger, const Level level) const noexcept -> bool
     {
         return static_cast<Level>(logger.m_level) >= level;
     }
@@ -299,12 +299,12 @@ protected:
         return buffer;
     }
 
-    inline auto cbegin() const noexcept
+    auto cbegin() const noexcept
     {
         return m_sinks.cbegin();
     }
 
-    inline auto cend() const noexcept
+    auto cend() const noexcept
     {
         return m_sinks.cend();
     }

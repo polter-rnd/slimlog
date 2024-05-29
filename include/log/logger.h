@@ -245,7 +245,7 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T, typename... Args>
-    inline auto message(
+    auto message(
         const Level level,
         T&& callback,
         Location location = Location::current(),
@@ -266,12 +266,12 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    inline void
-    message(Level level, const Format<CharType, std::type_identity_t<Args>...>& fmt, Args&&... args)
-        const
+    void
+    message(Level level, Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const
     {
-        auto callback = [fmt = std::move(fmt.fmt())](auto& buffer, Args&&... args) {
-            buffer.format(std::move(fmt), std::forward<Args>(args)...);
+        auto callback = [&fmt = static_cast<const decltype(fmt.fmt())>(fmt.fmt())](
+                            auto& buffer, Args&&... args) {
+            buffer.format(fmt, std::forward<Args>(args)...);
         };
 
         this->message(level, std::move(callback), fmt.loc(), std::forward<Args>(args)...);
@@ -285,10 +285,9 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    inline auto
-    info(const Format<CharType, std::type_identity_t<Args>...>& fmt, Args&&... args) const -> void
+    auto info(Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
     {
-        this->message(Level::Info, fmt, std::forward<Args>(args)...);
+        this->message(Level::Info, std::move(fmt), std::forward<Args>(args)...);
     }
 
     /**
@@ -303,14 +302,14 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T>
-    inline auto info(T&& message, Location caller = Location::current()) const -> void
+    auto info(T&& message, Location caller = Location::current()) const -> void
     {
         this->message(Level::Info, std::forward<T>(message), caller);
     }
 
 private:
-    const std::shared_ptr<Logger> m_parent;
-    const String m_category;
+    std::shared_ptr<Logger> m_parent;
+    String m_category;
     LevelDriver<ThreadingPolicy> m_level;
     SinkDriver<Logger, ThreadingPolicy> m_sinks;
 

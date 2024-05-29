@@ -6,7 +6,11 @@
 #pragma once
 
 #ifdef ENABLE_FMTLIB
-#include <fmt/core.h>
+#if __has_include(<fmt/base.h>)
+#include <fmt/base.h> // IWYU pragma: export
+#else
+#include <fmt/core.h> // IWYU pragma: export
+#endif
 #include <fmt/format.h> // IWYU pragma: keep
 #include <fmt/xchar.h> // IWYU pragma: keep
 #else
@@ -58,7 +62,7 @@ public:
                  || std::same_as<std::decay_t<T>, const Char*>
                  || std::same_as<std::decay_t<T>, Char*>)
     // NOLINTNEXTLINE(*-explicit-conversions)
-    consteval Format(T fmt, Location loc = Location::current())
+    consteval Format(T fmt, const Location& loc = Location::current())
         : m_fmt(std::move(fmt))
         , m_loc(loc)
     {
@@ -92,8 +96,8 @@ public:
     }
 
 private:
-    const FormatString<Char, Args...> m_fmt;
-    const Location m_loc;
+    FormatString<Char, Args...> m_fmt;
+    Location m_loc;
 };
 
 template<
@@ -111,7 +115,10 @@ public:
         if constexpr (std::is_same_v<Char, char>) {
             fmt::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);
         } else {
-            fmt::format_to(std::back_inserter(*this), fmt.get(), std::forward<Args>(args)...);
+            fmt::format_to(
+                std::back_inserter(*this),
+                static_cast<fmt::basic_string_view<Char>>(fmt),
+                std::forward<Args>(args)...);
         }
 #else
         std::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);

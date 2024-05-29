@@ -8,6 +8,7 @@
 #include "policy.h"
 
 #include <atomic>
+#include <cstdint>
 
 namespace PlainCloud::Log {
 
@@ -16,7 +17,7 @@ namespace PlainCloud::Log {
  *
  * Specifies log event severity (e.g. `Debug`, `Info`, `Warning`)
  */
-enum class Level {
+enum class Level : std::uint8_t {
     Fatal, ///< Very severe error events that will presumably lead the application to abort.
     Error, ///< Error events that might still allow the application to continue running.
     Warning, ///< Potentially harmful situations.

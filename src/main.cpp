@@ -12,6 +12,8 @@
 #include <string_view>
 #include <utility>
 
+static constexpr auto SomeConstant = 1234;
+
 auto main(int /*argc*/, char* /*argv*/[]) -> int
 {
     namespace Log = PlainCloud::Log;
@@ -120,7 +122,6 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         constexpr Log::FormatString<wchar_t, std::wstring_view> Eeee2{L"Hello {}"};
         log2.info(Eeee2, std::wstring_view(L"pip"));
 
-        static constexpr auto SomeConstant = 1234;
         log2.info([](auto& buf) { buf.format(L"KEKEKEKEKE {}", SomeConstant); });
 
         const std::basic_stringstream<wchar_t> keklal;
