@@ -32,7 +32,7 @@ namespace PlainCloud::Log {
  * Sink represents a logger back-end.
  * It emits messages to final destination.
  *
- * @tparam String Base string type used for log messages.
+ * @tparam Logger Logger class type intended for the sink to be used with.
  */
 template<typename Logger>
 class Sink : public std::enable_shared_from_this<Sink<Logger>> {
@@ -72,17 +72,27 @@ public:
         return this->shared_from_this();
     }
 
-    auto format(FormatBufferType& result, Level level, StringType category, Location caller) const
+    auto format(FormatBufferType& result, Level level, StringType category, Location location) const
         -> void
     {
-        m_pattern.format(result, level, std::move(category), caller);
+        m_pattern.format(result, level, std::move(category), location);
     }
 
     /**
      * @brief Emit message.
      *
+     * This overload is used for simple messages that can be forwarded directly to sink, e.g.:
+     *
+     * ```cpp
+     * log.info("Hello World!");
+     * ```
+     *
+     * Here no preprocessing takes place, the string object is directly forwarded to the sink.
+     *
+     * @param buffer Empty buffer where final message should be put.
      * @param level Log level.
      * @param message Log message.
+     * @param category %Logger category name.
      * @param location Caller location (file, line, function).
      */
     virtual auto message(
@@ -92,6 +102,23 @@ public:
         StringType message,
         Location location) -> void = 0;
 
+    /**
+     * @brief Emit message.
+     *
+     * This overload is used for formatted messages, e.g.:
+     *
+     * ```cpp
+     * log.info("Hello {}!", "World");
+     * ```
+     *
+     * In this case message is formatted and written to \p buffer before being passed to the sink.
+     *
+     * @param buffer Buffer where final message should be put.
+     *               It already contains a message, feel free to overwrite it.
+     * @param level Log level.
+     * @param category %Logger category name.
+     * @param location Caller location (file, line, function).
+     */
     virtual auto
     message(FormatBufferType& buffer, Level level, StringType category, Location location) -> void
         = 0;
@@ -215,16 +242,17 @@ public:
      * @tparam Logger %Logger argument type
      * @tparam T Invocable type for the callback. Deduced from argument.
      * @tparam Args Format argument types. Deduced from arguments.
+     * @param buffer Pre-allocated buffer to use for internal processing.
      * @param logger %Logger object.
      * @param level Logging level.
-     * @param callback Log callback.
+     * @param callback Log callback or message.
      * @param location Caller location (file, line, function).
      */
     template<typename T, typename... Args>
     auto message(
         BufferType& buffer,
         const Logger& logger,
-        const Level level,
+        Level level,
         T callback,
         Location location = Location::current(),
         Args&&... args) const -> void
@@ -266,15 +294,28 @@ public:
                 }
             }
         }
-
-        pool.release();
     }
 
+    /**
+     * @brief Emit new callback-based log message if it fits for specified logging level.
+     *
+     * Method to emit log message from callback return value convertible to logger string type.
+     * Used to postpone formatting or other preparations to the next steps after filtering.
+     * Makes logging almost zero-cost in case if it does not fit for current logging level.
+     *
+     * @tparam Logger %Logger argument type
+     * @tparam T Invocable type for the callback. Deduced from argument.
+     * @tparam Args Format argument types. Deduced from arguments.
+     * @param logger %Logger object.
+     * @param level Logging level.
+     * @param callback Log callback or message.
+     * @param location Caller location (file, line, function).
+     */
     template<typename T, typename... Args>
     auto message(
         const Logger& logger,
-        const Level level,
-        T&& message,
+        Level level,
+        T&& callback,
         Location location = Location::current(),
         Args&&... args) const -> void
     {
@@ -282,13 +323,13 @@ public:
             static_buffer(),
             logger,
             level,
-            std::forward<T>(message), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+            std::forward<T>(callback), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
             location,
             std::forward<Args>(args)...);
     }
 
 protected:
-    auto should_sink(const Logger& logger, const Level level) const noexcept -> bool
+    auto should_sink(const Logger& logger, Level level) const noexcept -> bool
     {
         return static_cast<Level>(logger.m_level) >= level;
     }
@@ -414,14 +455,14 @@ public:
      * @tparam Args Format argument types. Deduced from arguments.
      * @param logger %Logger object.
      * @param level Logging level.
-     * @param message Log message or callback.
+     * @param callback Log callback or message.
      * @param location Caller location (file, line, function).
      */
     template<typename T, typename... Args>
     auto message(
         const Logger& logger,
-        const Level level,
-        T&& message,
+        Level level,
+        T&& callback,
         Location location = Location::current(),
         Args&&... args) const -> void
     {
@@ -430,7 +471,7 @@ public:
             static_buffer(),
             logger,
             level,
-            std::forward<T>(message), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+            std::forward<T>(callback), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
             location,
             std::forward<Args>(args)...);
     }
