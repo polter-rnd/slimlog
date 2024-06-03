@@ -23,6 +23,7 @@ namespace PlainCloud::Log {
 /** Default buffer size is equal to typical memory page size */
 static constexpr size_t DefaultBufferSize = 4096;
 
+/** @cond */
 namespace Detail {
 
 template<typename T>
@@ -52,6 +53,7 @@ template<typename T>
 using UnderlyingCharType = typename UnderlyingChar<T>::Type;
 
 } // namespace Detail
+/** @endcond */
 
 /**
  * @brief A logger front-end class.
@@ -82,9 +84,11 @@ template<
     size_t StaticBufferSize = DefaultBufferSize>
 class Logger {
 public:
+    /** @brief String type for log messages. */
     using StringType = String;
+    /** @brief Char type for log messages. */
     using CharType = Char;
-
+    /** @brief Size of internal pre-allocatied buffer. */
     static constexpr auto BufferSize = StaticBufferSize;
 
     Logger(Logger const&) = delete;
@@ -101,9 +105,9 @@ public:
      * @param level Logging level.
      */
     template<typename T>
-    explicit Logger(T&& name, Level level = Level::Info)
+    explicit Logger(T&& category, Level level = Level::Info)
         : m_parent(nullptr)
-        , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        , m_category(std::forward<T>(category)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
     {
     }
@@ -233,6 +237,18 @@ public:
     }
 
     /**
+     * @brief Check if particular logging level is enabled for the logger.
+     *
+     * @param level Log level to check.
+     * @return \b true if specified \p level is enabled
+     * @return \b false if specified \p level is disabled
+     */
+    [[nodiscard]] auto level_enabled(Level level) const noexcept -> bool
+    {
+        return static_cast<Level>(m_level) >= level;
+    }
+
+    /**
      * @brief Emit new callback-based log message if it fits for specified logging level.
      *
      * Method to emit log message from callback return value convertible to logger string type.
@@ -244,6 +260,7 @@ public:
      * @param level Logging level.
      * @param callback Log callback.
      * @param location Caller location (file, line, function).
+     * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename T, typename... Args>
     auto message(Level level, T&& callback, Location location = Location::current(), Args&&... args)
@@ -300,9 +317,9 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T>
-    auto info(T&& message, Location caller = Location::current()) const -> void
+    auto info(T&& message, Location location = Location::current()) const -> void
     {
-        this->message(Level::Info, std::forward<T>(message), caller);
+        this->message(Level::Info, std::forward<T>(message), location);
     }
 
 private:
@@ -315,9 +332,19 @@ private:
     friend class SinkDriver;
 };
 
+/**
+ * @brief Deduction guide for a constructor call with a string.
+ *
+ * @tparam String String type for log messages.
+ */
 template<typename String>
 Logger(String, Level = Level::Info) -> Logger<String>;
 
+/**
+ * @brief Deduction guide for a constructor call with a char array.
+ *
+ * @tparam String String type for log messages.
+ */
 template<typename Char, size_t N>
 Logger(
     const Char (&)[N], // NOLINT(*-avoid-c-arrays)

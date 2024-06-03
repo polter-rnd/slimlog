@@ -30,20 +30,43 @@ namespace PlainCloud::Log {
  * @brief Base abstract sink class.
  *
  * Sink represents a logger back-end.
- * It emits messages to final destination.
+ * It processes messages and forwards them to final destination.
  *
- * @tparam Logger Logger class type intended for the sink to be used with.
+ * @tparam Logger %Logger class type intended for the sink to be used with.
  */
 template<typename Logger>
 class Sink : public std::enable_shared_from_this<Sink<Logger>> {
 public:
+    /** @brief String type for log messages. */
     using StringType = typename Logger::StringType;
+    /** @brief Char type for log messages. */
     using CharType = typename Logger::CharType;
+    /** @brief Buffer used for log message formatting. */
     using FormatBufferType = FormatBuffer<
         CharType,
         std::char_traits<CharType>,
         std::pmr::polymorphic_allocator<CharType>>;
 
+    /**
+     * @brief Construct a new Sink object.
+     *
+     * Usage example:
+     * ```cpp
+     * Log::Logger log("test", Log::Level::Info);
+     * log.add_sink<Log::OStreamSink>(
+            std::cout,
+            "(%t) [%l] %F|%L: %m",
+            std::make_pair(Log::Level::Trace, "Trace"),
+            std::make_pair(Log::Level::Debug, "Debug"),
+            std::make_pair(Log::Level::Info, "Info"),
+            std::make_pair(Log::Level::Warning, "Warn"),
+            std::make_pair(Log::Level::Error, "Error"),
+            std::make_pair(Log::Level::Fatal, "Fatal"));
+     * ```
+     *
+     * @tparam Args Argument types for the pattern and log levels.
+     * @param args Optional pattern and list of log levels.
+     */
     template<typename... Args>
     explicit Sink(Args&&... args)
         // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
@@ -51,12 +74,31 @@ public:
     {
     }
 
+    /** @brief Copy constructor. */
     Sink(Sink const&) = default;
+    /** @brief Move constructor. */
     Sink(Sink&&) noexcept = default;
+
+    /** @brief Assignment operator. */
     auto operator=(Sink const&) -> Sink& = default;
+    /** @brief Move assignment operator. */
     auto operator=(Sink&&) noexcept -> Sink& = default;
+
+    /** @brief Destructor. */
     virtual ~Sink() = default;
 
+    /**
+     * @brief Set the log message pattern.
+     *
+     * Usage example:
+     * ```cpp
+     * Log::Logger log("test", Log::Level::Info);
+     * log.add_sink<Log::OStreamSink>(std::cerr)->set_pattern("(%t) [%l] %F|%L: %m");
+     * ```
+     *
+     * @param pattern Log message pattern.
+     * @return Pointer to the self sink object.
+     */
     virtual auto
     set_pattern(typename Pattern<CharType>::StringType pattern) -> std::shared_ptr<Sink<Logger>>
     {
@@ -64,18 +106,24 @@ public:
         return this->shared_from_this();
     }
 
+    /**
+     * @brief Set the log level names.
+     *
+     * Usage example:
+     * ```cpp
+     * Log::Logger log("test", Log::Level::Info);
+     * log.add_sink<Log::OStreamSink>(std::cerr)->set_levels({{Log::Level::Info, "Information"}});
+     * ```
+     *
+     * @param levels List of log levels with corresponding names.
+     * @return Pointer to the self sink object.
+     */
     virtual auto set_levels(
         std::initializer_list<std::pair<Level, typename Pattern<CharType>::StringType>> levels)
         -> std::shared_ptr<Sink<Logger>>
     {
         m_pattern.set_levels(std::move(levels));
         return this->shared_from_this();
-    }
-
-    auto format(FormatBufferType& result, Level level, StringType category, Location location) const
-        -> void
-    {
-        m_pattern.format(result, level, std::move(category), location);
     }
 
     /**
@@ -128,6 +176,24 @@ public:
      */
     virtual auto flush() -> void = 0;
 
+protected:
+    /**
+     * @brief Apply pattern to prepare formatted message.
+     *
+     * Raw message is stored in \a result argument,
+     * and it should be overwritten with formatted result.
+     *
+     * @param result Buffer containing raw message and to be overwritten with formatted result.
+     * @param level Log level.
+     * @param category %Logger category name.
+     * @param location Caller location (file, line, function).
+     */
+    auto apply_pattern(
+        FormatBufferType& result, Level level, StringType category, Location location) const -> void
+    {
+        m_pattern.apply(result, level, std::move(category), location);
+    }
+
 private:
     Pattern<CharType> m_pattern;
 };
@@ -157,9 +223,12 @@ class SinkDriver final { };
 template<typename Logger>
 class SinkDriver<Logger, SingleThreadedPolicy> final {
 public:
+    /** @brief Char type for log messages. */
     using CharType = typename Logger::CharType;
-    using BufferType = typename std::array<char, Logger::BufferSize>;
+    /** @brief Buffer used for log message formatting. */
     using FormatBufferType = typename Sink<Logger>::FormatBufferType;
+    /** @brief Arena for internal memory allocations. */
+    using ArenaType = typename std::array<char, Logger::BufferSize>;
 
     /**
      * @brief Add existing sink.
@@ -242,30 +311,31 @@ public:
      * @tparam Logger %Logger argument type
      * @tparam T Invocable type for the callback. Deduced from argument.
      * @tparam Args Format argument types. Deduced from arguments.
-     * @param buffer Pre-allocated buffer to use for internal processing.
+     * @param arena Continious space for internal memory allocations.
      * @param logger %Logger object.
      * @param level Logging level.
      * @param callback Log callback or message.
      * @param location Caller location (file, line, function).
+     * @param args Format arguments.
      */
     template<typename T, typename... Args>
     auto message(
-        BufferType& buffer,
+        ArenaType& arena,
         const Logger& logger,
         Level level,
         T callback,
         Location location = Location::current(),
         Args&&... args) const -> void
     {
-        std::pmr::monotonic_buffer_resource pool{buffer.data(), buffer.size()};
+        std::pmr::monotonic_buffer_resource pool{arena.data(), arena.size()};
         std::pmr::unordered_map<std::shared_ptr<Sink<Logger>>, bool> sinks{&pool};
         FormatBufferType fmt_buffer{&pool};
 
-        if (should_sink(logger, level)) {
+        if (logger.level_enabled(level)) {
             sinks.insert(m_sinks.cbegin(), m_sinks.cend());
         }
         for (auto parent{logger.m_parent}; parent; parent = parent->m_parent) {
-            if (should_sink(*parent, level)) {
+            if (parent->level_enabled(level)) {
                 sinks.insert(parent->m_sinks.m_sinks.cbegin(), parent->m_sinks.m_sinks.cend());
             }
         }
@@ -310,6 +380,7 @@ public:
      * @param level Logging level.
      * @param callback Log callback or message.
      * @param location Caller location (file, line, function).
+     * @param args Format arguments.
      */
     template<typename T, typename... Args>
     auto message(
@@ -320,7 +391,7 @@ public:
         Args&&... args) const -> void
     {
         this->message(
-            static_buffer(),
+            arena(),
             logger,
             level,
             std::forward<T>(callback), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
@@ -329,22 +400,28 @@ public:
     }
 
 protected:
-    auto should_sink(const Logger& logger, Level level) const noexcept -> bool
+    /**
+     * @brief Static-allocated continious space for memory allocations.
+     *
+     * @return Reference to the arena.
+     */
+    [[nodiscard]] auto arena() const -> auto&
     {
-        return static_cast<Level>(logger.m_level) >= level;
+        static ArenaType arena;
+        return arena;
     }
 
-    [[nodiscard]] auto static_buffer() const -> auto&
-    {
-        static BufferType buffer;
-        return buffer;
-    }
-
+    /**
+     * @brief Constant begin interator for the sinks map.
+     */
     auto cbegin() const noexcept
     {
         return m_sinks.cbegin();
     }
 
+    /**
+     * @brief Constant end interator for the sinks map.
+     */
     auto cend() const noexcept
     {
         return m_sinks.cend();
@@ -371,9 +448,12 @@ template<
 class SinkDriver<Logger, MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>>
     final {
 public:
-    using CharType = typename SinkDriver<Logger, SingleThreadedPolicy>::CharType;
-    using BufferType = typename SinkDriver<Logger, SingleThreadedPolicy>::BufferType;
+    /** @brief Char type for log messages. */
+    using CharType = typename Logger::CharType;
+    /** @brief Buffer used for log message formatting. */
     using FormatBufferType = typename SinkDriver<Logger, SingleThreadedPolicy>::FormatBufferType;
+    /** @brief Arena for internal memory allocations. */
+    using ArenaType = typename std::array<char, Logger::BufferSize>;
 
     /**
      * @brief Add existing sink.
@@ -457,6 +537,7 @@ public:
      * @param level Logging level.
      * @param callback Log callback or message.
      * @param location Caller location (file, line, function).
+     * @param args Format arguments.
      */
     template<typename T, typename... Args>
     auto message(
@@ -468,7 +549,7 @@ public:
     {
         ReadLock lock(m_mutex);
         m_sinks.message(
-            static_buffer(),
+            arena(),
             logger,
             level,
             std::forward<T>(callback), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
@@ -477,10 +558,15 @@ public:
     }
 
 protected:
-    auto static_buffer() const -> auto&
+    /**
+     * @brief Static-allocated thread-local continious space for memory allocations.
+     *
+     * @return Reference to the arena.
+     */
+    auto arena() const -> auto&
     {
-        static thread_local BufferType buffer;
-        return buffer;
+        static thread_local ArenaType arena;
+        return arena;
     }
 
 private:

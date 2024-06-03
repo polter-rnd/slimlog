@@ -1,3 +1,8 @@
+/**
+ * @file pattern.h
+ * @brief Contains definition of Pattern class.
+ */
+
 #pragma once
 
 #include "level.h"
@@ -16,6 +21,7 @@
 
 namespace PlainCloud::Log {
 
+/** @cond */
 namespace Detail {
 #ifdef __cpp_lib_char8_t
 
@@ -38,29 +44,39 @@ using namespace std;
 
 #endif
 } // namespace Detail
+/** @endcond */
 
+/**
+ * @brief Log message pattern.
+ *
+ * @tparam Char Char type for pattern string.
+ */
 template<typename Char>
 class Pattern {
 public:
+    /** @brief Char type for pattern string. */
     using CharType = Char;
+    /** @brief String type for pattern (`std::basic_string_view<Char>`). */
     using StringType = typename std::basic_string_view<Char>;
 
+    /** @brief Flags to be used in pattern. */
     enum class Flag : char {
-        Level = 'l',
-        Topic = 't',
-        Message = 'm',
-        File = 'F',
-        Line = 'L',
-        Function = 'f'
+        Level = 'l', ///< Log level
+        Topic = 't', ///< Log category
+        Message = 'm', ///< Log message
+        File = 'F', ///< Location: file name
+        Line = 'L', ///< Location: line number
+        Function = 'f' ///< Location: function name
     };
 
+    /** @brief Level names */
     struct Levels {
-        StringType trace{DefaultTrace.data(), DefaultTrace.size()};
-        StringType debug{DefaultDebug.data(), DefaultDebug.size()};
-        StringType info{DefaultInfo.data(), DefaultInfo.size()};
-        StringType warning{DefaultWarning.data(), DefaultWarning.size()};
-        StringType error{DefaultError.data(), DefaultError.size()};
-        StringType fatal{DefaultFatal.data(), DefaultFatal.size()};
+        StringType trace{DefaultTrace.data(), DefaultTrace.size()}; ///< Trace level
+        StringType debug{DefaultDebug.data(), DefaultDebug.size()}; ///< Debug level
+        StringType info{DefaultInfo.data(), DefaultInfo.size()}; ///< Info level
+        StringType warning{DefaultWarning.data(), DefaultWarning.size()}; ///< Warning level
+        StringType error{DefaultError.data(), DefaultError.size()}; ///< Error level
+        StringType fatal{DefaultFatal.data(), DefaultFatal.size()}; ///< Fatal level
 
     private:
         static constexpr std::array<Char, 5> DefaultTrace{'T', 'R', 'A', 'C', 'E'};
@@ -71,6 +87,26 @@ public:
         static constexpr std::array<Char, 5> DefaultFatal{'F', 'A', 'T', 'A', 'L'};
     };
 
+    /**
+     * @brief Construct a new Pattern object.
+     *
+     * Usage:
+     *
+     * ```cpp
+     * Log::Pattern<char> pattern(
+     *       "(%t) [%l] %F|%L: %m",
+     *       std::make_pair(Log::Level::Trace, "Trace"),
+     *       std::make_pair(Log::Level::Debug, "Debug"),
+     *       std::make_pair(Log::Level::Info, "Info"),
+     *       std::make_pair(Log::Level::Warning, "Warn"),
+     *       std::make_pair(Log::Level::Error, "Error"),
+     *       std::make_pair(Log::Level::Fatal, "Fatal"));
+     * ```
+     *
+     * @tparam Args Argument types for log level pairs.
+     * @param pattern Pattern string.
+     * @param args Log level pairs.
+     */
     template<typename... Args>
     explicit Pattern(StringType pattern = {}, Args&&... args)
         : m_pattern(std::move(pattern))
@@ -78,13 +114,28 @@ public:
         set_levels({std::forward<Args>(args)...});
     }
 
+    /**
+     * @brief Check if pattern is empty.
+     *
+     * @return \b true if pattern is an empty string.
+     * @return \b false if pattern is not an empty string.
+     */
     [[nodiscard]] auto empty() const -> bool
     {
         return m_pattern.empty();
     }
 
+    /**
+     * @brief Apply pattern to message.
+     *
+     * @tparam String %Logger string type.
+     * @param result Buffer storing the raw message to be overwritten with result.
+     * @param level Log level.
+     * @param category %Logger category name.
+     * @param location Caller location (file, line, function).
+     */
     template<typename String>
-    auto format(auto& result, Level level, String category, Location caller) const -> void
+    auto apply(auto& result, Level level, String category, Location location) const -> void
     {
         if (empty()) {
             return;
@@ -164,13 +215,13 @@ public:
                 result.erase(0, result_pos);
                 break;
             case Flag::File:
-                append(pos, caller.file_name());
+                append(pos, location.file_name());
                 break;
             case Flag::Line:
-                append(pos, caller.line());
+                append(pos, location.line());
                 break;
             case Flag::Function:
-                append(pos, caller.function_name());
+                append(pos, location.function_name());
                 break;
             default:
                 skip(pos, chr);
@@ -179,12 +230,36 @@ public:
         }
     }
 
-    auto set_pattern(StringType pattern)
+    /**
+     * @brief Set the message pattern.
+     *
+     * Usage example:
+     *
+     * ```cpp
+     * Log::Logger log("test", Log::Level::Info);
+     * log.add_sink<Log::OStreamSink>(std::cerr)->set_pattern("(%t) [%l] %F|%L: %m");
+     * ```
+     *
+     * @param pattern Message pattern.
+     */
+    auto set_pattern(StringType pattern) -> void
     {
         m_pattern = std::move(pattern);
     }
 
-    auto set_levels(std::initializer_list<std::pair<Level, StringType>> levels)
+    /**
+     * @brief Set the log level names.
+     *
+     * Set a name for each log level. Usage example:
+     *
+     * ```cpp
+     * Log::Logger log("test", Log::Level::Info);
+     * log.add_sink<Log::OStreamSink>(std::cerr)->set_levels({{Log::Level::Info, "Information"}});
+     * ```
+     *
+     * @param levels Initializer list of log level pairs.
+     */
+    auto set_levels(std::initializer_list<std::pair<Level, StringType>> levels) -> void
     {
         for (const auto& level : levels) {
             switch (level.first) {
@@ -211,6 +286,13 @@ public:
     }
 
 protected:
+    /**
+     * @brief Convert from multi-byte to single-byte string
+     *
+     * @tparam T Char type
+     * @param result Destination stream buffer
+     * @param data Source string
+     */
     template<typename T>
     static void from_multibyte(auto& result, const T* data)
     {

@@ -1,3 +1,8 @@
+/**
+ * @file ostream_sink.h
+ * @brief Contains definition of OStreamSink class.
+ */
+
 #pragma once
 
 #include "log/level.h"
@@ -11,6 +16,11 @@
 
 namespace PlainCloud::Log {
 
+/**
+ * @brief Output stream-based sink
+ *
+ * @tparam Logger %Logger class type intended for the sink to be used with.
+ */
 template<typename Logger>
     requires(std::convertible_to<
              typename Logger::StringType,
@@ -21,6 +31,13 @@ public:
     using typename Sink<Logger>::StringType;
     using typename Sink<Logger>::FormatBufferType;
 
+    /**
+     * @brief Construct a new OStreamSink object
+     *
+     * @tparam Args Argument types for the pattern and log levels.
+     * @param ostream Reference to output stream to be used for the sink.
+     * @param args Optional pattern and list of log levels.
+     */
     template<typename... Args>
     explicit OStreamSink(const std::basic_ostream<CharType>& ostream, Args&&... args)
         : Sink<Logger>(std::forward<Args>(args)...)
@@ -28,10 +45,17 @@ public:
     {
     }
 
+    /**
+     * @brief Construct a new OStreamSink object
+     *
+     * @tparam Args Argument types for the pattern and log levels.
+     * @param streambuf Pointer to output stream buffer to be used for the sink.
+     * @param args Optional pattern and list of log levels.
+     */
     template<typename... Args>
-    explicit OStreamSink(std::basic_streambuf<CharType>* ostream, Args&&... args)
+    explicit OStreamSink(std::basic_streambuf<CharType>* streambuf, Args&&... args)
         : Sink<Logger>(std::forward<Args>(args)...)
-        , m_ostream(ostream)
+        , m_ostream(streambuf)
     {
     }
 
@@ -40,16 +64,16 @@ public:
         Level level,
         StringType category,
         StringType message,
-        Location caller) -> void override
+        Location location) -> void override
     {
         buffer.assign(std::move(message));
-        this->message(buffer, level, std::move(category), caller);
+        this->message(buffer, level, std::move(category), location);
     }
 
-    auto message(FormatBufferType& buffer, Level level, StringType category, Location caller)
+    auto message(FormatBufferType& buffer, Level level, StringType category, Location location)
         -> void override
     {
-        this->format(buffer, level, std::move(category), caller);
+        this->apply_pattern(buffer, level, std::move(category), location);
         buffer.push_back('\n');
         m_ostream << buffer;
     }
