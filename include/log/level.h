@@ -50,6 +50,11 @@ class LevelDriver final { };
 template<>
 class LevelDriver<SingleThreadedPolicy> final {
 public:
+    /**
+     * @brief Construct a new LevelDriver object.
+     *
+     * @param level Log level to be set set upon initialization.
+     */
     explicit LevelDriver(Level level) noexcept
         : m_level{level}
     {
@@ -58,7 +63,7 @@ public:
     /**
      * @brief Get currently enabled log level.
      *
-     * @return Log level set for logger.
+     * @return Log level set for the logger.
      */
     explicit operator Level() const noexcept
     {
@@ -66,9 +71,9 @@ public:
     }
 
     /**
-     * @brief Set log level for logger.
+     * @brief Set log level for the logger.
      *
-     * @param level New log level for logger.
+     * @param level New log level for the logger.
      */
     auto operator=(Level level) noexcept -> auto&
     {
@@ -93,6 +98,11 @@ template<
     std::memory_order StoreOrder>
 class LevelDriver<MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>> final {
 public:
+    /**
+     * @brief Construct a new LevelDriver object.
+     *
+     * @param level Log level to be set set upon initialization.
+     */
     explicit LevelDriver(Level level) noexcept
         : m_level{level}
     {

@@ -22,9 +22,12 @@ using Location = std::source_location;
  */
 class Location {
 public:
+    /** @brief Current source location */
     [[nodiscard]] static constexpr auto current(
 #ifndef __has_builtin
+/** @cond */
 #define __has_builtin(__x) 0
+/** @endcond */
 #endif
 #if __has_builtin(__builtin_FILE) and __has_builtin(__builtin_FUNCTION)                            \
         and __has_builtin(__builtin_LINE)                                                          \
@@ -43,14 +46,20 @@ public:
         loc.m_line = line;
         return loc;
     }
+
+    /** @brief Source location: file name */
     [[nodiscard]] constexpr auto file_name() const noexcept
     {
         return m_file;
     }
+
+    /** @brief Source location: function name */
     [[nodiscard]] constexpr auto function_name() const noexcept
     {
         return m_function;
     }
+
+    /** @brief Source location: line */
     [[nodiscard]] constexpr auto line() const noexcept
     {
         return m_line;

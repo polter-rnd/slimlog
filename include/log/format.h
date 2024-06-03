@@ -28,9 +28,11 @@
 namespace PlainCloud::Log {
 
 #ifdef ENABLE_FMTLIB
+/** @brief Alias for \a fmt::basic_format_string  */
 template<typename T, typename... Args>
 using FormatString = fmt::basic_format_string<T, Args...>;
 #else
+/** @brief Alias for \a std::basic_format_string  */
 template<typename T, typename... Args>
 using FormatString = std::basic_format_string<T, Args...>;
 #endif
@@ -68,11 +70,16 @@ public:
     {
     }
 
+    /** @brief Copy constructor. */
     Format(const Format&) = default;
+    /** @brief Move constructor. */
     Format(Format&&) noexcept = default;
+    /** @brief Destructor. */
     ~Format() = default;
 
+    /** @brief Assignment operator. */
     auto operator=(const Format&) -> Format& = default;
+    /** @brief Move assignment operator. */
     auto operator=(Format&&) noexcept -> Format& = default;
 
     /**
@@ -100,6 +107,13 @@ private:
     Location m_loc;
 };
 
+/**
+ * @brief Buffer used for log message formatting.
+ *
+ * @tparam Char Underlying char type for the string.
+ * @tparam Traits Traits (\a std::char_traits<Char>) for the particular char type.
+ * @tparam Allocator Allocator (\a std::allocator<Char>) for the buffer data.
+ */
 template<
     typename Char,
     typename Traits = std::char_traits<Char>,
@@ -108,6 +122,13 @@ class FormatBuffer final : public std::basic_string<Char, Traits, Allocator> {
 public:
     using std::basic_string<Char, Traits, Allocator>::basic_string;
 
+    /**
+     * @brief Format log message wich compile-time argument checks.
+     *
+     * @tparam Args Format argument types. Deduced from arguments.
+     * @param fmt Format string.
+     * @param args Format arguments.
+     */
     template<typename... Args>
     auto format(FormatString<Char, std::type_identity_t<Args>...> fmt, Args&&... args) -> void
     {
