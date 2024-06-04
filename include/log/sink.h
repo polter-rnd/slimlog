@@ -13,6 +13,7 @@
 
 #include <array>
 #include <atomic>
+#include <cstddef>
 #include <initializer_list>
 #include <memory>
 #include <memory_resource>
@@ -201,34 +202,33 @@ private:
 /**
  * @brief Basic log sink driver class.
  *
- * @tparam String Base string type used for log messages.
+ * @tparam Logger Base string type used for log messages.
  * @tparam ThreadingPolicy Threading policy used for operating over sinks
  *                         (e.g. SingleThreadedPolicy or MultiThreadedPolicy).
+ * @tparam ArenaSize Size of internal pre-allocated arena. Defaults to 4096 bytes.
  *
  * @note Class doesn't have a virtual destructor
  *       as the intended usage scenario is to
  *       use it as a private base class explicitly
  *       moving access functions to public part of a base class.
  */
-template<typename String, typename ThreadingPolicy>
+template<typename Logger, typename ThreadingPolicy, size_t ArenaSize>
 class SinkDriver final { };
 
 /**
  * @brief Single-threaded log sink driver.
  *
  * Handles sinks access without any synchronization.
- *
- * @tparam String Base string type used for log messages.
  */
-template<typename Logger>
-class SinkDriver<Logger, SingleThreadedPolicy> final {
+template<typename Logger, size_t ArenaSize>
+class SinkDriver<Logger, SingleThreadedPolicy, ArenaSize> final {
 public:
     /** @brief Char type for log messages. */
     using CharType = typename Logger::CharType;
     /** @brief Buffer used for log message formatting. */
     using FormatBufferType = typename Sink<Logger>::FormatBufferType;
     /** @brief Arena for internal memory allocations. */
-    using ArenaType = typename std::array<char, Logger::BufferSize>;
+    using ArenaType = typename std::array<std::byte, ArenaSize>;
 
     /**
      * @brief Add existing sink.
@@ -435,8 +435,6 @@ private:
  * @brief Multi-threaded log sink driver.
  *
  * Handles sinks access with locking a mutex.
- *
- * @tparam String Base string type used for log messages.
  */
 template<
     typename Logger,
@@ -444,16 +442,21 @@ template<
     typename ReadLock,
     typename WriteLock,
     std::memory_order LoadOrder,
-    std::memory_order StoreOrder>
-class SinkDriver<Logger, MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>>
+    std::memory_order StoreOrder,
+    size_t ArenaSize>
+class SinkDriver<
+    Logger,
+    MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>,
+    ArenaSize>
     final {
 public:
     /** @brief Char type for log messages. */
     using CharType = typename Logger::CharType;
     /** @brief Buffer used for log message formatting. */
-    using FormatBufferType = typename SinkDriver<Logger, SingleThreadedPolicy>::FormatBufferType;
+    using FormatBufferType =
+        typename SinkDriver<Logger, SingleThreadedPolicy, ArenaSize>::FormatBufferType;
     /** @brief Arena for internal memory allocations. */
-    using ArenaType = typename std::array<char, Logger::BufferSize>;
+    using ArenaType = typename std::array<std::byte, ArenaSize>;
 
     /**
      * @brief Add existing sink.
@@ -571,9 +574,9 @@ protected:
 
 private:
     mutable Mutex m_mutex;
-    SinkDriver<Logger, SingleThreadedPolicy> m_sinks;
+    SinkDriver<Logger, SingleThreadedPolicy, ArenaSize> m_sinks;
 
-    friend class SinkDriver<Logger, SingleThreadedPolicy>;
+    friend class SinkDriver<Logger, SingleThreadedPolicy, ArenaSize>;
 };
 
 } // namespace PlainCloud::Log
