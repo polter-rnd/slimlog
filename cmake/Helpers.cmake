@@ -66,7 +66,7 @@ function(find_package_switchable package)
     )
 
     if(NOT DEFINED ${ARG_OPTION})
-        find_package(${package} ${ARG_MIN_VERSION})
+        find_package(${package} ${ARG_MIN_VERSION} QUIET)
         if(${${package}_FOUND} AND ${ARG_DEFAULT})
             set(${ARG_OPTION}
                 ON
