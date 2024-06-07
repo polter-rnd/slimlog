@@ -20,8 +20,8 @@
 
 namespace PlainCloud::Log {
 
-/** Default arena size is equal to typical memory page size */
-static constexpr size_t DefaultArenaSize = 4096;
+/** Default buffer size is equal to typical memory page size */
+static constexpr size_t DefaultBufferSize = 4096;
 
 /** @cond */
 namespace Detail {
@@ -75,19 +75,21 @@ using UnderlyingCharType = typename UnderlyingChar<T>::Type;
  *              Deduced automatically for standard C++ string types and for plain C strings.
  * @tparam ThreadingPolicy Threading policy used for operating over sinks and log level
  *                         (e.g. SingleThreadedPolicy or MultiThreadedPolicy).
- * @tparam ArenaSize Size of internal pre-allocated arena. Defaults to 4096 bytes.
+ * @tparam StaticBufferSize Size of internal pre-allocated buffer. Defaults to 4096 bytes.
  */
 template<
     typename String,
     typename Char = Detail::UnderlyingCharType<String>,
     typename ThreadingPolicy = MultiThreadedPolicy<>,
-    size_t ArenaSize = DefaultArenaSize>
+    size_t StaticBufferSize = DefaultBufferSize>
 class Logger {
 public:
     /** @brief String type for log messages. */
     using StringType = String;
     /** @brief Char type for log messages. */
     using CharType = Char;
+    /** @brief Size of internal pre-allocatied buffer. */
+    static constexpr auto BufferSize = StaticBufferSize;
 
     Logger(Logger const&) = delete;
     Logger(Logger&&) = delete;
@@ -323,9 +325,9 @@ private:
     std::shared_ptr<Logger> m_parent;
     String m_category;
     LevelDriver<ThreadingPolicy> m_level;
-    SinkDriver<Logger, ThreadingPolicy, ArenaSize> m_sinks;
+    SinkDriver<Logger, ThreadingPolicy> m_sinks;
 
-    template<typename, typename, size_t>
+    template<typename Logger, typename Policy>
     friend class SinkDriver;
 };
 
