@@ -11,15 +11,15 @@
 
 include(Helpers)
 if(NOT LLVM_DIR AND NOT LLVM_ROOT)
-set_versioned_compiler_names(
-    LlvmCov
-    COMPILER Clang
-    NAMES llvm-cov
-)
+    set_versioned_compiler_names(
+        LlvmCov
+        COMPILER Clang
+        NAMES llvm-cov
+    )
 else()
-set_directory_hints(LlvmCov HINTS LLVM_DIR LLVM_ROOT)
-list(TRANSFORM LlvmCov_HINTS APPEND /bin)
-unset(LlvmCov_EXECUTABLE CACHE)
+    set_directory_hints(LlvmCov HINTS LLVM_DIR LLVM_ROOT)
+    list(TRANSFORM LlvmCov_HINTS APPEND /bin)
+    unset(LlvmCov_EXECUTABLE CACHE)
 endif()
 
 find_program(

@@ -68,11 +68,11 @@ function(add_gcovr_coverage_target)
     endif()
 
     foreach(language ${ARG_GCOV_LANGUAGES})
-        set(_language_compiler ${CMAKE_${language}_COMPILER_ID})
+        set(language_compiler ${CMAKE_${language}_COMPILER_ID})
         if(NOT compiler_id)
-            set(compiler_id ${_language_compiler})
+            set(compiler_id ${language_compiler})
             set(compiler_version CMAKE_${language}_COMPILER_VERSION)
-        elseif(NOT compiler_id STREQUAL _language_compiler)
+        elseif(NOT compiler_id STREQUAL language_compiler)
             message(WARNING "Cannot enable coverage for multiple compilers! "
                             "Please set GCOV_EXECUTABLE or fill GCOV_LANGUAGES "
                             "only with languages using the same compiler."

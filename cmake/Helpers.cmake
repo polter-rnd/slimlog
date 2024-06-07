@@ -99,14 +99,14 @@ endfunction()
 # @arg __filter__: Regular expression to filter variables
 # [/cmake_documentation]
 function(dump_option_variables filter)
-    get_cmake_property(_var_names VARIABLES)
-    list(SORT _var_names)
-    list(REMOVE_DUPLICATES _var_names)
-    foreach(_var_name ${_var_names})
+    get_cmake_property(var_names VARIABLES)
+    list(SORT var_names)
+    list(REMOVE_DUPLICATES var_names)
+    foreach(var_name ${var_names})
         if(filter)
             # cmake-format: off
-            get_property(_var_type CACHE ${_var_name} PROPERTY TYPE)
-            get_property(_is_advanced CACHE ${_var_name} PROPERTY ADVANCED)
+            get_property(_var_type CACHE ${var_name} PROPERTY TYPE)
+            get_property(_is_advanced CACHE ${var_name} PROPERTY ADVANCED)
             # cmake-format: on
             if("${_var_type}" STREQUAL "INTERNAL"
                OR "${_var_type}" STREQUAL "UNINITIALIZED"
@@ -117,15 +117,15 @@ function(dump_option_variables filter)
 
             # Case insenstitive match
             string(TOLOWER "${filter}" filter_lower)
-            string(TOLOWER "${_var_name}" _var_name_lower)
+            string(TOLOWER "${var_name}" var_name_lower)
 
             unset(MATCHED)
-            string(REGEX MATCH ${filter_lower} matched ${_var_name_lower})
+            string(REGEX MATCH ${filter_lower} matched ${var_name_lower})
             if(NOT matched)
                 continue()
             endif()
         endif()
-        message(" * ${_var_name}=${${_var_name}}")
+        message(" * ${var_name}=${${var_name}}")
     endforeach()
 endfunction()
 
@@ -214,18 +214,18 @@ function(set_versioned_compiler_names package)
         ""
         PARENT_SCOPE
     )
-    set(_max_compiler_ver -1)
+    set(max_compiler_ver -1)
     foreach(lang ${ARG_LANGS})
         if(CMAKE_${lang}_COMPILER_ID STREQUAL "${ARG_COMPILER}")
             set(compiler_ver ${CMAKE_${lang}_COMPILER_VERSION})
             string(REGEX REPLACE "([0-9]+)\\..*" "\\1" compiler_ver ${compiler_ver})
-            if(compiler_ver GREATER _max_compiler_ver)
-                set(_max_compiler_ver ${compiler_ver})
+            if(compiler_ver GREATER max_compiler_ver)
+                set(max_compiler_ver ${compiler_ver})
             endif()
         endif()
     endforeach()
-    if(_max_compiler_ver GREATER -1)
-        list(TRANSFORM ARG_NAMES APPEND -${_max_compiler_ver} OUTPUT_VARIABLE ${package}_NAMES)
+    if(max_compiler_ver GREATER -1)
+        list(TRANSFORM ARG_NAMES APPEND -${max_compiler_ver} OUTPUT_VARIABLE ${package}_NAMES)
         set(${package}_NAMES
             ${${package}_NAMES}
             PARENT_SCOPE

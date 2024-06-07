@@ -34,7 +34,7 @@ function(add_clang_code_format_targets)
         message(FATAL_ERROR "ClangFormat source directory list is not specified!")
     endif()
 
-    set(ARG_SUPPORTED_FILE_EXTENSIONS
+    set(supported_file_excensions
         "*.cpp"
         "*.cxx"
         "*.c++"
@@ -45,10 +45,10 @@ function(add_clang_code_format_targets)
         "*.hpp"
     )
 
-    set(ARG_CHECK_COMMANDS)
-    set(ARG_FORMAT_COMMANDS)
+    set(check_commands)
+    set(format_commands)
     foreach(dir IN LISTS ARG_SOURCE_DIRS)
-        foreach(ext IN LISTS ARG_SUPPORTED_FILE_EXTENSIONS)
+        foreach(ext IN LISTS supported_file_excensions)
             file(
                 GLOB_RECURSE tmp_files
                 LIST_DIRECTORIES false
@@ -59,11 +59,11 @@ function(add_clang_code_format_targets)
             endforeach()
             foreach(file IN LISTS tmp_files)
                 # cmake-format: off
-                list(APPEND ARG_CHECK_COMMANDS
+                list(APPEND check_commands
                     COMMAND ${ClangFormat_EXECUTABLE}
                             "${file}" | ${Diff_EXECUTABLE} -u "${file}" -
                 )
-                list(APPEND ARG_FORMAT_COMMANDS
+                list(APPEND format_commands
                     COMMAND ${ClangFormat_EXECUTABLE} -i "${file}"
                 )
                 # cmake-format: on
@@ -73,14 +73,14 @@ function(add_clang_code_format_targets)
 
     add_custom_target(
         ${ARG_FORMAT_TARGET}
-        ${ARG_FORMAT_COMMANDS}
+        ${format_commands}
         VERBATIM USES_TERMINAL
         COMMENT "Formatting code by 'clang-format'"
     )
 
     add_custom_target(
         ${ARG_CHECK_TARGET}
-        ${ARG_CHECK_COMMANDS}
+        ${check_commands}
         VERBATIM USES_TERMINAL
         COMMENT "Checking code formatting by 'clang-format'"
     )

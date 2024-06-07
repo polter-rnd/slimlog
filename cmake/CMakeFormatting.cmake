@@ -34,15 +34,13 @@ function(add_cmake_code_format_targets)
         message(FATAL_ERROR "CMakeFormat source directory list is not specified!")
     endif()
 
-    set(ARG_SUPPORTED_FILE_EXTENSIONS "CMakeLists.txt" "*.cmake")
-
-    set(ARG_CHECK_COMMANDS)
-    set(ARG_FORMAT_COMMANDS)
+    set(check_commands)
+    set(format_commands)
     foreach(dir IN LISTS ARG_SOURCE_DIRS)
         file(
             GLOB_RECURSE tmp_files
             LIST_DIRECTORIES false
-            ARG_SOURCE_DIRS ${ARG_SUPPORTED_FILE_EXTENSIONS}
+            ARG_SOURCE_DIRS "CMakeLists.txt" "*.cmake"
         )
 
         foreach(exclude_dir IN LISTS ARG_EXCLUDE_DIRS)
@@ -51,10 +49,10 @@ function(add_cmake_code_format_targets)
 
         foreach(file IN LISTS tmp_files)
             # cmake-format: off
-            list(APPEND ARG_CHECK_COMMANDS
+            list(APPEND check_commands
                  COMMAND ${CMakeFormat_EXECUTABLE} "${file}" | ${Diff_EXECUTABLE} -u "${file}" -
             )
-            list(APPEND ARG_FORMAT_COMMANDS
+            list(APPEND format_commands
                  COMMAND ${CMakeFormat_EXECUTABLE} -i "${file}"
             )
             # cmake-format: on
@@ -63,14 +61,14 @@ function(add_cmake_code_format_targets)
 
     add_custom_target(
         ${ARG_FORMAT_TARGET}
-        ${ARG_FORMAT_COMMANDS}
+        ${format_commands}
         VERBATIM USES_TERMINAL
         COMMENT "Formatting cmake listfiles by 'cmake-format'"
     )
 
     add_custom_target(
         ${ARG_CHECK_TARGET}
-        ${ARG_CHECK_COMMANDS}
+        ${check_commands}
         VERBATIM USES_TERMINAL
         COMMENT "Checking cmake listfiles formatting by 'cmake-format'"
     )
