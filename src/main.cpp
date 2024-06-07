@@ -27,6 +27,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         log.add_sink<Log::OStreamSink>(std::cerr);
         log.info("hello!");
 
+#ifdef ENABLE_FMTLIB
         const std::basic_stringstream<char8_t> mystream;
         Log::Logger log19{u8"uchar8 log"};
         log19.add_sink<Log::OStreamSink>(mystream, u8"(%t) [%l] %F|%L: %m");
@@ -36,6 +37,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
             reinterpret_cast<const char*>(mystream.view().data()),
             mystream.view().size())
                   << "\n";
+#endif
 
         auto log_root = std::make_shared<Log::Logger<std::string_view>>("kek_root");
 
