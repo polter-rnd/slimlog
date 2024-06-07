@@ -14,6 +14,7 @@
 #include <cwchar>
 #include <initializer_list>
 #include <iosfwd>
+#include <span>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -296,9 +297,9 @@ protected:
     template<typename T>
     static void from_multibyte(auto& result, const T* data)
     {
-        // Convert multi-byte to wide char
         Char wchr;
         auto len = std::char_traits<T>::length(data);
+        auto substr = std::span(data, len);
         auto state = std::mbstate_t();
         size_t (*towc_func)(Char*, const T*, size_t, mbstate_t*) = nullptr;
         if constexpr (std::is_same_v<Char, wchar_t>) {
@@ -312,8 +313,9 @@ protected:
         } else if constexpr (std::is_same_v<Char, char32_t>) {
             towc_func = std::mbrtoc32;
         }
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        for (int ret{}; (ret = towc_func(&wchr, data, len, &state)) > 0; data += ret, len -= ret) {
+
+        for (int ret{}; (ret = static_cast<int>(towc_func(&wchr, substr.data(), len, &state))) > 0;
+             len -= ret, substr = substr.subspan(ret, len)) {
             result += wchr;
         }
     }
