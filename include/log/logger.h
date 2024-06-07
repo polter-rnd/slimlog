@@ -282,8 +282,7 @@ public:
     void
     message(Level level, Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const
     {
-        auto callback = [&fmt = static_cast<const decltype(fmt.fmt())>(fmt.fmt())](
-                            auto& buffer, Args&&... args) {
+        auto callback = [&fmt = fmt.fmt()](auto& buffer, Args&&... args) {
             buffer.format(fmt, std::forward<Args>(args)...);
         };
 

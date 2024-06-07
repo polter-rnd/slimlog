@@ -87,7 +87,7 @@ public:
      *
      * @return Format string.
      */
-    [[nodiscard]] constexpr auto fmt() const -> auto
+    [[nodiscard]] constexpr auto fmt() const -> const auto&
     {
         return m_fmt;
     }
@@ -97,7 +97,7 @@ public:
      *
      * @return Location.
      */
-    [[nodiscard]] constexpr auto loc() const -> auto
+    [[nodiscard]] constexpr auto loc() const -> const auto&
     {
         return m_loc;
     }
