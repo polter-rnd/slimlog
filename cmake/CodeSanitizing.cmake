@@ -19,7 +19,6 @@
 # @arg __SANITIZE_MEMORY__:      Enable memory sanitizer (`libmsan`)
 # @arg __SANITIZE_UNDEFINED__:   Enable undefined behavior sanitizer (`libubsan`)
 # @arg __SANITIZE_THREAD__:      Enable thread sanitizer (`libtsan`)
-# @arg __SANITIZE_LINK_STATIC__: Try to link static against sanitizers on GCC
 # [/cmake_documentation]
 
 include(Helpers)
@@ -79,46 +78,23 @@ function(sanitizer_add_blacklist_file fileName)
     check_compiler_flags_list("-fsanitize-blacklist=${fileName}" "SanitizerBlacklist" "SanBlist")
 endfunction()
 
-# [cmake_documentation] sanitizer_add_flags(targetName, targetCompiler, targetLang, varPrefix)
+# [cmake_documentation] sanitizer_add_flags(targetName, targetCompiler, varPrefix)
 #
 # Helper to assign sanitizer flags for `targetName`.
 #
 # Required arguments:
 # @arg __targetName__: Name of the target
 # @arg __targetCompiler__: Name of the compiler used to build target
-# @arg __targetLang__: Language used for target
 # @arg __varPrefix__: Prefix for resulting variables
 #
 # [/cmake_documentation]
-function(sanitizer_add_flags targetName targetCompiler targetLang varPrefix)
+function(sanitizer_add_flags targetName targetCompiler varPrefix)
     # Get list of compilers used by target and check, if sanitizer is available for this target.
     # Other compiler checks like check for conflicting compilers will be done in add_sanitizers
     # function.
     set(sanitizer_flags "${${varPrefix}_${targetCompiler}_FLAGS}")
     if(sanitizer_flags STREQUAL "")
         return()
-    endif()
-
-    # If compiler is a GNU compiler, search for static flag, if SANITIZE_LINK_STATIC is enabled.
-    if(targetCompiler MATCHES "GNU"
-       AND targetLang
-       AND NOT DEFINED ${varPrefix}_STATIC_DETECTED
-    )
-        option(SANITIZE_LINK_STATIC "Try to link static against sanitizers." ON)
-
-        string(TOLOWER ${varPrefix} varPrefix_lower)
-        set(sanitizer_flags_static "-static-lib${varPrefix_lower} ${sanitizer_flags}")
-
-        check_compiler_flags(${sanitizer_flags_static} ${targetLang} ${varPrefix}_STATIC_DETECTED)
-        if(${varPrefix}_STATIC_DETECTED)
-            set(sanitizer_flags ${sanitizer_flags_static})
-            # Update cached variable to prevent extra checks next time
-            unset(${varPrefix}_${targetCompiler}_FLAGS CACHE)
-            set(${varPrefix}_${targetCompiler}_FLAGS
-                "${sanitizer_flags_static}"
-                CACHE STRING ""
-            )
-        endif()
     endif()
 
     separate_arguments(
@@ -166,26 +142,26 @@ function(target_enable_sanitizers targetName)
 
     # Enable AddressSanitizer
     if(SANITIZE_ADDRESS)
-        sanitizer_add_flags(${targetName} "${target_compiler}" "${target_lang}" "ASan")
+        sanitizer_add_flags(${targetName} "${target_compiler}" "ASan")
     endif()
 
     # Enable UndefinedBehaviorSanitizer
     if(SANITIZE_UNDEFINED)
-        sanitizer_add_flags(${targetName} "${target_compiler}" "${target_lang}" "UBSan")
+        sanitizer_add_flags(${targetName} "${target_compiler}" "UBSan")
     endif()
 
     # Enable LeakSanitizer
     if(SANITIZE_LEAK)
-        sanitizer_add_flags(${targetName} "${target_compiler}" "${target_lang}" "LSan")
+        sanitizer_add_flags(${targetName} "${target_compiler}" "LSan")
     endif()
 
     # Enable MemorySanitizer
     if(SANITIZE_MEMORY)
-        sanitizer_add_flags(${targetName} "${target_compiler}" "${target_lang}" "MSan")
+        sanitizer_add_flags(${targetName} "${target_compiler}" "MSan")
     endif()
 
     # Enable ThreadSanitizer
     if(SANITIZE_THREAD)
-        sanitizer_add_flags(${targetName} "${target_compiler}" "${target_lang}" "TSan")
+        sanitizer_add_flags(${targetName} "${target_compiler}" "TSan")
     endif()
 endfunction()
