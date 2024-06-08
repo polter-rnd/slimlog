@@ -22,5 +22,13 @@
             "<memory_resource>",
             "public"
         ]
+    },
+    {
+        "symbol": [
+            "std::pair",
+            "private",
+            "<utility>",
+            "public"
+        ]
     }
 ]
