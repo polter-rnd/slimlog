@@ -135,8 +135,7 @@ public:
      * @param category %Logger category name.
      * @param location Caller location (file, line, function).
      */
-    template<typename String>
-    auto apply(auto& result, Level level, String category, Location location) const -> void
+    auto apply(auto& result, Level level, StringType category, Location location) const -> void
     {
         if (empty()) {
             return;

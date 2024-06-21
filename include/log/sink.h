@@ -10,6 +10,7 @@
 #include "location.h"
 #include "pattern.h"
 #include "policy.h"
+#include "util/stack_allocator.h"
 
 #include <array>
 #include <atomic>
@@ -19,6 +20,7 @@
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 // Suppress include for std::equal_to() which is not used directly
@@ -45,7 +47,7 @@ public:
     using FormatBufferType = FormatBuffer<
         CharType,
         std::char_traits<CharType>,
-        std::pmr::polymorphic_allocator<CharType>>;
+        StackAllocator<CharType, Logger::BufferSize>>;
 
     /**
      * @brief Construct a new Sink object.
@@ -320,52 +322,51 @@ public:
      */
     template<typename T, typename... Args>
     auto message(
-        ArenaType& arena,
         const Logger& logger,
         Level level,
-        T callback,
+        T&& callback,
         Location location = Location::current(),
         Args&&... args) const -> void
     {
-        std::pmr::monotonic_buffer_resource pool{arena.data(), arena.size()};
-        std::pmr::unordered_map<std::shared_ptr<Sink<Logger>>, bool> sinks{&pool};
-        FormatBufferType fmt_buffer{&pool};
+        /*std::unordered_map<
+            Sink<Logger>*,
+            bool,
+            std::hash<Sink<Logger>*>,
+            std::equal_to<Sink<Logger>*>,
+            StackAllocator<std::pair<Sink<Logger>* const, bool>, Logger::BufferSize>>
+            sinks{alloc<std::pair<Sink<Logger>* const, bool>>()};*/
+        std::unordered_map<
+            Sink<Logger>*,
+            bool,
+            std::hash<Sink<Logger>*>,
+            std::equal_to<Sink<Logger>*>>
+            sinks;
 
         if (logger.level_enabled(level)) {
-            sinks.insert(m_sinks.cbegin(), m_sinks.cend());
+            for (auto it = m_sinks.cbegin(), it_end = m_sinks.cend(); it != it_end; it++) {
+                sinks.emplace(it->first.get(), it->second);
+            }
         }
         for (auto parent{logger.m_parent}; parent; parent = parent->m_parent) {
             if (parent->level_enabled(level)) {
-                sinks.insert(parent->m_sinks.m_sinks.cbegin(), parent->m_sinks.m_sinks.cend());
+                for (auto it = parent->m_sinks.m_sinks.cbegin(),
+                          it_end = parent->m_sinks.m_sinks.cend();
+                     it != it_end;
+                     it++) {
+                    sinks.emplace(it->first.get(), it->second);
+                }
             }
         }
 
+        const auto category = logger.category();
         for (const auto& sink : sinks) {
             if (sink.second) {
-                using BufferRefType = std::add_lvalue_reference_t<decltype(fmt_buffer)>;
-                if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
-                    callback(fmt_buffer, std::forward<Args>(args)...);
-                    sink.first->message(fmt_buffer, level, logger.category(), location);
-                } else if constexpr (std::is_invocable_v<T, Args...>) {
-                    if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
-                        callback(std::forward<Args>(args)...);
-                        sink.first->message(fmt_buffer, level, logger.category(), location);
-                    } else {
-                        sink.first->message(
-                            fmt_buffer,
-                            level,
-                            logger.category(),
-                            callback(std::forward<Args>(args)...),
-                            location);
-                    }
-                } else {
-                    // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
-                    sink.first->message(fmt_buffer, level, logger.category(), callback, location);
-                }
+                message(sink.first, category, level, callback, location, args...);
             }
         }
     }
 
+protected:
     /**
      * @brief Emit new callback-based log message if it fits for specified logging level.
      *
@@ -384,31 +385,51 @@ public:
      */
     template<typename T, typename... Args>
     auto message(
-        const Logger& logger,
+        Sink<Logger>* sink,
+        std::basic_string_view<CharType> category,
         Level level,
         T&& callback,
-        Location location = Location::current(),
+        Location location,
         Args&&... args) const -> void
     {
-        this->message(
-            arena(),
-            logger,
-            level,
-            std::forward<T>(callback), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
-            location,
-            std::forward<Args>(args)...);
+        FormatBufferType fmt_buffer{alloc<CharType>()};
+        fmt_buffer.reserve(Logger::BufferSize - 1);
+
+        using BufferRefType = std::add_lvalue_reference_t<decltype(fmt_buffer)>;
+        if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
+            callback(fmt_buffer, std::forward<Args>(args)...);
+            sink->message(fmt_buffer, level, std::move(category), location);
+        } else if constexpr (std::is_invocable_v<T, Args...>) {
+            if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
+                callback(std::forward<Args>(args)...);
+                sink->message(fmt_buffer, level, std::move(category), location);
+            } else {
+                sink->message(
+                    fmt_buffer,
+                    level,
+                    std::move(category),
+                    callback(std::forward<Args>(args)...),
+                    location);
+            }
+        } else {
+            // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
+            sink->message(
+                fmt_buffer, level, std::move(category), std::forward<T>(callback), location);
+        }
     }
 
-protected:
     /**
      * @brief Static-allocated continious space for memory allocations.
      *
      * @return Reference to the arena.
      */
-    [[nodiscard]] auto arena() const -> auto&
+
+    template<typename T>
+    [[nodiscard]] auto alloc() const -> auto&
     {
-        static ArenaType arena;
-        return arena;
+        static std::array<T, Logger::BufferSize> arena;
+        static StackAllocator<T, Logger::BufferSize> alloc(arena.data());
+        return alloc;
     }
 
     /**
@@ -549,7 +570,6 @@ public:
     {
         ReadLock lock(m_mutex);
         m_sinks.message(
-            arena(),
             logger,
             level,
             std::forward<T>(callback), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
@@ -563,10 +583,12 @@ protected:
      *
      * @return Reference to the arena.
      */
-    auto arena() const -> auto&
+    template<typename T>
+    [[nodiscard]] auto alloc() const -> auto&
     {
-        static thread_local ArenaType arena;
-        return arena;
+        static thread_local std::array<T, Logger::BufferSize> arena;
+        static thread_local StackAllocator<T, Logger::BufferSize> alloc(arena.data());
+        return alloc;
     }
 
 private:

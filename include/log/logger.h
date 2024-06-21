@@ -148,9 +148,9 @@ public:
      *
      * @return %Logger name
      */
-    [[nodiscard]] auto category() const -> String
+    [[nodiscard]] auto category() const -> std::basic_string_view<Char>
     {
-        return m_category;
+        return std::basic_string_view<Char>{m_category};
     }
 
     /**
@@ -284,7 +284,7 @@ public:
     void
     message(Level level, Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const
     {
-        auto callback = [&fmt = fmt.fmt()](auto& buffer, Args&&... args) {
+        auto callback = [&fmt = fmt.fmt()](auto& buffer, auto&&... args) {
             buffer.format(fmt, std::forward<Args>(args)...);
         };
 
@@ -323,7 +323,7 @@ public:
 
 private:
     std::shared_ptr<Logger> m_parent;
-    String m_category;
+    std::basic_string<Char> m_category;
     LevelDriver<ThreadingPolicy> m_level;
     SinkDriver<Logger, ThreadingPolicy> m_sinks;
 
