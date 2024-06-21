@@ -121,7 +121,7 @@ public:
      * @param level Logging level.
      */
     template<typename T>
-    explicit Logger(T&& name, const std::shared_ptr<Logger>& parent, Level level = Level::Info)
+    explicit Logger(T&& name, Level level, const std::shared_ptr<Logger>& parent)
         : m_parent(parent)
         , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
