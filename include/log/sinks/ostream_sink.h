@@ -22,13 +22,12 @@ namespace PlainCloud::Log {
  * @tparam Logger %Logger class type intended for the sink to be used with.
  */
 template<typename Logger>
-    requires(std::convertible_to<
-             typename Logger::StringType,
-             std::basic_string_view<typename Logger::CharType>>)
+    requires(std::convertible_to<typename Logger::StringType, typename Logger::StringViewType>)
 class OStreamSink : public Sink<Logger> {
 public:
     using typename Sink<Logger>::CharType;
     using typename Sink<Logger>::StringType;
+    using typename Sink<Logger>::StringViewType;
     using typename Sink<Logger>::FormatBufferType;
 
     /**
@@ -62,20 +61,20 @@ public:
     auto message(
         FormatBufferType& buffer,
         Level level,
-        StringType category,
+        StringViewType category,
         StringType message,
         Location location) -> void override
     {
-        buffer.assign(std::move(message));
+        buffer.append(std::move(message));
         this->message(buffer, level, std::move(category), location);
     }
 
-    auto message(FormatBufferType& buffer, Level level, StringType category, Location location)
+    auto message(FormatBufferType& buffer, Level level, StringViewType category, Location location)
         -> void override
     {
         this->apply_pattern(buffer, level, std::move(category), location);
         buffer.push_back('\n');
-        m_ostream << buffer;
+        m_ostream.write(buffer.data(), buffer.size());
     }
 
     auto flush() -> void override

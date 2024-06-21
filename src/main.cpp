@@ -17,11 +17,11 @@
 
 class null_out_buf : public std::basic_streambuf<wchar_t> {
 public:
-    virtual std::streamsize xsputn(const char*, std::streamsize n)
+    virtual std::streamsize xsputn(const wchar_t*, std::streamsize n)
     {
         return n;
     }
-    virtual int overflow(int)
+    virtual unsigned int overflow(unsigned int)
     {
         return 1;
     }
@@ -49,30 +49,25 @@ auto benchmark(Func test_func)
 }
 
 template<typename T>
-T gen_random(const int len)
+std::basic_string_view<T> gen_random(const int len)
 {
-    static const wchar_t alphanum[] = L"0123456789"
-                                      L"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                                      L"abcdefghijklmnopqrstuvwxyz"
-                                      L"АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
-                                      L"абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
-                                      L" \t";
-    T tmp_s;
+    static const T alphanum[] = L"0123456789"
+                                L"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                L"abcdefghijklmnopqrstuvwxyz"
+                                L"АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+                                L"абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+                                L" \t";
+    static std::basic_string<T> tmp_s;
+    static auto seed = (unsigned)time(NULL) * getpid();
+    tmp_s.clear();
     tmp_s.reserve(len);
 
-    // Create a random number generator
-    static std::random_device rd;
-    static std::mt19937 generator(rd());
-
-    // Create a distribution to uniformly select from all
-    // characters
-    static std::uniform_int_distribution<> distribution(0, sizeof(alphanum) / sizeof(wchar_t) - 1);
-
+    srand(seed++);
     for (int i = 0; i < len; ++i) {
-        tmp_s += alphanum[distribution(generator)];
+        tmp_s += alphanum[rand() % (sizeof(alphanum) / sizeof(wchar_t)) - 1];
     }
 
-    return tmp_s;
+    return std::basic_string_view<T>{tmp_s};
 }
 
 double percentile(std::vector<double>& vectorIn, double percent)
@@ -86,9 +81,8 @@ void do_test()
 {
     namespace Log = PlainCloud::Log;
 
+    // auto& devnull = std::wcout;
     null_out_stream devnull;
-
-    srand((unsigned)time(NULL) * getpid());
 
     auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
 
@@ -97,14 +91,14 @@ void do_test()
         log_root->add_sink<Log::OStreamSink>(
             devnull,
             L"(%t) [%l] %F|%L: %m",
-            std::make_pair(Log::Level::Trace, gen_random<std::wstring>(5)),
-            std::make_pair(Log::Level::Debug, gen_random<std::wstring>(5)),
-            std::make_pair(Log::Level::Warning, gen_random<std::wstring>(5)),
-            std::make_pair(Log::Level::Error, gen_random<std::wstring>(5)),
-            std::make_pair(Log::Level::Fatal, gen_random<std::wstring>(5)));
+            std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
+            std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
+            std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
+            std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
+            std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
 
         /*for (int j = 0; j < 1024; j++) {
-            log_root->info(L"This is random message {}: {}", j, gen_random<std::wstring>(512));
+            log_root->info(L"This is random message {}: {}", j, gen_random<wchar_t>(512));
         }*/
     }
 
@@ -120,7 +114,7 @@ void do_test()
                 devnull, L">sink_" + std::to_wstring(j) + L"< (%t) [%l] %F|%L: %m");
         }
         /*for (int j = 0; j < 1024; j++) {
-            child->info(L"This is random message {}: {}", j, gen_random<std::wstring>(512));
+            child->info(L"This is random message {}: {}", j, gen_random<wchar_t>(512));
         }*/
     }
 
@@ -137,13 +131,14 @@ void do_test()
 
             for (int j = 0; j < 10; j++) {
                 child2->add_sink<Log::OStreamSink>(
-                    devnull, L">new_sink_" + std::to_wstring(j) + L"< (%t) [%l] %F|%L: %m");
+                    devnull,
+                    L">new_sink_" + std::to_wstring(i) + L":" + std::to_wstring(j)
+                        + L"< (%t) [%l] %F|%L: %m");
             }
         }
         auto res = benchmark([&child2]() {
             for (int j = 0; j < 1024; j++) {
-                child2->info(
-                    L"This is random message {}: {}", j, gen_random<std::wstring>(256 + j));
+                child2->info(L"This is random message {}: {}", j, gen_random<wchar_t>(256 + j));
             }
         });
         std::cout << "[" << k++ << "] message emitting: " << res << "\n";
@@ -157,6 +152,43 @@ void do_test()
 auto main(int /*argc*/, char* /*argv*/[]) -> int
 {
     namespace Util = PlainCloud::Util;
+    namespace Log = PlainCloud::Log;
+
+    /*auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
+
+    auto sink1 = log_root->add_sink<Log::OStreamSink>(
+        std::wcout,
+        L"!!!!! (%t) [%l] %F|%L: %m",
+        std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
+
+    auto sink2 = log_root->add_sink<Log::OStreamSink>(std::wcout, L"????? (%t) [%l] %F|%L: %m");
+
+    log_root->info(L"Hello {}!", L"World");
+    log_root->info(L"Hello {}! ({})", L"World", 2);
+    log_root->info(L"Hello {}! ({})", L"World", 3);
+    log_root->info(L"Hello {}! ({})", L"World", 4);
+
+    auto log_child = std::make_shared<Log::Logger<std::wstring_view>>(L"child", log_root);
+    log_child->add_sink<Log::OStreamSink>(std::wcout);
+    log_child->add_sink(sink2);
+    log_child->set_sink_enabled(sink2, false);
+    log_child->info(L"heh!");
+
+    auto log_child2 = std::make_shared<Log::Logger<std::wstring_view>>(L"child2", log_child);
+    log_child2->info(L"kekelal!");
+
+    log_child->add_sink(sink1);
+    log_child->set_sink_enabled(sink1, false);
+
+    log_child2->info(L"kekelal222!");
+    log_child->info(L"heh2222!");
+    log_root->info(L"root!!!");
+
+    return 0;*/
 
     try {
         // replace the C++ global locale and the "C" locale with the user-preferred locale

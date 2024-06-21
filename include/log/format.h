@@ -18,6 +18,7 @@
 #endif
 
 #include "location.h"
+#include "util/memory_buffer.h"
 
 #include <concepts>
 #include <iterator>
@@ -114,13 +115,10 @@ private:
  * @tparam Traits Traits (\a std::char_traits<Char>) for the particular char type.
  * @tparam Allocator Allocator (\a std::allocator<Char>) for the buffer data.
  */
-template<
-    typename Char,
-    typename Traits = std::char_traits<Char>,
-    typename Allocator = std::allocator<Char>>
-class FormatBuffer final : public std::basic_string<Char, Traits, Allocator> {
+template<typename Char, size_t BufferSize, typename Allocator = std::allocator<Char>>
+class FormatBuffer final : public MemoryBuffer<Char, BufferSize, Allocator> {
 public:
-    using std::basic_string<Char, Traits, Allocator>::basic_string;
+    using MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;
 
     /**
      * @brief Format log message wich compile-time argument checks.

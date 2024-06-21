@@ -21,7 +21,7 @@
 namespace PlainCloud::Log {
 
 /** Default buffer size is equal to typical memory page size */
-static constexpr size_t DefaultBufferSize = 4096;
+static constexpr size_t DefaultBufferSize = 1024;
 
 /** @cond */
 namespace Detail {
@@ -88,6 +88,8 @@ public:
     using StringType = String;
     /** @brief Char type for log messages. */
     using CharType = Char;
+    /** @brief String view type for log category. */
+    using StringViewType = std::basic_string_view<CharType>;
     /** @brief Size of internal pre-allocatied buffer. */
     static constexpr auto BufferSize = StaticBufferSize;
 
@@ -100,46 +102,42 @@ public:
     /**
      * @brief Construct a new %Logger object with specified logging level.
      *
-     * @tparam T String type for logger category name. Can be deduced from argument.
      * @param category %Logger category name. Can be used in logger messages.
      * @param level Logging level.
      */
-    template<typename T>
-    explicit Logger(T&& category, Level level = Level::Info)
-        : m_parent(nullptr)
-        , m_category(std::forward<T>(category)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+    explicit Logger(StringViewType category, Level level = Level::Info)
+        : m_category(category) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
+        , m_sinks(this)
     {
     }
 
     /**
      * @brief Construct a new child %Logger object.
      *
-     * @tparam T String type for logger category name. Can be deduced from argument.
      * @param name %Logger category name. Can be used in logger messages.
      * @param parent Parent logger to inherit sinks from.
      * @param level Logging level.
      */
-    template<typename T>
-    explicit Logger(T&& name, Level level, const std::shared_ptr<Logger>& parent)
+    explicit Logger(StringViewType category, Level level, const std::shared_ptr<Logger>& parent)
         : m_parent(parent)
-        , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        , m_category(category)
         , m_level(level)
+        , m_sinks(this, &parent->m_sinks)
     {
     }
 
     /**
      * @brief Construct a new child %Logger object.
      *
-     * @tparam T String type for logger category name. Can be deduced from argument.
      * @param name %Logger category name. Can be used in logger messages.
      * @param parent Parent logger to inherit sinks and logging level from.
      */
-    template<typename T>
-    explicit Logger(T&& name, const std::shared_ptr<Logger>& parent)
+    explicit Logger(StringViewType category, const std::shared_ptr<Logger>& parent)
         : m_parent(parent)
-        , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        , m_category(category)
         , m_level(parent->level())
+        , m_sinks(this, &parent->m_sinks)
     {
     }
 
@@ -148,9 +146,9 @@ public:
      *
      * @return %Logger name
      */
-    [[nodiscard]] auto category() const -> String
+    [[nodiscard]] auto category() const -> StringViewType
     {
-        return m_category;
+        return StringViewType{m_category};
     }
 
     /**
@@ -267,7 +265,7 @@ public:
         const -> void
     {
         m_sinks.message(
-            *this, level, std::forward<T>(callback), location, std::forward<Args>(args)...);
+            level, std::forward<T>(callback), category(), location, std::forward<Args>(args)...);
     }
 
     /**
@@ -284,7 +282,7 @@ public:
     void
     message(Level level, Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const
     {
-        auto callback = [&fmt = fmt.fmt()](auto& buffer, Args&&... args) {
+        auto callback = [&fmt = fmt.fmt()](auto& buffer, auto&&... args) {
             buffer.format(fmt, std::forward<Args>(args)...);
         };
 
@@ -323,12 +321,9 @@ public:
 
 private:
     std::shared_ptr<Logger> m_parent;
-    String m_category;
+    std::basic_string<Char> m_category;
     LevelDriver<ThreadingPolicy> m_level;
     SinkDriver<Logger, ThreadingPolicy> m_sinks;
-
-    template<typename Logger, typename Policy>
-    friend class SinkDriver;
 };
 
 /**

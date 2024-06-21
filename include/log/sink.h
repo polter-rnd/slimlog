@@ -10,15 +10,18 @@
 #include "location.h"
 #include "pattern.h"
 #include "policy.h"
+#include "util/stack_allocator.h"
 
 #include <array>
 #include <atomic>
 #include <initializer_list>
 #include <memory>
 #include <memory_resource>
+#include <queue>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 // Suppress include for std::equal_to() which is not used directly
@@ -39,13 +42,12 @@ class Sink : public std::enable_shared_from_this<Sink<Logger>> {
 public:
     /** @brief String type for log messages. */
     using StringType = typename Logger::StringType;
+    /** @brief String view type for log category. */
+    using StringViewType = typename Logger::StringViewType;
     /** @brief Char type for log messages. */
     using CharType = typename Logger::CharType;
     /** @brief Buffer used for log message formatting. */
-    using FormatBufferType = FormatBuffer<
-        CharType,
-        std::char_traits<CharType>,
-        std::pmr::polymorphic_allocator<CharType>>;
+    using FormatBufferType = FormatBuffer<CharType, Logger::BufferSize, std::allocator<CharType>>;
 
     /**
      * @brief Construct a new Sink object.
@@ -99,8 +101,7 @@ public:
      * @param pattern Log message pattern.
      * @return Pointer to the self sink object.
      */
-    virtual auto
-    set_pattern(typename Pattern<CharType>::StringType pattern) -> std::shared_ptr<Sink<Logger>>
+    virtual auto set_pattern(StringViewType pattern) -> std::shared_ptr<Sink<Logger>>
     {
         m_pattern.set_pattern(std::move(pattern));
         return this->shared_from_this();
@@ -118,8 +119,7 @@ public:
      * @param levels List of log levels with corresponding names.
      * @return Pointer to the self sink object.
      */
-    virtual auto set_levels(
-        std::initializer_list<std::pair<Level, typename Pattern<CharType>::StringType>> levels)
+    virtual auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels)
         -> std::shared_ptr<Sink<Logger>>
     {
         m_pattern.set_levels(std::move(levels));
@@ -146,7 +146,7 @@ public:
     virtual auto message(
         FormatBufferType& buffer,
         Level level,
-        StringType category,
+        StringViewType category,
         StringType message,
         Location location) -> void = 0;
 
@@ -167,8 +167,8 @@ public:
      * @param category %Logger category name.
      * @param location Caller location (file, line, function).
      */
-    virtual auto
-    message(FormatBufferType& buffer, Level level, StringType category, Location location) -> void
+    virtual auto message(
+        FormatBufferType& buffer, Level level, StringViewType category, Location location) -> void
         = 0;
 
     /**
@@ -188,8 +188,9 @@ protected:
      * @param category %Logger category name.
      * @param location Caller location (file, line, function).
      */
-    auto apply_pattern(
-        FormatBufferType& result, Level level, StringType category, Location location) const -> void
+    auto
+    apply_pattern(FormatBufferType& result, Level level, StringViewType category, Location location)
+        const -> void
     {
         m_pattern.apply(result, level, std::move(category), location);
     }
@@ -221,14 +222,31 @@ class SinkDriver final { };
  * @tparam String Base string type used for log messages.
  */
 template<typename Logger>
-class SinkDriver<Logger, SingleThreadedPolicy> final {
+class SinkDriver<Logger, SingleThreadedPolicy> {
 public:
     /** @brief Char type for log messages. */
     using CharType = typename Logger::CharType;
+    using StringViewType = typename Logger::StringViewType;
     /** @brief Buffer used for log message formatting. */
     using FormatBufferType = typename Sink<Logger>::FormatBufferType;
     /** @brief Arena for internal memory allocations. */
     using ArenaType = typename std::array<char, Logger::BufferSize>;
+
+    SinkDriver(const Logger* logger, SinkDriver* parent = nullptr)
+        : m_logger(logger)
+        , m_parent(parent)
+    {
+        if (m_parent) {
+            m_parent->add_child(this);
+        }
+    }
+
+    ~SinkDriver()
+    {
+        if (m_parent) {
+            m_parent->remove_child(this);
+        }
+    }
 
     /**
      * @brief Add existing sink.
@@ -239,7 +257,9 @@ public:
      */
     auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
-        return m_sinks.insert_or_assign(sink, true).second;
+        const auto result = m_sinks.insert_or_assign(sink, true).second;
+        update_effective_sinks();
+        return result;
     }
 
     /**
@@ -253,8 +273,11 @@ public:
     template<typename T, typename... Args>
     auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Logger>>
     {
-        return m_sinks.insert_or_assign(std::make_shared<T>(std::forward<Args>(args)...), true)
-            .first->first;
+        const auto result
+            = m_sinks.insert_or_assign(std::make_shared<T>(std::forward<Args>(args)...), true)
+                  .first->first;
+        update_effective_sinks();
+        return result;
     }
 
     /**
@@ -266,7 +289,11 @@ public:
      */
     auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
-        return m_sinks.erase(sink) == 1;
+        if (m_sinks.erase(sink) == 1) {
+            update_effective_sinks();
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -281,6 +308,7 @@ public:
     {
         if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
             itr->second = enabled;
+            update_effective_sinks();
             return true;
         }
         return false;
@@ -320,114 +348,116 @@ public:
      */
     template<typename T, typename... Args>
     auto message(
-        ArenaType& arena,
-        const Logger& logger,
         Level level,
-        T callback,
+        T&& callback,
+        StringViewType category,
         Location location = Location::current(),
         Args&&... args) const -> void
     {
-        std::pmr::monotonic_buffer_resource pool{arena.data(), arena.size()};
-        std::pmr::unordered_map<std::shared_ptr<Sink<Logger>>, bool> sinks{&pool};
-        FormatBufferType fmt_buffer{&pool};
+        FormatBufferType fmt_buffer;
 
-        if (logger.level_enabled(level)) {
-            sinks.insert(m_sinks.cbegin(), m_sinks.cend());
-        }
-        for (auto parent{logger.m_parent}; parent; parent = parent->m_parent) {
-            if (parent->level_enabled(level)) {
-                sinks.insert(parent->m_sinks.m_sinks.cbegin(), parent->m_sinks.m_sinks.cend());
-            }
-        }
-
-        for (const auto& sink : sinks) {
-            if (sink.second) {
-                using BufferRefType = std::add_lvalue_reference_t<decltype(fmt_buffer)>;
-                if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
+        using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
+        if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
+            for (const auto [sink, logger] : m_effective_sinks) {
+                if (logger->level_enabled(level)) {
                     callback(fmt_buffer, std::forward<Args>(args)...);
-                    sink.first->message(fmt_buffer, level, logger.category(), location);
-                } else if constexpr (std::is_invocable_v<T, Args...>) {
-                    if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
+                    sink->message(fmt_buffer, level, category, location);
+                    fmt_buffer.clear();
+                }
+            }
+        } else if constexpr (std::is_invocable_v<T, Args...>) {
+            if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
+                for (const auto& sink : m_effective_sinks) {
+                    if (sink.second) {
                         callback(std::forward<Args>(args)...);
-                        sink.first->message(fmt_buffer, level, logger.category(), location);
-                    } else {
-                        sink.first->message(
-                            fmt_buffer,
-                            level,
-                            logger.category(),
-                            callback(std::forward<Args>(args)...),
-                            location);
+                        sink.first->message(fmt_buffer, level, category, location);
+                        fmt_buffer.clear();
                     }
-                } else {
+                }
+            } else {
+                auto message = callback(std::forward<Args>(args)...);
+                for (const auto& sink : m_effective_sinks) {
+                    if (sink.second) {
+                        sink.first->message(fmt_buffer, level, category, message, location);
+                        fmt_buffer.clear();
+                    }
+                }
+            }
+        } else {
+            for (const auto [sink, logger] : m_effective_sinks) {
+                if (logger->level_enabled(level)) {
                     // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
-                    sink.first->message(fmt_buffer, level, logger.category(), callback, location);
+                    sink->message(fmt_buffer, level, category, std::forward<T>(callback), location);
+                    fmt_buffer.clear();
                 }
             }
         }
     }
 
-    /**
-     * @brief Emit new callback-based log message if it fits for specified logging level.
-     *
-     * Method to emit log message from callback return value convertible to logger string type.
-     * Used to postpone formatting or other preparations to the next steps after filtering.
-     * Makes logging almost zero-cost in case if it does not fit for current logging level.
-     *
-     * @tparam Logger %Logger argument type
-     * @tparam T Invocable type for the callback. Deduced from argument.
-     * @tparam Args Format argument types. Deduced from arguments.
-     * @param logger %Logger object.
-     * @param level Logging level.
-     * @param callback Log callback or message.
-     * @param location Caller location (file, line, function).
-     * @param args Format arguments.
-     */
-    template<typename T, typename... Args>
-    auto message(
-        const Logger& logger,
-        Level level,
-        T&& callback,
-        Location location = Location::current(),
-        Args&&... args) const -> void
-    {
-        this->message(
-            arena(),
-            logger,
-            level,
-            std::forward<T>(callback), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
-            location,
-            std::forward<Args>(args)...);
-    }
-
 protected:
-    /**
-     * @brief Static-allocated continious space for memory allocations.
-     *
-     * @return Reference to the arena.
-     */
-    [[nodiscard]] auto arena() const -> auto&
+    auto parent() -> SinkDriver*
     {
-        static ArenaType arena;
-        return arena;
+        return m_parent;
     }
 
-    /**
-     * @brief Constant begin interator for the sinks map.
-     */
-    auto cbegin() const noexcept
+    auto set_parent(SinkDriver* parent) -> void
     {
-        return m_sinks.cbegin();
+        m_parent = parent;
     }
 
-    /**
-     * @brief Constant end interator for the sinks map.
-     */
-    auto cend() const noexcept
+    auto add_child(SinkDriver* child) -> void
     {
-        return m_sinks.cend();
+        // std::wcout << "add_child\n";
+
+        m_children.insert(child);
+        update_effective_sinks();
+    }
+
+    auto remove_child(SinkDriver* child) -> void
+    {
+        // std::wcout << "remove_child\n";
+
+        m_children.erase(child);
+        update_effective_sinks();
+    }
+
+    auto update_effective_sinks() -> void
+    {
+        // Queue for level order traversal
+        std::queue<SinkDriver*> nodes;
+        nodes.push(this);
+        while (!nodes.empty()) {
+            auto* node = nodes.front();
+            if (node->m_parent) {
+                node->m_effective_sinks = node->m_parent->m_effective_sinks;
+                for (const auto& [sink, enabled] : node->m_sinks) {
+                    if (enabled) {
+                        node->m_effective_sinks.insert_or_assign(sink.get(), node->m_logger);
+                    } else {
+                        node->m_effective_sinks.erase(sink.get());
+                    }
+                }
+            } else {
+                node->m_effective_sinks.clear();
+                for (const auto& [sink, enabled] : node->m_sinks) {
+                    if (enabled) {
+                        node->m_effective_sinks.emplace(sink.get(), node->m_logger);
+                    }
+                }
+            }
+            nodes.pop();
+
+            for (auto* child : node->m_children) {
+                nodes.push(child);
+            }
+        }
     }
 
 private:
+    const Logger* m_logger;
+    SinkDriver* m_parent;
+    std::unordered_set<SinkDriver*> m_children;
+    std::unordered_map<Sink<Logger>*, const Logger*> m_effective_sinks;
     std::unordered_map<std::shared_ptr<Sink<Logger>>, bool> m_sinks;
 };
 
@@ -446,14 +476,28 @@ template<
     std::memory_order LoadOrder,
     std::memory_order StoreOrder>
 class SinkDriver<Logger, MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>>
-    final {
+    : public SinkDriver<Logger, SingleThreadedPolicy> {
 public:
-    /** @brief Char type for log messages. */
-    using CharType = typename Logger::CharType;
-    /** @brief Buffer used for log message formatting. */
-    using FormatBufferType = typename SinkDriver<Logger, SingleThreadedPolicy>::FormatBufferType;
-    /** @brief Arena for internal memory allocations. */
-    using ArenaType = typename std::array<char, Logger::BufferSize>;
+    using SinkDriver<Logger, SingleThreadedPolicy>::SinkDriver;
+    /** @brief String view type for log category. */
+    using StringViewType = typename Logger::StringViewType;
+
+    SinkDriver(const Logger* logger, SinkDriver* parent = nullptr)
+        : SinkDriver<Logger, SingleThreadedPolicy>(logger)
+    {
+        if (parent) {
+            SinkDriver<Logger, SingleThreadedPolicy>::set_parent(parent);
+            parent->add_child(this);
+        }
+    }
+
+    ~SinkDriver()
+    {
+        if (auto* parent_ptr = static_cast<SinkDriver*>(this->parent()); parent_ptr) {
+            SinkDriver<Logger, SingleThreadedPolicy>::set_parent(nullptr);
+            parent_ptr->remove_child(this);
+        }
+    }
 
     /**
      * @brief Add existing sink.
@@ -465,7 +509,7 @@ public:
     auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         WriteLock lock(m_mutex);
-        return m_sinks.add_sink(sink);
+        return SinkDriver<Logger, SingleThreadedPolicy>::add_sink(sink);
     }
 
     /**
@@ -480,7 +524,8 @@ public:
     auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Logger>>
     {
         WriteLock lock(m_mutex);
-        return m_sinks.template add_sink<T>(std::forward<Args>(args)...);
+        return SinkDriver<Logger, SingleThreadedPolicy>::template add_sink<T>(
+            std::forward<Args>(args)...);
     }
 
     /**
@@ -493,7 +538,7 @@ public:
     auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         WriteLock lock(m_mutex);
-        return m_sinks.remove_sink(sink);
+        return SinkDriver<Logger, SingleThreadedPolicy>::remove_sink(sink);
     }
 
     /**
@@ -507,7 +552,7 @@ public:
     auto set_sink_enabled(const std::shared_ptr<Sink<Logger>>& sink, bool enabled) -> bool
     {
         WriteLock lock(m_mutex);
-        return m_sinks.set_sink_enabled(sink, enabled);
+        return SinkDriver<Logger, SingleThreadedPolicy>::set_sink_enabled(sink, enabled);
     }
 
     /**
@@ -520,7 +565,7 @@ public:
     auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
         ReadLock lock(m_mutex);
-        return m_sinks.sink_enabled(sink);
+        return SinkDriver<Logger, SingleThreadedPolicy>::sink_enabled(sink);
     }
 
     /**
@@ -541,39 +586,38 @@ public:
      */
     template<typename T, typename... Args>
     auto message(
-        const Logger& logger,
         Level level,
         T&& callback,
+        StringViewType category,
         Location location = Location::current(),
         Args&&... args) const -> void
     {
         ReadLock lock(m_mutex);
-        m_sinks.message(
-            arena(),
-            logger,
+        SinkDriver<Logger, SingleThreadedPolicy>::message(
             level,
             std::forward<T>(callback), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+            category,
             location,
             std::forward<Args>(args)...);
     }
 
 protected:
-    /**
-     * @brief Static-allocated thread-local continious space for memory allocations.
-     *
-     * @return Reference to the arena.
-     */
-    auto arena() const -> auto&
+    auto add_child(SinkDriver* child) -> void
     {
-        static thread_local ArenaType arena;
-        return arena;
+        WriteLock lock(m_mutex);
+        // std::wcout << "!!!!!!!!!!!!!!!!!!! MULTITHREAD: add_child\n";
+        SinkDriver<Logger, SingleThreadedPolicy>::add_child(child);
+    }
+
+    auto remove_child(SinkDriver* child) -> void
+    {
+        WriteLock lock(m_mutex);
+        // std::wcout << "!!!!!!!!!!!!!!!!!!! MULTITHREAD: remove_child\n";
+        SinkDriver<Logger, SingleThreadedPolicy>::remove_child(child);
     }
 
 private:
     mutable Mutex m_mutex;
-    SinkDriver<Logger, SingleThreadedPolicy> m_sinks;
-
-    friend class SinkDriver<Logger, SingleThreadedPolicy>;
 };
 
 } // namespace PlainCloud::Log
