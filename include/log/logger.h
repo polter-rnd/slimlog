@@ -21,7 +21,7 @@
 namespace PlainCloud::Log {
 
 /** Default buffer size is equal to typical memory page size */
-static constexpr size_t DefaultBufferSize = 4096;
+static constexpr size_t DefaultBufferSize = 1024;
 
 /** @cond */
 namespace Detail {
@@ -88,6 +88,8 @@ public:
     using StringType = String;
     /** @brief Char type for log messages. */
     using CharType = Char;
+    /** @brief String view type for log category. */
+    using StringViewType = std::basic_string_view<CharType>;
     /** @brief Size of internal pre-allocatied buffer. */
     static constexpr auto BufferSize = StaticBufferSize;
 
@@ -148,9 +150,9 @@ public:
      *
      * @return %Logger name
      */
-    [[nodiscard]] auto category() const -> std::basic_string_view<Char>
+    [[nodiscard]] auto category() const -> StringViewType
     {
-        return std::basic_string_view<Char>{m_category};
+        return StringViewType{m_category};
     }
 
     /**

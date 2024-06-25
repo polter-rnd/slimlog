@@ -14,6 +14,7 @@
 #include <cwchar>
 #include <initializer_list>
 #include <iosfwd>
+#include <iostream>
 #include <span>
 #include <string>
 #include <string_view>
@@ -55,10 +56,8 @@ using namespace std;
 template<typename Char>
 class Pattern {
 public:
-    /** @brief Char type for pattern string. */
-    using CharType = Char;
     /** @brief String type for pattern (`std::basic_string_view<Char>`). */
-    using StringType = typename std::basic_string_view<Char>;
+    using StringViewType = typename std::basic_string_view<Char>;
 
     /** @brief Flags to be used in pattern. */
     enum class Flag : char {
@@ -72,12 +71,12 @@ public:
 
     /** @brief Level names */
     struct Levels {
-        StringType trace{DefaultTrace.data(), DefaultTrace.size()}; ///< Trace level
-        StringType debug{DefaultDebug.data(), DefaultDebug.size()}; ///< Debug level
-        StringType info{DefaultInfo.data(), DefaultInfo.size()}; ///< Info level
-        StringType warning{DefaultWarning.data(), DefaultWarning.size()}; ///< Warning level
-        StringType error{DefaultError.data(), DefaultError.size()}; ///< Error level
-        StringType fatal{DefaultFatal.data(), DefaultFatal.size()}; ///< Fatal level
+        StringViewType trace{DefaultTrace.data(), DefaultTrace.size()}; ///< Trace level
+        StringViewType debug{DefaultDebug.data(), DefaultDebug.size()}; ///< Debug level
+        StringViewType info{DefaultInfo.data(), DefaultInfo.size()}; ///< Info level
+        StringViewType warning{DefaultWarning.data(), DefaultWarning.size()}; ///< Warning level
+        StringViewType error{DefaultError.data(), DefaultError.size()}; ///< Error level
+        StringViewType fatal{DefaultFatal.data(), DefaultFatal.size()}; ///< Fatal level
 
     private:
         static constexpr std::array<Char, 5> DefaultTrace{'T', 'R', 'A', 'C', 'E'};
@@ -109,7 +108,7 @@ public:
      * @param args Log level pairs.
      */
     template<typename... Args>
-    explicit Pattern(StringType pattern = {}, Args&&... args)
+    explicit Pattern(StringViewType pattern = {}, Args&&... args)
         : m_pattern(std::move(pattern))
     {
         set_levels({std::forward<Args>(args)...});
@@ -135,18 +134,18 @@ public:
      * @param category %Logger category name.
      * @param location Caller location (file, line, function).
      */
-    auto apply(auto& result, Level level, StringType category, Location location) const -> void
+    auto apply(auto& result, Level level, StringViewType category, Location location) const -> void
     {
         if (empty()) {
             return;
         }
 
-        StringType pattern{m_pattern};
+        StringViewType pattern{m_pattern};
 
         const auto result_pos = result.size();
 
         auto append = [&pattern, &result](auto pos, auto data) {
-            result += pattern.substr(0, pos);
+            result.append(pattern.substr(0, pos));
 
             using Data = decltype(data);
             using DataChar = typename std::remove_cv_t<std::remove_pointer_t<decltype(data)>>;
@@ -171,7 +170,7 @@ public:
             pattern = pattern.substr(pos + 2);
         };
         auto skip = [&pattern, &result](auto pos, auto flag) {
-            result += pattern.substr(0, pos + 1);
+            result.append(pattern.substr(0, pos + 1));
             pattern = pattern.substr(pos + (flag == '%' ? 2 : 1));
         };
 
@@ -179,7 +178,7 @@ public:
             const auto pos = pattern.find('%');
             const auto len = pattern.size();
             if (pos == pattern.npos || pos == len - 1) {
-                result += pattern;
+                result.append(pattern);
                 break;
             }
 
@@ -211,8 +210,17 @@ public:
                 append(pos, category);
                 break;
             case Flag::Message:
-                append(pos, std::basic_string_view<CharType>(result.c_str(), result_pos));
-                result.erase(0, result_pos);
+                result.reserve(result.size() + result_pos);
+                append(pos, StringViewType{result.data(), result_pos});
+                /*result.append(pattern.substr(0, pos));
+                for (size_t i = 0; i < result_pos; i++) {
+                    CharType a = result[0];
+                    std::memmove(
+                        result.data(), result.data() + 1, (result.size() - 1) * sizeof(CharType));
+                    *std::prev(result.end()) = a;
+                }
+                pattern = pattern.substr(pos + 2);*/
+                // result.erase(0, result_pos);
                 break;
             case Flag::File:
                 append(pos, location.file_name());
@@ -242,7 +250,7 @@ public:
      *
      * @param pattern Message pattern.
      */
-    auto set_pattern(StringType pattern) -> void
+    auto set_pattern(StringViewType pattern) -> void
     {
         m_pattern = std::move(pattern);
     }
@@ -259,7 +267,7 @@ public:
      *
      * @param levels Initializer list of log level pairs.
      */
-    auto set_levels(std::initializer_list<std::pair<Level, StringType>> levels) -> void
+    auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels) -> void
     {
         for (const auto& level : levels) {
             switch (level.first) {
@@ -315,7 +323,7 @@ protected:
 
         for (int ret{}; (ret = static_cast<int>(towc_func(&wchr, substr.data(), len, &state))) > 0;
              len -= ret, substr = substr.subspan(ret, len)) {
-            result += wchr;
+            result.push_back(wchr);
         }
     }
 

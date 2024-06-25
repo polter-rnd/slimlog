@@ -41,13 +41,12 @@ class Sink : public std::enable_shared_from_this<Sink<Logger>> {
 public:
     /** @brief String type for log messages. */
     using StringType = typename Logger::StringType;
+    /** @brief String view type for log category. */
+    using StringViewType = typename Logger::StringViewType;
     /** @brief Char type for log messages. */
     using CharType = typename Logger::CharType;
     /** @brief Buffer used for log message formatting. */
-    using FormatBufferType = FormatBuffer<
-        CharType,
-        std::char_traits<CharType>,
-        StackAllocator<CharType, Logger::BufferSize>>;
+    using FormatBufferType = FormatBuffer<CharType, Logger::BufferSize, std::allocator<CharType>>;
 
     /**
      * @brief Construct a new Sink object.
@@ -101,8 +100,7 @@ public:
      * @param pattern Log message pattern.
      * @return Pointer to the self sink object.
      */
-    virtual auto
-    set_pattern(typename Pattern<CharType>::StringType pattern) -> std::shared_ptr<Sink<Logger>>
+    virtual auto set_pattern(StringViewType pattern) -> std::shared_ptr<Sink<Logger>>
     {
         m_pattern.set_pattern(std::move(pattern));
         return this->shared_from_this();
@@ -120,8 +118,7 @@ public:
      * @param levels List of log levels with corresponding names.
      * @return Pointer to the self sink object.
      */
-    virtual auto set_levels(
-        std::initializer_list<std::pair<Level, typename Pattern<CharType>::StringType>> levels)
+    virtual auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels)
         -> std::shared_ptr<Sink<Logger>>
     {
         m_pattern.set_levels(std::move(levels));
@@ -148,7 +145,7 @@ public:
     virtual auto message(
         FormatBufferType& buffer,
         Level level,
-        StringType category,
+        StringViewType category,
         StringType message,
         Location location) -> void = 0;
 
@@ -169,8 +166,8 @@ public:
      * @param category %Logger category name.
      * @param location Caller location (file, line, function).
      */
-    virtual auto
-    message(FormatBufferType& buffer, Level level, StringType category, Location location) -> void
+    virtual auto message(
+        FormatBufferType& buffer, Level level, StringViewType category, Location location) -> void
         = 0;
 
     /**
@@ -190,8 +187,9 @@ protected:
      * @param category %Logger category name.
      * @param location Caller location (file, line, function).
      */
-    auto apply_pattern(
-        FormatBufferType& result, Level level, StringType category, Location location) const -> void
+    auto
+    apply_pattern(FormatBufferType& result, Level level, StringViewType category, Location location)
+        const -> void
     {
         m_pattern.apply(result, level, std::move(category), location);
     }
@@ -335,7 +333,7 @@ public:
             std::equal_to<Sink<Logger>*>,
             StackAllocator<std::pair<Sink<Logger>* const, bool>, Logger::BufferSize>>
             sinks{alloc<std::pair<Sink<Logger>* const, bool>>()};*/
-        std::unordered_map<
+        /*std::unordered_map<
             Sink<Logger>*,
             bool,
             std::hash<Sink<Logger>*>,
@@ -356,80 +354,59 @@ public:
                     sinks.emplace(it->first.get(), it->second);
                 }
             }
-        }
+        }*/
+        const auto& sinks = m_sinks;
+        FormatBufferType& fmt_buffer = buffer();
 
-        const auto category = logger.category();
-        for (const auto& sink : sinks) {
-            if (sink.second) {
-                message(sink.first, category, level, callback, location, args...);
-            }
-        }
-    }
-
-protected:
-    /**
-     * @brief Emit new callback-based log message if it fits for specified logging level.
-     *
-     * Method to emit log message from callback return value convertible to logger string type.
-     * Used to postpone formatting or other preparations to the next steps after filtering.
-     * Makes logging almost zero-cost in case if it does not fit for current logging level.
-     *
-     * @tparam Logger %Logger argument type
-     * @tparam T Invocable type for the callback. Deduced from argument.
-     * @tparam Args Format argument types. Deduced from arguments.
-     * @param logger %Logger object.
-     * @param level Logging level.
-     * @param callback Log callback or message.
-     * @param location Caller location (file, line, function).
-     * @param args Format arguments.
-     */
-    template<typename T, typename... Args>
-    auto message(
-        Sink<Logger>* sink,
-        std::basic_string_view<CharType> category,
-        Level level,
-        T&& callback,
-        Location location,
-        Args&&... args) const -> void
-    {
-        FormatBufferType fmt_buffer{alloc<CharType>()};
-        fmt_buffer.reserve(Logger::BufferSize - 1);
-
-        using BufferRefType = std::add_lvalue_reference_t<decltype(fmt_buffer)>;
+        using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
         if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
             callback(fmt_buffer, std::forward<Args>(args)...);
-            sink->message(fmt_buffer, level, std::move(category), location);
+            for (const auto& sink : sinks) {
+                if (sink.second) {
+                    sink.first->message(fmt_buffer, level, logger.category(), location);
+                }
+            }
         } else if constexpr (std::is_invocable_v<T, Args...>) {
             if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
                 callback(std::forward<Args>(args)...);
-                sink->message(fmt_buffer, level, std::move(category), location);
+                for (const auto& sink : sinks) {
+                    if (sink.second) {
+                        sink.first->message(fmt_buffer, level, logger.category(), location);
+                    }
+                }
             } else {
-                sink->message(
-                    fmt_buffer,
-                    level,
-                    std::move(category),
-                    callback(std::forward<Args>(args)...),
-                    location);
+                auto message = callback(std::forward<Args>(args)...);
+                for (const auto& sink : sinks) {
+                    if (sink.second) {
+                        sink.first->message(
+                            fmt_buffer, level, logger.category(), message, location);
+                    }
+                }
             }
         } else {
-            // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
-            sink->message(
-                fmt_buffer, level, std::move(category), std::forward<T>(callback), location);
+            for (const auto& sink : sinks) {
+                if (sink.second) {
+                    // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
+                    sink.first->message(
+                        fmt_buffer, level, logger.category(), std::forward<T>(callback), location);
+                }
+            }
         }
+
+        buffer().clear();
     }
 
+protected:
     /**
      * @brief Static-allocated continious space for memory allocations.
      *
      * @return Reference to the arena.
      */
 
-    template<typename T>
-    [[nodiscard]] auto alloc() const -> auto&
+    [[nodiscard]] auto buffer() const -> auto&
     {
-        static std::array<T, Logger::BufferSize> arena;
-        static StackAllocator<T, Logger::BufferSize> alloc(arena.data());
-        return alloc;
+        static FormatBufferType fmt_buffer;
+        return fmt_buffer;
     }
 
     /**
@@ -583,12 +560,10 @@ protected:
      *
      * @return Reference to the arena.
      */
-    template<typename T>
-    [[nodiscard]] auto alloc() const -> auto&
+    [[nodiscard]] auto buffer() const -> auto&
     {
-        static thread_local std::array<T, Logger::BufferSize> arena;
-        static thread_local StackAllocator<T, Logger::BufferSize> alloc(arena.data());
-        return alloc;
+        static thread_local FormatBufferType fmt_buffer;
+        return fmt_buffer;
     }
 
 private:

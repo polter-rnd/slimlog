@@ -149,7 +149,27 @@ void do_test()
 auto main(int /*argc*/, char* /*argv*/[]) -> int
 {
     namespace Util = PlainCloud::Util;
+    namespace Log = PlainCloud::Log;
 
+    /*auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
+
+    log_root->add_sink<Log::OStreamSink>(
+        std::wcout,
+        L"!!!!! (%t) [%l] %F|%L: %m",
+        std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
+
+    log_root->add_sink<Log::OStreamSink>(std::wcout, L"????? (%t) [%l] %F|%L: %m");
+
+    log_root->info(L"Hello {}!", L"World");
+    log_root->info(L"Hello {}! ({})", L"World", 2);
+    log_root->info(L"Hello {}! ({})", L"World", 3);
+    log_root->info(L"Hello {}! ({})", L"World", 4);
+
+    return 0;*/
     try {
         // replace the C++ global locale and the "C" locale with the user-preferred locale
         // const Util::ScopedGlobalLocale myloc("");

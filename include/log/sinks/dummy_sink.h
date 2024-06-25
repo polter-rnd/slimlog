@@ -21,8 +21,8 @@ namespace PlainCloud::Log {
 template<typename Logger>
 class DummySink : public Sink<Logger> {
 public:
-    using typename Sink<Logger>::CharType;
     using typename Sink<Logger>::StringType;
+    using typename Sink<Logger>::StringViewType;
     using typename Sink<Logger>::FormatBufferType;
 
     /**
@@ -40,7 +40,7 @@ public:
     auto message(
         FormatBufferType& buffer,
         Level level,
-        StringType category,
+        StringViewType category,
         StringType message,
         Location location) -> void override
     {
@@ -48,7 +48,7 @@ public:
         this->message(buffer, level, category, location);
     }
 
-    auto message(FormatBufferType& buffer, Level level, StringType category, Location location)
+    auto message(FormatBufferType& buffer, Level level, StringViewType category, Location location)
         -> void override
     {
         this->apply_pattern(buffer, level, category, location);

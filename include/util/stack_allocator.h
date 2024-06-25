@@ -1,5 +1,6 @@
 
 #include <functional>
+#include <iostream>
 #include <memory>
 
 template<class T, std::size_t N, class Allocator = std::allocator<T>>
@@ -47,6 +48,7 @@ public:
 
     [[nodiscard]] constexpr T* allocate(size_t n)
     {
+        std::wcout << L"ALLOCATE " << n << '\n';
         if (std::cmp_less_equal(n, std::distance(m_stack_pointer, m_end))) {
             T* result = m_stack_pointer;
             m_stack_pointer += n;
@@ -58,6 +60,7 @@ public:
 
     void deallocate(T* p, size_t n)
     {
+        std::wcout << L"DEALLOCATE " << n << '\n';
         if (!(std::less<const T*>()(p, m_begin)) && (std::less<const T*>()(p, m_end))) {
             m_stack_pointer -= n;
         } else
