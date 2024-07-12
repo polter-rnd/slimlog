@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <iostream>
 #include <memory>
 
@@ -36,7 +37,8 @@ private:
         T* new_data = self.alloc_.allocate(new_capacity);
         // std::cout << "GROW TO " << new_capacity << '\n';
         // The following code doesn't throw, so the raw pointer above doesn't leak.
-        memcpy(new_data, old_data, buf.size() * sizeof(T));
+        // memcpy(new_data, old_data, buf.size() * sizeof(T));
+        std::copy_n(old_data, buf.size(), new_data);
         self.set(new_data, new_capacity);
         // deallocate must not throw according to the standard, but even if it does,
         // the buffer already uses the new storage and will deallocate it in
@@ -228,14 +230,15 @@ public:
             auto free_cap = capacity_ - size_;
             if (free_cap < count)
                 count = free_cap;
-            /*if (std::is_same<T, U>::value) {
-                memcpy(ptr_ + size_, begin, count * sizeof(T));
+            if (std::is_same<T, U>::value) {
+                // memcpy(ptr_ + size_, begin, count * sizeof(T));
+                std::copy_n(begin, count, ptr_ + size_);
             } else {
                 T* out = ptr_ + size_;
                 for (size_t i = 0; i < count; ++i)
                     out[i] = begin[i];
-            }*/
-            std::copy(begin, begin + count, ptr_ + size_);
+            }
+
             size_ += count;
             begin += count;
         }

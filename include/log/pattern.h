@@ -9,6 +9,7 @@
 #include "location.h"
 #include "util.h"
 
+#include <algorithm>
 #include <array>
 #include <cuchar>
 #include <cwchar>
@@ -210,17 +211,9 @@ public:
                 append(pos, category);
                 break;
             case Flag::Message:
-                result.reserve(result.size() + result_pos);
-                append(pos, StringViewType{result.data(), result_pos});
-                /*result.append(pattern.substr(0, pos));
-                for (size_t i = 0; i < result_pos; i++) {
-                    CharType a = result[0];
-                    std::memmove(
-                        result.data(), result.data() + 1, (result.size() - 1) * sizeof(CharType));
-                    *std::prev(result.end()) = a;
-                }
-                pattern = pattern.substr(pos + 2);*/
-                // result.erase(0, result_pos);
+                result.append(pattern.substr(0, pos));
+                std::rotate(result.begin(), result.begin() + result_pos, result.end());
+                pattern = pattern.substr(pos + 2);
                 break;
             case Flag::File:
                 append(pos, location.file_name());

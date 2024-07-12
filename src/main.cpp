@@ -81,6 +81,7 @@ void do_test()
 {
     namespace Log = PlainCloud::Log;
 
+    // auto& devnull = std::wcout;
     null_out_stream devnull;
 
     auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");

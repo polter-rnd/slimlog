@@ -67,17 +67,14 @@ public:
     {
         buffer.append(std::move(message));
         this->message(buffer, level, std::move(category), location);
-        buffer.clear();
     }
 
     auto message(FormatBufferType& buffer, Level level, StringViewType category, Location location)
         -> void override
     {
-        const auto orig_size = buffer.size();
         this->apply_pattern(buffer, level, std::move(category), location);
         buffer.push_back('\n');
-        m_ostream.write(buffer.data() + orig_size, buffer.size() - orig_size);
-        buffer.resize(orig_size);
+        m_ostream.write(buffer.data(), buffer.size());
     }
 
     auto flush() -> void override

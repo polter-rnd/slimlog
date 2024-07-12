@@ -356,22 +356,24 @@ public:
             }
         }*/
         const auto& sinks = m_sinks;
-        FormatBufferType& fmt_buffer = buffer();
+        FormatBufferType fmt_buffer;
 
         using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
         if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
-            callback(fmt_buffer, std::forward<Args>(args)...);
             for (const auto& sink : sinks) {
                 if (sink.second) {
+                    callback(fmt_buffer, std::forward<Args>(args)...);
                     sink.first->message(fmt_buffer, level, logger.category(), location);
+                    fmt_buffer.clear();
                 }
             }
         } else if constexpr (std::is_invocable_v<T, Args...>) {
             if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
-                callback(std::forward<Args>(args)...);
                 for (const auto& sink : sinks) {
                     if (sink.second) {
+                        callback(std::forward<Args>(args)...);
                         sink.first->message(fmt_buffer, level, logger.category(), location);
+                        fmt_buffer.clear();
                     }
                 }
             } else {
@@ -380,6 +382,7 @@ public:
                     if (sink.second) {
                         sink.first->message(
                             fmt_buffer, level, logger.category(), message, location);
+                        fmt_buffer.clear();
                     }
                 }
             }
@@ -389,26 +392,13 @@ public:
                     // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                     sink.first->message(
                         fmt_buffer, level, logger.category(), std::forward<T>(callback), location);
+                    fmt_buffer.clear();
                 }
             }
         }
-
-        buffer().clear();
     }
 
 protected:
-    /**
-     * @brief Static-allocated continious space for memory allocations.
-     *
-     * @return Reference to the arena.
-     */
-
-    [[nodiscard]] auto buffer() const -> auto&
-    {
-        static FormatBufferType fmt_buffer;
-        return fmt_buffer;
-    }
-
     /**
      * @brief Constant begin interator for the sinks map.
      */
@@ -552,18 +542,6 @@ public:
             std::forward<T>(callback), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
             location,
             std::forward<Args>(args)...);
-    }
-
-protected:
-    /**
-     * @brief Static-allocated thread-local continious space for memory allocations.
-     *
-     * @return Reference to the arena.
-     */
-    [[nodiscard]] auto buffer() const -> auto&
-    {
-        static thread_local FormatBufferType fmt_buffer;
-        return fmt_buffer;
     }
 
 private:
