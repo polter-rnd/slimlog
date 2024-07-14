@@ -131,7 +131,9 @@ void do_test()
 
             for (int j = 0; j < 10; j++) {
                 child2->add_sink<Log::OStreamSink>(
-                    devnull, L">new_sink_" + std::to_wstring(j) + L"< (%t) [%l] %F|%L: %m");
+                    devnull,
+                    L">new_sink_" + std::to_wstring(i) + L":" + std::to_wstring(j)
+                        + L"< (%t) [%l] %F|%L: %m");
             }
         }
         auto res = benchmark([&child2]() {
@@ -154,7 +156,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
 
     /*auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
 
-    log_root->add_sink<Log::OStreamSink>(
+    auto sink1 = log_root->add_sink<Log::OStreamSink>(
         std::wcout,
         L"!!!!! (%t) [%l] %F|%L: %m",
         std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
@@ -163,14 +165,31 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
 
-    log_root->add_sink<Log::OStreamSink>(std::wcout, L"????? (%t) [%l] %F|%L: %m");
+    auto sink2 = log_root->add_sink<Log::OStreamSink>(std::wcout, L"????? (%t) [%l] %F|%L: %m");
 
     log_root->info(L"Hello {}!", L"World");
     log_root->info(L"Hello {}! ({})", L"World", 2);
     log_root->info(L"Hello {}! ({})", L"World", 3);
     log_root->info(L"Hello {}! ({})", L"World", 4);
 
+    auto log_child = std::make_shared<Log::Logger<std::wstring_view>>(L"child", log_root);
+    log_child->add_sink<Log::OStreamSink>(std::wcout);
+    log_child->add_sink(sink2);
+    log_child->set_sink_enabled(sink2, false);
+    log_child->info(L"heh!");
+
+    auto log_child2 = std::make_shared<Log::Logger<std::wstring_view>>(L"child2", log_child);
+    log_child2->info(L"kekelal!");
+
+    log_child->add_sink(sink1);
+    log_child->set_sink_enabled(sink1, false);
+
+    log_child2->info(L"kekelal222!");
+    log_child->info(L"heh2222!");
+    log_root->info(L"root!!!");
+
     return 0;*/
+
     try {
         // replace the C++ global locale and the "C" locale with the user-preferred locale
         // const Util::ScopedGlobalLocale myloc("");

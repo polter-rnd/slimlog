@@ -102,46 +102,42 @@ public:
     /**
      * @brief Construct a new %Logger object with specified logging level.
      *
-     * @tparam T String type for logger category name. Can be deduced from argument.
      * @param category %Logger category name. Can be used in logger messages.
      * @param level Logging level.
      */
-    template<typename T>
-    explicit Logger(T&& category, Level level = Level::Info)
-        : m_parent(nullptr)
-        , m_category(std::forward<T>(category)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+    explicit Logger(StringViewType category, Level level = Level::Info)
+        : m_category(category) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
+        , m_sinks(this)
     {
     }
 
     /**
      * @brief Construct a new child %Logger object.
      *
-     * @tparam T String type for logger category name. Can be deduced from argument.
      * @param name %Logger category name. Can be used in logger messages.
      * @param parent Parent logger to inherit sinks from.
      * @param level Logging level.
      */
-    template<typename T>
-    explicit Logger(T&& name, Level level, const std::shared_ptr<Logger>& parent)
+    explicit Logger(StringViewType category, Level level, const std::shared_ptr<Logger>& parent)
         : m_parent(parent)
-        , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        , m_category(category)
         , m_level(level)
+        , m_sinks(this, &parent->m_sinks)
     {
     }
 
     /**
      * @brief Construct a new child %Logger object.
      *
-     * @tparam T String type for logger category name. Can be deduced from argument.
      * @param name %Logger category name. Can be used in logger messages.
      * @param parent Parent logger to inherit sinks and logging level from.
      */
-    template<typename T>
-    explicit Logger(T&& name, const std::shared_ptr<Logger>& parent)
+    explicit Logger(StringViewType category, const std::shared_ptr<Logger>& parent)
         : m_parent(parent)
-        , m_category(std::forward<T>(name)) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
+        , m_category(category)
         , m_level(parent->level())
+        , m_sinks(this, &parent->m_sinks)
     {
     }
 
@@ -269,7 +265,7 @@ public:
         const -> void
     {
         m_sinks.message(
-            *this, level, std::forward<T>(callback), location, std::forward<Args>(args)...);
+            level, std::forward<T>(callback), category(), location, std::forward<Args>(args)...);
     }
 
     /**
@@ -328,9 +324,6 @@ private:
     std::basic_string<Char> m_category;
     LevelDriver<ThreadingPolicy> m_level;
     SinkDriver<Logger, ThreadingPolicy> m_sinks;
-
-    template<typename Logger, typename Policy>
-    friend class SinkDriver;
 };
 
 /**
