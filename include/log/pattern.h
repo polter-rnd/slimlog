@@ -258,6 +258,8 @@ public:
                     [&result](auto&& arg) { result.append(std::forward<decltype(arg)>(arg)); }},
                 record.message);
         } else {
+            using StringSpecs = typename Placeholder::StringSpecs;
+
             // Process format placeholders
             for (auto& item : m_placeholders) {
                 switch (item.type) {
@@ -265,13 +267,15 @@ public:
                     result.append(std::get<StringViewType>(item.value));
                     break;
                 case Placeholder::Type::Category:
-                    format_string(result, item, record.category);
+                    format_string(result, std::get<StringSpecs>(item.value), record.category);
                     break;
                 case Placeholder::Type::Level:
-                    format_string(result, item, m_levels.get(record.level));
+                    format_string(
+                        result, std::get<StringSpecs>(item.value), m_levels.get(record.level));
                     break;
                 case Placeholder::Type::File:
-                    format_string(result, item, record.location.filename);
+                    format_string(
+                        result, std::get<StringSpecs>(item.value), record.location.filename);
                     break;
                 case Placeholder::Type::Line:
                     result.format_runtime(
@@ -280,17 +284,20 @@ public:
                 case Placeholder::Type::Message:
                     std::visit(
                         Util::Types::Overloaded{
-                            [this, &result, &item](std::reference_wrapper<StringType> arg) {
+                            [this, &result, &specs = std::get<StringSpecs>(item.value)](
+                                std::reference_wrapper<StringType> arg) {
                                 if constexpr (std::is_convertible_v<StringType, StringViewType>) {
                                     RecordStringView message{StringViewType{arg.get()}};
-                                    this->format_string(result, item, message);
+                                    this->format_string(result, specs, message);
                                 } else {
                                     RecordStringView message{to_string_view<Char>(arg.get())};
-                                    this->format_string(result, item, message);
+                                    this->format_string(result, specs, message);
                                 }
                             },
-                            [this, &result, &item](auto&& arg) {
-                                this->format_string(result, item, std::forward<decltype(arg)>(arg));
+                            [this, &result, &specs = std::get<StringSpecs>(item.value)](
+                                auto&& arg) {
+                                this->format_string(
+                                    result, specs, std::forward<decltype(arg)>(arg));
                             },
                         },
                         record.message);
@@ -630,29 +637,23 @@ protected:
     }
 
     template<typename T>
-    inline auto
-    format_string(auto& result, const Placeholder& placeholder, RecordStringView<T>& data) -> void
+    inline auto format_string(
+        auto& result, const Placeholder::StringSpecs& specs, RecordStringView<T>& data) -> void
     {
-        std::visit(
-            Util::Types::Overloaded{
-                [&result, &data](StringViewType arg) { result.format_runtime(arg, data); },
-                [this, &result, &data](auto&& arg) {
-                    if (arg.width > 0) {
-                        this->write_padded(result, data, arg);
-                    } else {
-                        if constexpr (std::is_same_v<T, char> && !std::is_same_v<Char, char>) {
-                            this->from_multibyte(result, data);
-                        } else {
-                            // Special case: since formatted message is stored
-                            // at the beginning of the buffer, we have to reserve
-                            // capacity first to prevent changing buffer address
-                            // while re-allocating later.
-                            result.reserve(result.size() + data.size());
-                            result.append(data);
-                        }
-                    }
-                }},
-            placeholder.value);
+        if (specs.width > 0) {
+            this->write_padded(result, data, specs);
+        } else {
+            if constexpr (std::is_same_v<T, char> && !std::is_same_v<Char, char>) {
+                this->from_multibyte(result, data);
+            } else {
+                // Special case: since formatted message is stored
+                // at the beginning of the buffer, we have to reserve
+                // capacity first to prevent changing buffer address
+                // while re-allocating later.
+                result.reserve(result.size() + data.size());
+                result.append(data);
+            }
+        }
     }
 
 private:
