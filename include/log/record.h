@@ -57,8 +57,7 @@ public:
     auto update_data_ptr(const T* data) -> void
     {
         // Update only string view, codepoints remain the same.
-        // NOLINTNEXTLINE(cppcoreguidelines-slicing)
-        static_cast<std::basic_string_view<T>>(*this) = {data, this->size()};
+        *static_cast<std::basic_string_view<T>*>(this) = {data, this->size()};
     }
 
     auto codepoints() -> size_t
