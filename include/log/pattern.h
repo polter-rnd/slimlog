@@ -81,30 +81,47 @@ public:
 
     /** @brief Log level names */
     struct Levels {
-        RecordStringView<Char> trace{DefaultTrace.data()}; ///< Trace level
-        RecordStringView<Char> debug{DefaultDebug.data()}; ///< Debug level
-        RecordStringView<Char> info{DefaultInfo.data()}; ///< Info level
-        RecordStringView<Char> warning{DefaultWarning.data()}; ///< Warning level
-        RecordStringView<Char> error{DefaultError.data()}; ///< Error level
-        RecordStringView<Char> fatal{DefaultFatal.data()}; ///< Fatal level
-
-        auto name(Level level) -> RecordStringView<Char>&
+        auto get(Level level) -> RecordStringView<Char>&
         {
             switch (level) {
             case Level::Fatal:
-                return fatal;
+                return m_fatal;
             case Level::Error:
-                return error;
+                return m_error;
             case Level::Warning:
-                return warning;
+                return m_warning;
             case Level::Info:
-                return info;
+                return m_info;
             case Level::Debug:
-                return debug;
+                return m_debug;
             case Level::Trace:
                 [[fallthrough]];
             default:
-                return trace;
+                return m_trace;
+            }
+        }
+
+        auto set(Level level, StringViewType name) -> void
+        {
+            switch (level) {
+            case Level::Fatal:
+                m_fatal = std::move(name);
+                break;
+            case Level::Error:
+                m_error = std::move(name);
+                break;
+            case Level::Warning:
+                m_warning = std::move(name);
+                break;
+            case Level::Info:
+                m_info = std::move(name);
+                break;
+            case Level::Debug:
+                m_debug = std::move(name);
+                break;
+            case Level::Trace:
+                m_trace = std::move(name);
+                break;
             }
         }
 
@@ -115,6 +132,13 @@ public:
         static constexpr std::array<Char, 5> DefaultWarning{'W', 'A', 'R', 'N', '\0'};
         static constexpr std::array<Char, 6> DefaultError{'E', 'R', 'R', 'O', 'R', '\0'};
         static constexpr std::array<Char, 6> DefaultFatal{'F', 'A', 'T', 'A', 'L', '\0'};
+
+        RecordStringView<Char> m_trace{DefaultTrace.data()}; ///< Trace level
+        RecordStringView<Char> m_debug{DefaultDebug.data()}; ///< Debug level
+        RecordStringView<Char> m_info{DefaultInfo.data()}; ///< Info level
+        RecordStringView<Char> m_warning{DefaultWarning.data()}; ///< Warning level
+        RecordStringView<Char> m_error{DefaultError.data()}; ///< Error level
+        RecordStringView<Char> m_fatal{DefaultFatal.data()}; ///< Fatal level
     };
 
     struct Placeholder {
@@ -244,7 +268,7 @@ public:
                     format_string(result, item, record.category);
                     break;
                 case Placeholder::Type::Level:
-                    format_string(result, item, m_levels.name(record.level));
+                    format_string(result, item, m_levels.get(record.level));
                     break;
                 case Placeholder::Type::File:
                     format_string(result, item, record.location.filename);
@@ -311,26 +335,7 @@ public:
     auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels) -> void
     {
         for (const auto& level : levels) {
-            switch (level.first) {
-            case Level::Fatal:
-                m_levels.fatal = level.second;
-                break;
-            case Level::Error:
-                m_levels.error = level.second;
-                break;
-            case Level::Warning:
-                m_levels.warning = level.second;
-                break;
-            case Level::Info:
-                m_levels.info = level.second;
-                break;
-            case Level::Debug:
-                m_levels.debug = level.second;
-                break;
-            case Level::Trace:
-                m_levels.trace = level.second;
-                break;
-            }
+            m_levels.set(level.first, level.second);
         }
     }
 
@@ -338,21 +343,27 @@ protected:
     constexpr auto
     parse_nonnegative_int(const Char*& begin, const Char* end, int error_value) noexcept -> int
     {
-        unsigned value = 0, prev = 0;
-        auto p = begin;
-        while (p != end && '0' <= *p && *p <= '9') {
+        unsigned value = 0;
+        unsigned prev = 0;
+        auto ptr = begin;
+        constexpr auto Base = 10;
+        while (ptr != end && '0' <= *ptr && *ptr <= '9') {
             prev = value;
-            value = value * 10 + unsigned(*p - '0');
-            ++p;
+            value = value * Base + unsigned(*ptr - '0');
+            ++ptr;
         }
-        auto num_digits = p - begin;
-        begin = p;
-        int digits10 = static_cast<int>(sizeof(int) * CHAR_BIT * 3 / 10);
-        if (num_digits <= digits10)
+        auto num_digits = ptr - begin;
+        begin = ptr;
+
+        constexpr auto Digits10 = static_cast<int>(sizeof(int) * CHAR_BIT * 3 / Base);
+        if (num_digits <= Digits10) {
             return static_cast<int>(value);
+        }
+
         // Check for overflow.
-        unsigned max = std::numeric_limits<int>::max();
-        return num_digits == digits10 + 1 && prev * 10ull + unsigned(p[-1] - '0') <= max
+        constexpr auto MaxInt = std::numeric_limits<int>::max();
+        return num_digits == Digits10 + 1
+                && static_cast<unsigned long long>(prev) * Base + unsigned(ptr[-1] - '0') <= MaxInt
             ? static_cast<int>(value)
             : error_value;
     }
@@ -361,13 +372,13 @@ protected:
     parse_align(const Char* begin, const Char* end, Placeholder::StringSpecs& specs) -> const Char*
     {
         auto align = Placeholder::Align::None;
-        auto* p = begin + Util::Unicode::code_point_length(begin);
-        if (end - p <= 0) {
-            p = begin;
+        auto* ptr = begin + Util::Unicode::code_point_length(begin);
+        if (end - ptr <= 0) {
+            ptr = begin;
         }
 
         for (;;) {
-            switch (Util::Unicode::to_ascii(*p)) {
+            switch (Util::Unicode::to_ascii(*ptr)) {
             case '<':
                 align = Placeholder::Align::Left;
                 break;
@@ -379,7 +390,7 @@ protected:
                 break;
             }
             if (align != Placeholder::Align::None) {
-                if (p != begin) {
+                if (ptr != begin) {
                     // Actually this check is redundant, cause using '{' or '}'
                     // as a fill character will cause parsing failure earlier.
                     switch (Util::Unicode::to_ascii(*begin)) {
@@ -389,16 +400,18 @@ protected:
                         throw FormatError("format: invalid fill character '{'\n");
                     }
                     specs.fill = std::basic_string_view<Char>(
-                        begin, static_cast<std::make_unsigned_t<decltype(p - begin)>>(p - begin));
-                    begin = p + 1;
+                        begin,
+                        static_cast<std::make_unsigned_t<decltype(ptr - begin)>>(ptr - begin));
+                    begin = ptr + 1;
                 } else {
                     ++begin;
                 }
                 break;
-            } else if (p == begin) {
+            }
+            if (ptr == begin) {
                 break;
             }
-            p = begin;
+            ptr = begin;
         }
         specs.align = align;
 
@@ -425,8 +438,8 @@ protected:
 
         bool inside_placeholder = false;
         for (;;) {
-            static constexpr std::array<Char, 3> delimeters{'{', '}', '\0'};
-            const auto pos = pattern.find_first_of(delimeters.data());
+            static constexpr std::array<Char, 3> Delimeters{'{', '}', '\0'};
+            const auto pos = pattern.find_first_of(Delimeters.data());
             const auto len = pattern.size();
 
             if (pos == pattern.npos) {
@@ -556,27 +569,28 @@ protected:
 
     template<typename T>
     constexpr auto
-    write_padded(auto& out, RecordStringView<T>& in, const Placeholder::StringSpecs& specs)
+    write_padded(auto& dst, RecordStringView<T>& src, const Placeholder::StringSpecs& specs)
     {
         const auto spec_width
             = static_cast<std::make_unsigned_t<decltype(specs.width)>>(specs.width);
-        const auto width = in.codepoints();
+        const auto width = src.codepoints();
         const size_t padding = spec_width > width ? spec_width - width : 0;
 
         // Shifts are encoded as string literals because static constexpr is not
         // supported in constexpr functions.
-        const auto* shifts = "\x1f\x1f\x00\x01";
-        size_t left_padding = padding >> shifts[static_cast<int>(specs.align)];
-        size_t right_padding = padding - left_padding;
+        const char* shifts = "\x1f\x1f\x00\x01";
+        const size_t left_padding
+            = padding >> static_cast<unsigned>(shifts[static_cast<int>(specs.align)]);
+        const size_t right_padding = padding - left_padding;
 
         // Reserve exact amount for data + padding
-        out.reserve(out.size() + in.size() + padding * specs.fill.size());
+        dst.reserve(dst.size() + src.size() + padding * specs.fill.size());
 
         // Lambda for filling with single character or multibyte pattern
-        auto fill_pattern = [&out, &fill = specs.fill](size_t fill_len) {
+        auto fill_pattern = [&dst, &fill = specs.fill](size_t fill_len) {
             const auto* src = fill.data();
             auto block_size = fill.size();
-            auto* dest = out.end() - fill_len * block_size;
+            auto* dest = dst.end() - fill_len * block_size;
 
             if (block_size > 1) {
                 // Copy first block
@@ -601,16 +615,16 @@ protected:
 
         // Fill left padding
         if (left_padding != 0) {
-            out.resize(out.size() + left_padding * specs.fill.size());
+            dst.resize(dst.size() + left_padding * specs.fill.size());
             fill_pattern(left_padding);
         }
 
         // Fill data
-        out.append(in);
+        dst.append(src);
 
         // Fill right padding
         if (right_padding != 0) {
-            out.resize(out.size() + right_padding * specs.fill.size());
+            dst.resize(dst.size() + right_padding * specs.fill.size());
             fill_pattern(right_padding);
         }
     }

@@ -7,25 +7,23 @@
 
 #include <type_traits>
 
-namespace PlainCloud::Util {
+namespace PlainCloud::Util::Unicode {
 
-namespace Unicode {
 template<typename Char>
 constexpr inline auto code_point_length(const Char* begin) -> int
 {
-    if constexpr (sizeof(Char) != 1)
+    if constexpr (sizeof(Char) != 1) {
         return 1;
-    auto c = static_cast<unsigned char>(*begin);
-    return static_cast<int>((0x3a55000000000000ull >> (2 * (c >> 3))) & 0x3) + 1;
+    }
+    auto chr = static_cast<unsigned char>(*begin);
+    return static_cast<int>((0x3a55000000000000ULL >> (2U * (chr >> 3U))) & 0x3U) + 1;
 }
 
 template<typename Char>
-    requires std::is_integral<Char>::value
-constexpr inline auto to_ascii(Char c) -> char
+    requires std::is_integral_v<Char>
+constexpr inline auto to_ascii(Char chr) -> char
 {
-    return c <= 0xff ? static_cast<char>(c) : '\0';
+    return chr <= 0xff ? static_cast<char>(chr) : '\0';
 }
 
-} // namespace Unicode
-
-} // namespace PlainCloud::Util
+} // namespace PlainCloud::Util::Unicode

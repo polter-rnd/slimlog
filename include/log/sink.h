@@ -235,7 +235,7 @@ public:
     /** @brief Log record type. */
     using RecordType = typename Sink<Logger>::RecordType;
 
-    SinkDriver(const Logger* logger, SinkDriver* parent = nullptr)
+    explicit SinkDriver(const Logger* logger, SinkDriver* parent = nullptr)
         : m_logger(logger)
         , m_parent(parent)
     {
@@ -358,7 +358,7 @@ public:
         Args&&... args) const -> void
     {
         FormatBufferType buffer;
-        RecordType record = {level, std::move(location), std::move(category)};
+        RecordType record = {level, location, std::move(category)};
 
         // Flag to check that message has been evaluated
         bool evaluated = false;
@@ -394,6 +394,7 @@ public:
                         // Non-invocable argument: argument is the message itself
                         if constexpr (std::is_convertible_v<T, RecordStringView<CharType>>) {
                             // get rid of extra constructor
+                            // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                             record.message = RecordStringView<CharType>{std::forward<T>(callback)};
                         } else {
                             record.message = std::forward<T>(callback);
@@ -495,7 +496,7 @@ public:
     /** @brief String view type for log category. */
     using StringViewType = typename Logger::StringViewType;
 
-    SinkDriver(const Logger* logger, SinkDriver* parent = nullptr)
+    explicit SinkDriver(const Logger* logger, SinkDriver* parent = nullptr)
         : SinkDriver<Logger, SingleThreadedPolicy>(logger)
     {
         if (parent) {

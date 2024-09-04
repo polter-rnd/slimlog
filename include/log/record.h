@@ -20,33 +20,35 @@ class RecordStringView : public std::basic_string_view<T> {
 public:
     using std::basic_string_view<T>::basic_string_view;
 
-    constexpr RecordStringView(const std::basic_string_view<T>& sv) noexcept
-        : std::basic_string_view<T>(sv)
+    constexpr RecordStringView(const RecordStringView& str_view) noexcept
+        : std::basic_string_view<T>(str_view)
+        , m_codepoints(str_view.m_codepoints.load(std::memory_order_relaxed))
     {
     }
 
-    constexpr RecordStringView(const RecordStringView& sv) noexcept
-        : std::basic_string_view<T>(sv)
-        , m_codepoints(sv.m_codepoints.load(std::memory_order_relaxed))
+    // NOLINTNEXTLINE(*-explicit-conversions)
+    constexpr RecordStringView(const std::basic_string_view<T>& str_view) noexcept
+        : std::basic_string_view<T>(str_view)
     {
     }
 
-    constexpr RecordStringView& operator=(const RecordStringView& sv) noexcept
+    constexpr auto operator=(const RecordStringView& str_view) noexcept -> RecordStringView&
     {
-        if (this == &sv) {
+        if (this == &str_view) {
             return *this;
         }
 
-        std::basic_string_view<T>::operator=(sv);
+        std::basic_string_view<T>::operator=(str_view);
         m_codepoints.store(
-            sv.m_codepoints.load(std::memory_order_relaxed), std::memory_order_relaxed);
+            str_view.m_codepoints.load(std::memory_order_relaxed), std::memory_order_relaxed);
         return *this;
     }
 
-    constexpr RecordStringView& operator=(const std::basic_string_view<T>& sv) noexcept
+    constexpr auto
+    operator=(const std::basic_string_view<T>& str_view) noexcept -> RecordStringView&
     {
-        if (this != &sv) {
-            std::basic_string_view<T>::operator=(sv);
+        if (this != &str_view) {
+            std::basic_string_view<T>::operator=(str_view);
             m_codepoints.store(std::string_view::npos, std::memory_order_relaxed);
         }
         return *this;
@@ -55,6 +57,7 @@ public:
     auto update_data_ptr(const T* data) -> void
     {
         // Update only string view, codepoints remain the same.
+        // NOLINTNEXTLINE(cppcoreguidelines-slicing)
         static_cast<std::basic_string_view<T>>(*this) = {data, this->size()};
     }
 
@@ -87,6 +90,7 @@ RecordStringView(const Char*, size_t) -> RecordStringView<Char>;
 template<typename Char, typename StringType>
 struct Record {
     struct Location {
+        // NOLINTNEXTLINE(*-explicit-conversions)
         Location(Log::Location location)
             : filename(location.file_name())
             , function(location.function_name())
@@ -99,9 +103,9 @@ struct Record {
         size_t line;
     };
 
-    Level level;
-    Location location;
-    RecordStringView<Char> category;
+    Level level = {};
+    Location location = {};
+    RecordStringView<Char> category = {};
     std::variant<std::reference_wrapper<StringType>, RecordStringView<Char>> message
         = RecordStringView<Char>{};
 };

@@ -194,12 +194,13 @@ protected:
         auto& self = static_cast<MemoryBuffer&>(buf);
 #endif
         const size_t max_size = std::allocator_traits<Allocator>::max_size(self.m_allocator);
-        size_t old_capacity = self.capacity();
+        const size_t old_capacity = self.capacity();
         size_t new_capacity = old_capacity + old_capacity / 2;
-        if (size > new_capacity)
+        if (size > new_capacity) {
             new_capacity = size;
-        else if (new_capacity > max_size)
+        } else if (new_capacity > max_size) {
             new_capacity = size > max_size ? size : max_size;
+        }
         T* old_data = self.data();
         T* new_data = self.m_allocator.allocate(new_capacity);
         // std::cout << "GROW TO " << new_capacity << '\n';
@@ -252,7 +253,8 @@ private:
     {
         m_allocator = std::move(other.m_allocator);
         T* data = other.data();
-        size_t size = other.size(), capacity = other.capacity();
+        const size_t size = other.size();
+        const size_t capacity = other.capacity();
         if (data == other.m_store) {
             this->set(m_store, capacity);
             // m_store.append(other.m_store, other.m_store + size);
@@ -285,7 +287,7 @@ public:
     }
 
     // Returns a copy of the allocator associated with this buffer.
-    auto get_allocator() const -> Allocator
+    [[nodiscard]] auto get_allocator() const -> Allocator
     {
         return m_allocator;
     }
