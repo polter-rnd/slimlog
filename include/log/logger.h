@@ -10,7 +10,7 @@
 #include "location.h"
 #include "policy.h"
 #include "sink.h"
-#include "util.h"
+#include "util/types.h"
 
 #include <cstddef>
 #include <memory>
@@ -22,38 +22,6 @@ namespace PlainCloud::Log {
 
 /** Default buffer size is equal to typical memory page size */
 static constexpr size_t DefaultBufferSize = 1024;
-
-/** @cond */
-namespace Detail {
-
-template<typename T>
-struct UnderlyingChar {
-    static_assert(Util::AlwaysFalse<T>{}, "Unable to deduce the underlying char type");
-};
-
-template<typename T>
-    requires std::is_integral_v<typename std::remove_cvref_t<T>::value_type>
-struct UnderlyingChar<T> {
-    using Type = typename std::remove_cvref_t<T>::value_type;
-};
-
-template<typename T>
-    requires std::is_array_v<std::remove_cvref_t<T>>
-struct UnderlyingChar<T> {
-    using Type = typename std::remove_cvref_t<typename std::remove_all_extents_t<T>>;
-};
-
-template<typename T>
-    requires std::is_integral_v<typename std::remove_pointer_t<T>>
-struct UnderlyingChar<T> {
-    using Type = typename std::remove_cvref_t<typename std::remove_pointer_t<T>>;
-};
-
-template<typename T>
-using UnderlyingCharType = typename UnderlyingChar<T>::Type;
-
-} // namespace Detail
-/** @endcond */
 
 /**
  * @brief A logger front-end class.
@@ -79,7 +47,7 @@ using UnderlyingCharType = typename UnderlyingChar<T>::Type;
  */
 template<
     typename String,
-    typename Char = Detail::UnderlyingCharType<String>,
+    typename Char = Util::Types::UnderlyingCharType<String>,
     typename ThreadingPolicy = MultiThreadedPolicy<>,
     size_t StaticBufferSize = DefaultBufferSize>
 class Logger {
@@ -282,7 +250,7 @@ public:
     void
     message(Level level, Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const
     {
-        auto callback = [&fmt = fmt.fmt()](auto& buffer, auto&&... args) {
+        auto callback = [&fmt = fmt.fmt()](auto& buffer, Args&&... args) {
             buffer.format(fmt, std::forward<Args>(args)...);
         };
 
