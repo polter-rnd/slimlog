@@ -6,13 +6,9 @@
 #pragma once
 
 #include <locale>
-#include <type_traits>
 #include <utility>
 
-namespace PlainCloud::Util {
-
-template<typename>
-struct AlwaysFalse : std::false_type { };
+namespace PlainCloud::Util::Locale {
 
 /**
  * @brief RAII wrapper for `std::locale::global`

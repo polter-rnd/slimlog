@@ -18,7 +18,8 @@
 #endif
 
 #include "location.h"
-#include "util/memory_buffer.h"
+#include "util/buffer.h"
+#include "util/types.h"
 
 #include <concepts>
 #include <iterator>
@@ -32,10 +33,12 @@ namespace PlainCloud::Log {
 /** @brief Alias for \a fmt::basic_format_string  */
 template<typename T, typename... Args>
 using FormatString = fmt::basic_format_string<T, Args...>;
+using FormatError = fmt::format_error;
 #else
 /** @brief Alias for \a std::basic_format_string  */
 template<typename T, typename... Args>
 using FormatString = std::basic_format_string<T, Args...>;
+using FormatError = std::format_error;
 #endif
 
 /**
@@ -132,15 +135,52 @@ public:
     {
 #ifdef ENABLE_FMTLIB
         if constexpr (std::is_same_v<Char, char>) {
-            fmt::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);
+            fmt::format_to(fmt::appender(*this), std::move(fmt), std::forward<Args>(args)...);
         } else {
+#if FMT_VERSION < 110000
             fmt::format_to(
                 std::back_inserter(*this),
-                static_cast<fmt::basic_string_view<Char>>(fmt),
+                static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
                 std::forward<Args>(args)...);
+#else
+            fmt::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);
+#endif
         }
 #else
         std::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);
+#endif
+    }
+
+    template<typename... Args>
+    auto format_runtime(std::basic_string_view<Char> fmt, Args&... args) -> void
+    {
+#ifdef ENABLE_FMTLIB
+        if constexpr (std::is_same_v<Char, char>) {
+            fmt::vformat_to(fmt::appender(*this), std::move(fmt), fmt::make_format_args(args...));
+        } else {
+
+            fmt::vformat_to(
+                std::back_inserter(*this),
+                std::move(fmt),
+#if FMT_VERSION < 110000
+                fmt::make_format_args<fmt::buffer_context<Char>>(args...)
+#else
+                fmt::make_format_args<fmt::buffered_context<Char>>(args...)
+#endif
+            );
+        }
+#else
+        if constexpr (std::is_same_v<Char, char>) {
+            std::vformat_to(
+                std::back_inserter(*this), std::move(fmt), std::make_format_args(args...));
+        } else if constexpr (std::is_same_v<Char, wchar_t>) {
+            std::vformat_to(
+                std::back_inserter(*this), std::move(fmt), std::make_wformat_args(args...));
+        } else {
+            static_assert(
+                Util::Types::AlwaysFalse<Char>{},
+                "std::vformat_to() supports only `char` or `wchar_t` character types");
+        }
 #endif
     }
 };
