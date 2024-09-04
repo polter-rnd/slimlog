@@ -45,4 +45,4 @@ private:
     std::locale m_old_locale;
 };
 
-} // namespace PlainCloud::Util
+} // namespace PlainCloud::Util::Locale
