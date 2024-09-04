@@ -4,7 +4,7 @@
 #include "log/policy.h"
 #include "log/sinks/dummy_sink.h"
 #include "log/sinks/ostream_sink.h"
-#include "util.h"
+#include "util/locale.h"
 
 #include <algorithm>
 #include <exception>
@@ -87,35 +87,28 @@ void do_test()
     auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
 
     for (int i = 0; i < 50; i++) {
-        // std::cout << "testing root syncs: " << i << "\n";
         log_root->add_sink<Log::OStreamSink>(
             devnull,
-            L"(%t) [%l] %F|%L: %m",
+            L"({category}) [{level}] {file}|{line:X}: {message:*^100}",
             std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
             std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
             std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
             std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
             std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
-
-        /*for (int j = 0; j < 1024; j++) {
-            log_root->info(L"This is random message {}: {}", j, gen_random<wchar_t>(512));
-        }*/
     }
 
     std::vector<std::shared_ptr<Log::Logger<std::wstring_view>>> log_children;
     for (int i = 0; i < 10; i++) {
-        // std::cout << "adding children: " << i << "\n";
         auto child = std::make_shared<Log::Logger<std::wstring_view>>(
             L"child_" + std::to_wstring(i), log_root);
         log_children.push_back(child);
 
         for (int j = 0; j < 100; j++) {
             child->add_sink<Log::OStreamSink>(
-                devnull, L">sink_" + std::to_wstring(j) + L"< (%t) [%l] %F|%L: %m");
+                devnull,
+                L">sink_" + std::to_wstring(j)
+                    + L"< ({category}) [{level}] {file}|{line:X}: {message:*^100}");
         }
-        /*for (int j = 0; j < 1024; j++) {
-            child->info(L"This is random message {}: {}", j, gen_random<wchar_t>(512));
-        }*/
     }
 
     std::vector<double> results;
@@ -133,7 +126,7 @@ void do_test()
                 child2->add_sink<Log::OStreamSink>(
                     devnull,
                     L">new_sink_" + std::to_wstring(i) + L":" + std::to_wstring(j)
-                        + L"< (%t) [%l] %F|%L: %m");
+                        + L"< [{level}] {file}|{line:X}: {message:*^100} ({category})");
             }
         }
         auto res = benchmark([&child2]() {
@@ -154,47 +147,70 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
     namespace Util = PlainCloud::Util;
     namespace Log = PlainCloud::Log;
 
-    /*auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
-
-    auto sink1 = log_root->add_sink<Log::OStreamSink>(
-        std::wcout,
-        L"!!!!! (%t) [%l] %F|%L: %m",
-        std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
-        std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
-        std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
-        std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
-        std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
-
-    auto sink2 = log_root->add_sink<Log::OStreamSink>(std::wcout, L"????? (%t) [%l] %F|%L: %m");
-
-    log_root->info(L"Hello {}!", L"World");
-    log_root->info(L"Hello {}! ({})", L"World", 2);
-    log_root->info(L"Hello {}! ({})", L"World", 3);
-    log_root->info(L"Hello {}! ({})", L"World", 4);
-
-    auto log_child = std::make_shared<Log::Logger<std::wstring_view>>(L"child", log_root);
-    log_child->add_sink<Log::OStreamSink>(std::wcout);
-    log_child->add_sink(sink2);
-    log_child->set_sink_enabled(sink2, false);
-    log_child->info(L"heh!");
-
-    auto log_child2 = std::make_shared<Log::Logger<std::wstring_view>>(L"child2", log_child);
-    log_child2->info(L"kekelal!");
-
-    log_child->add_sink(sink1);
-    log_child->set_sink_enabled(sink1, false);
-
-    log_child2->info(L"kekelal222!");
-    log_child->info(L"heh2222!");
-    log_root->info(L"root!!!");
-
-    return 0;*/
-
     try {
         // replace the C++ global locale and the "C" locale with the user-preferred locale
-        const Util::ScopedGlobalLocale myloc("");
+        const Util::Locale::ScopedGlobalLocale myloc("");
+
+        std::cout << "*** This is simple test for the logger ***\n";
+        std::cout << "==========================================\n";
+
+#ifdef ENABLE_FMTLIB
+        const std::basic_stringstream<char8_t> mystream;
+        Log::Logger log19{u8"uchar8 log"};
+        log19.add_sink<Log::OStreamSink>(
+            mystream, u8"({category}) [{level}] {file}|{line}: {message}");
+        log19.info(u8"hello from u8!");
+        std::cout << std::string_view(
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+            reinterpret_cast<const char*>(mystream.view().data()),
+            mystream.view().size());
+#endif
+
+        auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
+
+        auto sink1 = log_root->add_sink<Log::OStreamSink>(
+            std::wcout,
+            L"!!!!! ({{ sdfsdf {{ ee {category:=^20}) erwwer }} ee [{level}] {file}|{line:X}: "
+            "{message:*^100} "
+            "sdf}}{{",
+            std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
+            std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
+            std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
+            std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
+            std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
+
+        auto sink2 = log_root->add_sink<Log::OStreamSink>(
+            std::wcout, L"????? [{level}] {file}|{line:X}: {message:👆^100} ({category})");
+
+        log_root->info(L"Hello {}!", L"World");
+        log_root->info(L"Hello {}! ({})", L"World", 2);
+        log_root->message(Log::Level::Warning, L"Hello {}! ({})", L"World", 3);
+        log_root->info(L"Hello {}! ({})", L"World", 4);
+
+        auto log_child = std::make_shared<Log::Logger<std::wstring_view>>(L"child", log_root);
+        log_child->add_sink<Log::OStreamSink>(std::wcout);
+        log_child->add_sink(sink2);
+        log_child->set_sink_enabled(sink2, false);
+        log_child->info(L"One two three!");
+
+        auto log_child2 = std::make_shared<Log::Logger<std::wstring_view>>(L"child2", log_child);
+        log_child2->info(L"Three two one!");
+
+        log_child->add_sink(sink1);
+        log_child->set_sink_enabled(sink1, false);
+
+        log_child2->info(L"Test message!");
+        log_child->info(L"Test message2!");
+        log_root->info(L"Test from root !好!");
+        log_root->info(L"Test from root2 !好!");
+
+        log_root->info([]() { return L"Hello from lambda!"; });
+        log_root->info([](auto& fmt) { fmt.format(L"Hello {}!", 123); });
+        log_root->message(Log::Level::Info, []() { std::wcout << L"Void lambda\n"; });
+
+        std::cout << "==========================\n";
         const double t1 = benchmark(do_test);
-        std::cout << "TOTAL RESULT: " << t1 << std::endl;
+        std::cout << "Total elapsed: " << t1 << '\n';
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << '\n';
         return 1;
