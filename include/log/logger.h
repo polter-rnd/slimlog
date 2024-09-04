@@ -20,7 +20,7 @@
 
 namespace PlainCloud::Log {
 
-/** Default buffer size is equal to typical memory page size */
+/** Default buffer size for log messages */
 static constexpr size_t DefaultBufferSize = 1024;
 
 /**

@@ -141,26 +141,6 @@ public:
     }
 
     /**
-     * @brief Emit message.
-     *
-     * This overload is used for simple messages that can be forwarded directly to sink, e.g.:
-     *
-     * ```cpp
-     * log.info("Hello World!");
-     * ```
-     *
-     * Here no preprocessing takes place, the string object is directly forwarded to the sink.
-     *
-     * @param buffer Empty buffer where final message should be put.
-     * @param level Log level.
-     * @param message Log message.
-     * @param category %Logger category name.
-     * @param location Caller location (file, line, function).
-     */
-    /*virtual auto message(FormatBufferType& buffer, StringType message, RecordType& record) -> void
-        = 0;*/
-
-    /**
      * @brief Emit log record.
      *
      * Message is stored in `std::variant<StringType, RecordStringView<Char>>`.
@@ -169,9 +149,7 @@ public:
      *
      * @param buffer Buffer where final message should be put.
      *               It already contains a message, feel free to overwrite it.
-     * @param level Log level.
-     * @param category %Logger category name.
-     * @param location Caller location (file, line, function).
+     * @param record Log record (message, category, etc.).
      */
     virtual auto message(FormatBufferType& buffer, RecordType& record) -> void = 0;
 
