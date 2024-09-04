@@ -493,7 +493,6 @@ protected:
             }
 
             typename Placeholder::StringSpecs specs = {};
-            // bool debug_mode = false;
             auto& value = std::get<StringViewType>(placeholder.value);
             if (value.size() > 2) {
                 auto* fmt = parse_align(value.begin() + 2, value.end(), specs);
@@ -506,9 +505,6 @@ protected:
                     switch (chr) {
                     case '}':
                         break;
-                    /*case '?':
-                        debug_mode = true;
-                        [[fallthrough]];*/
                     case 's':
                         if (Util::Unicode::to_ascii(*++fmt) != '}') {
                             throw FormatError("missing '}' in format string");
@@ -521,10 +517,8 @@ protected:
                     specs.width = width;
                 }
             }
-            // if (!debug_mode) {
-            //  For debug mode we use std::format() / fmt::format()
+
             placeholder.value = specs;
-            //}
         }
     }
 
@@ -627,18 +621,7 @@ protected:
     {
         std::visit(
             Util::Types::Overloaded{
-                [&result, &data](StringViewType arg) {
-                    /*if constexpr (std::is_same_v<T, char> && !std::is_same_v<Char, char>) {
-                        // - remove this branch totally???? and disable '?' mode
-                        // - convert to string_view using wrapper?
-                        std::basic_string<Char> buffer;
-                        this->from_multibyte(buffer, data);
-                        result.format_runtime(arg, buffer);
-                    } else {
-                    (void)this;*/
-                    result.format_runtime(arg, StringViewType{data});
-                    //}
-                },
+                [&result, &data](StringViewType arg) { result.format_runtime(arg, data); },
                 [this, &result, &data](auto&& arg) {
                     if (arg.width > 0) {
                         this->write_padded(result, data, arg);
