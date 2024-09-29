@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <iostream>
+#include <iterator>
 #include <string_view>
 #include <variant>
 
@@ -71,7 +72,7 @@ public:
                 const auto size = this->size();
                 const auto data = this->data();
                 for (size_t idx = 0; idx < size; codepoints++) {
-                    idx += Util::Unicode::code_point_length(data + idx);
+                    idx += Util::Unicode::code_point_length(std::next(data, idx));
                 }
             }
             m_codepoints.store(codepoints, std::memory_order_release);

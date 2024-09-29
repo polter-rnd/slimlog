@@ -10,6 +10,7 @@
 #include "log/sink.h" // IWYU pragma: export
 
 #include <concepts>
+#include <iterator>
 #include <ostream>
 #include <string_view>
 #include <utility>
@@ -64,7 +65,7 @@ public:
         auto orig_size = buffer.size();
         this->format(buffer, record);
         buffer.push_back('\n');
-        m_ostream.write(buffer.data() + orig_size, buffer.size() - orig_size);
+        m_ostream.write(std::next(buffer.begin(), orig_size), buffer.size() - orig_size);
         buffer.resize(orig_size);
     }
 

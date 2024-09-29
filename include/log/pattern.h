@@ -8,7 +8,6 @@
 #include "level.h"
 #include "location.h"
 #include "logger.h"
-#include "mystring.h"
 #include "record.h"
 #include "util/types.h"
 #include "util/unicode.h"
@@ -21,6 +20,7 @@
 #include <initializer_list>
 #include <iosfwd>
 #include <iostream>
+#include <iterator>
 #include <span>
 #include <string>
 #include <string_view>
@@ -370,7 +370,8 @@ protected:
         // Check for overflow.
         constexpr auto MaxInt = std::numeric_limits<int>::max();
         return num_digits == Digits10 + 1
-                && static_cast<unsigned long long>(prev) * Base + unsigned(ptr[-1] - '0') <= MaxInt
+                && static_cast<unsigned long long>(prev) * Base + unsigned(*std::prev(ptr) - '0')
+                    <= MaxInt
             ? static_cast<int>(value)
             : error_value;
     }
@@ -379,7 +380,7 @@ protected:
     parse_align(const Char* begin, const Char* end, Placeholder::StringSpecs& specs) -> const Char*
     {
         auto align = Placeholder::Align::None;
-        auto* ptr = begin + Util::Unicode::code_point_length(begin);
+        auto* ptr = std::next(begin, Util::Unicode::code_point_length(begin));
         if (end - ptr <= 0) {
             ptr = begin;
         }
@@ -409,9 +410,9 @@ protected:
                     specs.fill = std::basic_string_view<Char>(
                         begin,
                         static_cast<std::make_unsigned_t<decltype(ptr - begin)>>(ptr - begin));
-                    begin = ptr + 1;
+                    begin = std::next(ptr);
                 } else {
-                    ++begin;
+                    std::advance(begin, 1);
                 }
                 break;
             }
@@ -526,7 +527,7 @@ protected:
                     case '}':
                         break;
                     case 's':
-                        if (Util::Unicode::to_ascii(*++fmt) != '}') {
+                        if (Util::Unicode::to_ascii(*std::next(fmt)) != '}') {
                             throw FormatError("missing '}' in format string");
                         }
                         break;
@@ -587,7 +588,7 @@ protected:
         // supported in constexpr functions.
         const char* shifts = "\x1f\x1f\x00\x01";
         const size_t left_padding
-            = padding >> static_cast<unsigned>(shifts[static_cast<int>(specs.align)]);
+            = padding >> static_cast<unsigned>(*std::next(shifts, static_cast<int>(specs.align)));
         const size_t right_padding = padding - left_padding;
 
         // Reserve exact amount for data + padding
@@ -597,7 +598,7 @@ protected:
         auto fill_pattern = [&dst, &fill = specs.fill](size_t fill_len) {
             const auto* src = fill.data();
             auto block_size = fill.size();
-            auto* dest = dst.end() - fill_len * block_size;
+            auto* dest = std::prev(dst.end(), fill_len * block_size);
 
             if (block_size > 1) {
                 // Copy first block
@@ -605,11 +606,11 @@ protected:
 
                 // Copy other blocks recursively via O(n*log(N)) calls
                 const auto* start = dest;
-                const auto* end = start + fill_len * block_size;
-                auto* current = dest + block_size;
-                while (current + block_size < end) {
+                const auto* end = std::next(start, fill_len * block_size);
+                auto* current = std::next(dest, block_size);
+                while (std::next(current, block_size) < end) {
                     std::copy_n(start, block_size, current);
-                    current += block_size;
+                    std::advance(current, block_size);
                     block_size *= 2;
                 }
 
