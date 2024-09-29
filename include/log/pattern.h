@@ -353,10 +353,10 @@ protected:
         unsigned value = 0;
         unsigned prev = 0;
         auto ptr = begin;
-        constexpr auto Base = 10;
+        constexpr auto Base = 10ULL;
         while (ptr != end && '0' <= *ptr && *ptr <= '9') {
             prev = value;
-            value = value * Base + unsigned(*ptr - '0');
+            value = value * Base + static_cast<unsigned>(*ptr - '0');
             ++ptr;
         }
         auto num_digits = ptr - begin;
@@ -370,8 +370,7 @@ protected:
         // Check for overflow.
         constexpr auto MaxInt = std::numeric_limits<int>::max();
         return num_digits == Digits10 + 1
-                && static_cast<unsigned long long>(prev) * Base + unsigned(*std::prev(ptr) - '0')
-                    <= MaxInt
+                && prev * Base + static_cast<unsigned>(*std::prev(ptr) - '0') <= MaxInt
             ? static_cast<int>(value)
             : error_value;
     }
@@ -462,10 +461,11 @@ protected:
                 break;
             }
 
-            const auto chr = Util::Unicode::to_ascii(pattern.at(pos));
+            const auto chr = Util::Unicode::to_ascii(pattern[pos]);
 
             // Handle escaped braces
-            if (!inside_placeholder && pos < len - 1 && chr == pattern.at(pos + 1)) {
+            if (!inside_placeholder && pos < len - 1
+                && chr == static_cast<char>(pattern[pos + 1])) {
                 m_pattern.append(pattern.substr(0, pos + 1));
                 pattern = pattern.substr(pos + 2);
                 append_item(Placeholder::Type::None, pos + 1);
