@@ -645,7 +645,7 @@ protected:
             this->write_padded(result, data, specs);
         } else {
             if constexpr (std::is_same_v<T, char> && !std::is_same_v<Char, char>) {
-                this->from_multibyte(result, data);
+                this->from_multibyte(result, data); // NOLINT(cppcoreguidelines-slicing)
             } else {
                 // Special case: since formatted message is stored
                 // at the beginning of the buffer, we have to reserve
