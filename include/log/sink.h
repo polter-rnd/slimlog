@@ -222,6 +222,11 @@ public:
         }
     }
 
+    SinkDriver(const SinkDriver&) = delete;
+    SinkDriver(SinkDriver&&) = delete;
+    auto operator=(const SinkDriver&) -> SinkDriver& = delete;
+    auto operator=(SinkDriver&&) -> SinkDriver& = delete;
+
     ~SinkDriver()
     {
         if (m_parent) {
@@ -482,6 +487,11 @@ public:
             parent->add_child(this);
         }
     }
+
+    SinkDriver(const SinkDriver&) = delete;
+    SinkDriver(SinkDriver&&) = delete;
+    auto operator=(const SinkDriver&) -> SinkDriver& = delete;
+    auto operator=(SinkDriver&&) -> SinkDriver& = delete;
 
     ~SinkDriver()
     {

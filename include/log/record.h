@@ -21,8 +21,16 @@ class RecordStringView : public std::basic_string_view<T> {
 public:
     using std::basic_string_view<T>::basic_string_view;
 
+    constexpr ~RecordStringView() = default;
+
     constexpr RecordStringView(const RecordStringView& str_view) noexcept
         : std::basic_string_view<T>(str_view)
+        , m_codepoints(str_view.m_codepoints.load(std::memory_order_relaxed))
+    {
+    }
+
+    constexpr RecordStringView(RecordStringView&& str_view) noexcept
+        : std::basic_string_view<T>(std::move(static_cast<std::basic_string_view<T>&&>(str_view)))
         , m_codepoints(str_view.m_codepoints.load(std::memory_order_relaxed))
     {
     }
@@ -40,6 +48,19 @@ public:
         }
 
         std::basic_string_view<T>::operator=(str_view);
+        m_codepoints.store(
+            str_view.m_codepoints.load(std::memory_order_relaxed), std::memory_order_relaxed);
+        return *this;
+    }
+
+    constexpr auto operator=(RecordStringView&& str_view) noexcept -> RecordStringView&
+    {
+        if (this == &str_view) {
+            return *this;
+        }
+
+        std::basic_string_view<T>::operator=(
+            std::move(static_cast<std::basic_string_view<T>&&>(str_view)));
         m_codepoints.store(
             str_view.m_codepoints.load(std::memory_order_relaxed), std::memory_order_relaxed);
         return *this;
