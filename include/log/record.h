@@ -111,17 +111,9 @@ RecordStringView(const Char*, size_t) -> RecordStringView<Char>;
 template<typename Char, typename StringType>
 struct Record {
     struct Location {
-        // NOLINTNEXTLINE(*-explicit-conversions)
-        Location(Log::Location location)
-            : filename(location.file_name())
-            , function(location.function_name())
-            , line(location.line())
-        {
-        }
-
-        RecordStringView<char> filename;
-        RecordStringView<char> function;
-        size_t line;
+        RecordStringView<char> filename = {};
+        RecordStringView<char> function = {};
+        size_t line = {};
     };
 
     Level level = {};

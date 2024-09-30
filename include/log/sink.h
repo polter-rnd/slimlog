@@ -341,7 +341,10 @@ public:
         Args&&... args) const -> void
     {
         FormatBufferType buffer;
-        RecordType record = {level, location, std::move(category)};
+        RecordType record
+            = {level,
+               {location.file_name(), location.function_name(), location.line()},
+               std::move(category)};
 
         // Flag to check that message has been evaluated
         bool evaluated = false;
