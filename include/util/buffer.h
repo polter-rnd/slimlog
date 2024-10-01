@@ -11,44 +11,9 @@ using Buffer = fmt::detail::buffer<T>;
 #else
 template<typename T>
 class Buffer {
-private:
-    T* m_ptr;
-    size_t m_size;
-    size_t m_capacity;
-
-    using GrowCallback = void (*)(Buffer& buf, size_t capacity);
-    GrowCallback m_grow;
-
-protected:
-    constexpr Buffer(GrowCallback grow, size_t sz) noexcept
-        : m_size(sz)
-        , m_capacity(sz)
-        , m_grow(grow)
-    {
-    }
-
-    constexpr Buffer(
-        GrowCallback grow, T* ptr = nullptr, size_t size = 0, size_t capacity = 0) noexcept
-        : m_ptr(ptr)
-        , m_size(size)
-        , m_capacity(capacity)
-        , m_grow(grow)
-    {
-    }
-
-    constexpr ~Buffer() = default;
-    Buffer(Buffer&&) = default;
-
-    /// Sets the buffer data and capacity.
-    constexpr void set(T* buf_data, size_t buf_capacity) noexcept
-    {
-        m_ptr = buf_data;
-        m_capacity = buf_capacity;
-    }
-
 public:
-    using value_type = T;
-    using const_reference = const T&;
+    using value_type = T; // NOLINT(readability-identifier-naming)
+    using const_reference = const T&; // NOLINT(readability-identifier-naming)
 
     Buffer(const Buffer&) = delete;
     void operator=(const Buffer&) = delete;
@@ -59,36 +24,36 @@ public:
     }
     auto end() noexcept -> T*
     {
-        return m_ptr + m_size;
+        return std::next(m_ptr, m_size);
     }
 
-    auto begin() const noexcept -> const T*
+    [[nodiscard]] auto begin() const noexcept -> const T*
     {
         return m_ptr;
     }
-    auto end() const noexcept -> const T*
+    [[nodiscard]] auto end() const noexcept -> const T*
     {
         return m_ptr + m_size;
     }
 
     /// Returns the size of this buffer.
-    constexpr auto size() const noexcept -> size_t
+    [[nodiscard]] constexpr auto size() const noexcept -> size_t
     {
         return m_size;
     }
 
     /// Returns the capacity of this buffer.
-    constexpr auto capacity() const noexcept -> size_t
+    [[nodiscard]] constexpr auto capacity() const noexcept -> size_t
     {
         return m_capacity;
     }
 
     /// Returns a pointer to the buffer data (not null-terminated).
-    constexpr auto data() noexcept -> T*
+    [[nodiscard]] constexpr auto data() noexcept -> T*
     {
         return m_ptr;
     }
-    constexpr auto data() const noexcept -> const T*
+    [[nodiscard]] constexpr auto data() const noexcept -> const T*
     {
         return m_ptr;
     }
@@ -121,7 +86,7 @@ public:
     constexpr void push_back(const T& value)
     {
         try_reserve(m_size + 1);
-        m_ptr[m_size++] = value;
+        *std::next(m_ptr, m_size++) = value;
     }
 
     /// Appends data to the end of the buffer.
@@ -131,25 +96,22 @@ public:
         while (begin != end) {
             auto count = static_cast<std::make_unsigned_t<decltype(end - begin)>>(end - begin);
             try_reserve(m_size + count);
+
             auto free_cap = m_capacity - m_size;
-            if (free_cap < count)
+            if (free_cap < count) {
                 count = free_cap;
-            if (std::is_same<T, U>::value) {
-                // memcpy(m_ptr + m_size, begin, count * sizeof(T));
-                std::uninitialized_copy_n(begin, count, m_ptr + m_size);
-            } else {
-                T* out = m_ptr + m_size;
-                for (size_t i = 0; i < count; ++i)
-                    out[i] = begin[i];
             }
-            // A loop is faster than memcpy on small sizes.
-            /*T* out = m_ptr + m_size;
-            for (size_t i = 0; i < count; ++i) {
-                out[i] = begin[i];
-            }*/
+            if (std::is_same<T, U>::value) {
+                std::uninitialized_copy_n(begin, count, std::next(m_ptr, m_size));
+            } else {
+                T* out = std::next(m_ptr, m_size);
+                for (size_t i = 0; i < count; ++i) {
+                    *std::next(out, i) = *std::next(begin, i);
+                }
+            }
 
             m_size += count;
-            begin += count;
+            std::advance(begin, count);
         }
     }
 
@@ -163,24 +125,121 @@ public:
     {
         return m_ptr[index];
     }
+
+protected:
+    using GrowCallback = void (*)(Buffer& buf, size_t capacity);
+
+    constexpr Buffer(GrowCallback grow, size_t size) noexcept
+        : m_ptr(nullptr)
+        , m_size(size)
+        , m_capacity(size)
+        , m_grow(grow)
+    {
+    }
+
+    explicit constexpr Buffer(
+        GrowCallback grow, T* ptr = nullptr, size_t size = 0, size_t capacity = 0) noexcept
+        : m_ptr(ptr)
+        , m_size(size)
+        , m_capacity(capacity)
+        , m_grow(grow)
+    {
+    }
+
+    constexpr ~Buffer() = default;
+    Buffer(Buffer&&) = default;
+    auto operator=(Buffer&&) -> Buffer& = default;
+
+    /// Sets the buffer data and capacity.
+    constexpr void set(T* buf_data, size_t buf_capacity) noexcept
+    {
+        m_ptr = buf_data;
+        m_capacity = buf_capacity;
+    }
+
+private:
+    T* m_ptr;
+    size_t m_size;
+    size_t m_capacity;
+    GrowCallback m_grow;
 };
 #endif
 
-template<typename T, size_t Size = 1024, typename Allocator = std::allocator<T>>
+template<typename T, size_t Size, typename Allocator = std::allocator<T>>
 class MemoryBuffer : public Buffer<T> {
-private:
-    using OnGrowCallback = std::function<void(size_t, size_t)>;
+public:
+    using value_type = T; // NOLINT(readability-identifier-naming)
+    using const_reference = const T&; // NOLINT(readability-identifier-naming)
 
-    T m_store[Size];
-    Allocator m_allocator;
-    OnGrowCallback m_on_grow;
+    using OnGrowCallback = void (*)(const T*, size_t, void*);
 
-    constexpr void deallocate()
+    constexpr explicit MemoryBuffer(const Allocator& allocator = Allocator())
+#if defined(ENABLE_FMTLIB) && FMT_VERSION < 110000
+        : m_allocator(alloc)
+#else
+        : Buffer<T>(grow)
+        , m_allocator(allocator)
+#endif
     {
-        T* data = this->data();
-        if (data != m_store) {
-            m_allocator.deallocate(data, this->capacity());
+        this->set(static_cast<T*>(m_store), Size);
+        if (std::is_constant_evaluated()) {
+            std::fill_n(static_cast<T*>(m_store), Size, T());
         }
+    }
+
+    constexpr ~MemoryBuffer()
+    {
+        deallocate();
+    }
+
+    /// Constructs a `MemoryBuffer` object moving the content of the other
+    /// object to it.
+    constexpr MemoryBuffer(MemoryBuffer&& other) noexcept
+        : Buffer<T>(grow)
+    {
+        move(other);
+    }
+
+    /// Moves the content of the other `MemoryBuffer` object to this one.
+    auto operator=(MemoryBuffer&& other) noexcept -> MemoryBuffer&
+    {
+        deallocate();
+        move(other);
+        return *this;
+    }
+
+    constexpr MemoryBuffer(const MemoryBuffer& other) = delete;
+    auto operator=(const MemoryBuffer& other) = delete;
+
+    // Returns a copy of the allocator associated with this buffer.
+    [[nodiscard]] auto get_allocator() const -> Allocator
+    {
+        return m_allocator;
+    }
+
+    /// Resizes the buffer to contain `count` elements. If T is a POD type new
+    /// elements may not be initialized.
+    constexpr void resize(size_t count)
+    {
+        this->try_resize(count);
+    }
+
+    /// Increases the buffer capacity to `new_capacity`.
+    void reserve(size_t new_capacity)
+    {
+        this->try_reserve(new_capacity);
+    }
+
+    template<typename ContiguousRange>
+    void append(const ContiguousRange& range)
+    {
+        Buffer<T>::append(range.data(), range.data() + range.size());
+    }
+
+    void on_grow(const OnGrowCallback& callback, void* userdata = nullptr)
+    {
+        m_on_grow = callback;
+        m_on_grow_userdata = userdata;
     }
 
 protected:
@@ -211,43 +270,23 @@ protected:
         // deallocate must not throw according to the standard, but even if it does,
         // the buffer already uses the new storage and will deallocate it in
         // destructor.
-        if (old_data != self.m_store) {
+        if (old_data != static_cast<T*>(self.m_store)) {
             self.m_allocator.deallocate(old_data, old_capacity);
         }
         if (self.m_on_grow) {
-            self.m_on_grow(old_capacity, new_capacity);
+            self.m_on_grow(new_data, new_capacity, self.m_on_grow_userdata);
         }
-    }
-
-public:
-    using value_type = T;
-    using const_reference = const T&;
-
-    constexpr explicit MemoryBuffer(const Allocator& allocator = Allocator())
-#if defined(ENABLE_FMTLIB) && FMT_VERSION < 110000
-        : m_allocator(alloc)
-#else
-        : Buffer<T>(grow)
-        , m_allocator(allocator)
-#endif
-    {
-        this->set(m_store, Size);
-        if (std::is_constant_evaluated()) {
-            std::fill_n(m_store, Size, T());
-        }
-    }
-
-    /*constexpr*/ ~MemoryBuffer()
-    {
-        deallocate();
-    }
-
-    void on_grow(const OnGrowCallback& callback)
-    {
-        m_on_grow = callback;
     }
 
 private:
+    constexpr void deallocate()
+    {
+        T* data = this->data();
+        if (data != static_cast<T*>(m_store)) {
+            m_allocator.deallocate(data, this->capacity());
+        }
+    }
+
     // Move data from other to this buffer.
     constexpr void move(MemoryBuffer& other)
     {
@@ -269,45 +308,8 @@ private:
         this->resize(size);
     }
 
-public:
-    /// Constructs a `MemoryBuffer` object moving the content of the other
-    /// object to it.
-    constexpr MemoryBuffer(MemoryBuffer&& other) noexcept
-        : Buffer<T>(grow)
-    {
-        move(other);
-    }
-
-    /// Moves the content of the other `MemoryBuffer` object to this one.
-    auto operator=(MemoryBuffer&& other) noexcept -> MemoryBuffer&
-    {
-        deallocate();
-        move(other);
-        return *this;
-    }
-
-    // Returns a copy of the allocator associated with this buffer.
-    [[nodiscard]] auto get_allocator() const -> Allocator
-    {
-        return m_allocator;
-    }
-
-    /// Resizes the buffer to contain `count` elements. If T is a POD type new
-    /// elements may not be initialized.
-    constexpr void resize(size_t count)
-    {
-        this->try_resize(count);
-    }
-
-    /// Increases the buffer capacity to `new_capacity`.
-    void reserve(size_t new_capacity)
-    {
-        this->try_reserve(new_capacity);
-    }
-
-    template<typename ContiguousRange>
-    void append(const ContiguousRange& range)
-    {
-        Buffer<T>::append(range.data(), range.data() + range.size());
-    }
+    T m_store[Size]; // NOLINT(*-avoid-c-arrays)
+    Allocator m_allocator;
+    OnGrowCallback m_on_grow = nullptr;
+    void* m_on_grow_userdata = nullptr;
 };

@@ -362,8 +362,11 @@ public:
                     record.message = RecordStringView(buffer.data(), buffer.size());
                     // Update pointer to message on every buffer re-allocation
                     buffer.on_grow(
-                        [&message = std::get<RecordStringView<CharType>>(record.message),
-                         &buffer](size_t, size_t) { message.update_data_ptr(buffer.data()); });
+                        [](const CharType* data, size_t, void* message) {
+                            static_cast<RecordStringView<CharType>*>(message)->update_data_ptr(
+                                data);
+                        },
+                        &std::get<RecordStringView<CharType>>(record.message));
                 } else if constexpr (std::is_invocable_v<T, Args...>) {
                     if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
                         // Void callable without arguments: there is no message, just a callback
