@@ -445,9 +445,11 @@ protected:
     {
         typename Placeholder::StringSpecs specs = {};
         if (value.size() > 2) {
-            auto* fmt = parse_align(value.begin() + 2, value.end(), specs);
+            const auto* begin = value.data();
+            const auto* end = std::next(begin, value.size());
+            const auto* fmt = parse_align(std::next(begin, 2), end, specs);
             if (auto chr = Util::Unicode::to_ascii(*fmt); chr != '}') {
-                const int width = parse_nonnegative_int(fmt, value.end() - 1, -1);
+                const int width = parse_nonnegative_int(fmt, std::prev(end), -1);
                 if (width == -1) {
                     throw FormatError("format field width is too big");
                 }
