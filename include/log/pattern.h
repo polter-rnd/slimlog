@@ -425,23 +425,56 @@ protected:
         return begin;
     }
 
+    auto append_placeholder(Placeholder::Type type, size_t count, size_t shift = 0)
+    {
+        auto data = StringViewType{m_pattern}.substr(m_pattern.size() - count - shift, count);
+        if (type == Placeholder::Type::None && !m_placeholders.empty()
+            && m_placeholders.back().type == type) {
+            // In case of raw text, we can safely merge current chunk with the last one
+            auto& format = std::get<StringViewType>(m_placeholders.back().value);
+            format = StringViewType{format.data(), format.size() + data.size()};
+        } else if (Placeholder::is_string(type)) {
+            // Calculate formatted width for string fields
+            m_placeholders.emplace_back(type, get_string_specs(data));
+        } else {
+            m_placeholders.emplace_back(type, data);
+        }
+    };
+
+    auto get_string_specs(StringViewType value)
+    {
+        typename Placeholder::StringSpecs specs = {};
+        if (value.size() > 2) {
+            auto* fmt = parse_align(value.begin() + 2, value.end(), specs);
+            if (auto chr = Util::Unicode::to_ascii(*fmt); chr != '}') {
+                const int width = parse_nonnegative_int(fmt, value.end() - 1, -1);
+                if (width == -1) {
+                    throw FormatError("format field width is too big");
+                }
+                chr = Util::Unicode::to_ascii(*fmt);
+                switch (chr) {
+                case '}':
+                    break;
+                case 's':
+                    if (Util::Unicode::to_ascii(*std::next(fmt)) != '}') {
+                        throw FormatError("missing '}' in format string");
+                    }
+                    break;
+                default:
+                    throw FormatError(
+                        std::string("wrong format type '") + chr + "' for the string field");
+                }
+                specs.width = width;
+            }
+        }
+        return specs;
+    }
+
     auto compile(StringViewType pattern)
     {
         m_placeholders.clear();
         m_pattern.clear();
         m_pattern.reserve(pattern.size());
-
-        auto append_item = [this](Placeholder::Type type, size_t count, size_t shift = 0) {
-            auto data = StringViewType{m_pattern}.substr(m_pattern.size() - count - shift, count);
-            // In case of raw text, we can safely merge current chunk with the last one
-            if (type == Placeholder::Type::None && !m_placeholders.empty()
-                && m_placeholders.back().type == type) {
-                auto& format = std::get<StringViewType>(m_placeholders.back().value);
-                format = StringViewType{format.data(), format.size() + data.size()};
-            } else {
-                m_placeholders.emplace_back(type, data);
-            }
-        };
 
         bool inside_placeholder = false;
         for (;;) {
@@ -456,7 +489,7 @@ protected:
                 }
                 if (!pattern.empty()) {
                     m_pattern.append(pattern);
-                    append_item(Placeholder::Type::None, len);
+                    append_placeholder(Placeholder::Type::None, len);
                 }
                 break;
             }
@@ -468,7 +501,7 @@ protected:
                 && chr == static_cast<char>(pattern[pos + 1])) {
                 m_pattern.append(pattern.substr(0, pos + 1));
                 pattern = pattern.substr(pos + 2);
-                append_item(Placeholder::Type::None, pos + 1);
+                append_placeholder(Placeholder::Type::None, pos + 1);
                 continue;
             }
 
@@ -476,7 +509,7 @@ protected:
                 // Enter inside placeholder
                 m_pattern.append(pattern.substr(0, pos + 1));
                 pattern = pattern.substr(pos + 1);
-                append_item(Placeholder::Type::None, pos, 1);
+                append_placeholder(Placeholder::Type::None, pos, 1);
 
                 inside_placeholder = true;
             } else if (inside_placeholder && chr == '}') {
@@ -496,7 +529,7 @@ protected:
                 pattern = pattern.substr(pos + 1);
 
                 // Save empty string view instead of {} to mark unformatted placeholder
-                append_item(type, pos - delta + 2);
+                append_placeholder(type, pos - delta + 2);
 
                 inside_placeholder = false;
             } else {
@@ -505,41 +538,6 @@ protected:
                     std::string("format error: unmatched '") + chr + "' in format string");
                 break;
             }
-        }
-
-        // Calculate formatted width for string fields
-        for (auto& placeholder : m_placeholders) {
-            if (!Placeholder::is_string(placeholder.type)) {
-                continue;
-            }
-
-            typename Placeholder::StringSpecs specs = {};
-            auto& value = std::get<StringViewType>(placeholder.value);
-            if (value.size() > 2) {
-                auto* fmt = parse_align(value.begin() + 2, value.end(), specs);
-                if (auto chr = Util::Unicode::to_ascii(*fmt); chr != '}') {
-                    const int width = parse_nonnegative_int(fmt, value.end() - 1, -1);
-                    if (width == -1) {
-                        throw FormatError("format field width is too big");
-                    }
-                    chr = Util::Unicode::to_ascii(*fmt);
-                    switch (chr) {
-                    case '}':
-                        break;
-                    case 's':
-                        if (Util::Unicode::to_ascii(*std::next(fmt)) != '}') {
-                            throw FormatError("missing '}' in format string");
-                        }
-                        break;
-                    default:
-                        throw FormatError(
-                            std::string("wrong format type '") + chr + "' for the string field");
-                    }
-                    specs.width = width;
-                }
-            }
-
-            placeholder.value = specs;
         }
     }
 
