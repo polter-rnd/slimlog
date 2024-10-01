@@ -350,47 +350,47 @@ public:
         bool evaluated = false;
 
         for (const auto& [sink, logger] : m_effective_sinks) {
-            if (logger->level_enabled(level)) {
-                if (!evaluated) {
-                    using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
-                    if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
-                        // Callable with buffer argument: message will be stored in buffer.
-                        callback(buffer, std::forward<Args>(args)...);
-                        record.message = RecordStringView(buffer.data(), buffer.size());
-                        // Update pointer to message on every buffer re-allocation
-                        buffer.on_grow(
-                            [&message = std::get<RecordStringView<CharType>>(record.message),
-                             &buffer](size_t, size_t) { message.update_data_ptr(buffer.data()); });
-                    } else if constexpr (std::is_invocable_v<T, Args...>) {
-                        if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
-                            // Void callable without arguments: there is no message, just a callback
-                            callback(std::forward<Args>(args)...);
-                            return;
-                        } else {
-                            // Non-void callable without arguments: message is the return value
-                            auto message = callback(std::forward<Args>(args)...);
-                            using Ret = std::invoke_result_t<T>;
-                            if constexpr (std::is_convertible_v<Ret, RecordStringView<CharType>>) {
-                                record.message = RecordStringView<CharType>{std::move(message)};
-                            } else {
-                                record.message = std::move(message);
-                            }
-                        }
+            if (!logger->level_enabled(level)) {
+                continue;
+            }
+
+            if (!evaluated) {
+                using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
+                if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
+                    // Callable with buffer argument: message will be stored in buffer.
+                    callback(buffer, std::forward<Args>(args)...);
+                    record.message = RecordStringView(buffer.data(), buffer.size());
+                    // Update pointer to message on every buffer re-allocation
+                    buffer.on_grow(
+                        [&message = std::get<RecordStringView<CharType>>(record.message),
+                         &buffer](size_t, size_t) { message.update_data_ptr(buffer.data()); });
+                } else if constexpr (std::is_invocable_v<T, Args...>) {
+                    if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
+                        // Void callable without arguments: there is no message, just a callback
+                        callback(std::forward<Args>(args)...);
+                        return;
                     } else {
-                        // Non-invocable argument: argument is the message itself
-                        if constexpr (std::is_convertible_v<T, RecordStringView<CharType>>) {
-                            // get rid of extra constructor
-                            // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
-                            record.message = RecordStringView<CharType>{std::forward<T>(callback)};
+                        // Non-void callable without arguments: message is the return value
+                        auto message = callback(std::forward<Args>(args)...);
+                        using Ret = std::invoke_result_t<T>;
+                        if constexpr (std::is_convertible_v<Ret, RecordStringView<CharType>>) {
+                            record.message = RecordStringView<CharType>{std::move(message)};
                         } else {
-                            record.message = std::forward<T>(callback);
+                            record.message = std::move(message);
                         }
                     }
-                    evaluated = true;
+                } else if constexpr (std::is_convertible_v<T, RecordStringView<CharType>>) {
+                    // Non-invocable argument: argument is the message itself
+                    // get rid of extra constructor
+                    // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
+                    record.message = RecordStringView<CharType>{std::forward<T>(callback)};
+                } else {
+                    record.message = std::forward<T>(callback);
                 }
-
-                sink->message(buffer, record);
+                evaluated = true;
             }
+
+            sink->message(buffer, record);
         }
     }
 
