@@ -201,14 +201,14 @@ public:
     constexpr MemoryBuffer(MemoryBuffer&& other) noexcept
         : Buffer<T>(grow)
     {
-        move(other);
+        move_from(other);
     }
 
     /// Moves the content of the other `MemoryBuffer` object to this one.
     auto operator=(MemoryBuffer&& other) noexcept -> MemoryBuffer&
     {
         deallocate();
-        move(other);
+        move_from(other);
         return *this;
     }
 
@@ -248,7 +248,7 @@ public:
 
 protected:
 #if defined(ENABLE_FMTLIB) && FMT_VERSION < 110000
-    constexpr void grow(std::size_t size) override
+    constexpr void grow(std::size_t size) override final
     {
         auto& self = *this;
 #else
@@ -292,7 +292,7 @@ private:
     }
 
     // Move data from other to this buffer.
-    constexpr void move(MemoryBuffer& other)
+    constexpr void move_from(MemoryBuffer& other)
     {
         m_allocator = std::move(other.m_allocator);
         T* data = other.data();
