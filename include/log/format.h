@@ -22,8 +22,10 @@
 #include "util/types.h"
 
 #include <concepts>
+#include <cstddef>
 #include <iterator>
-#include <string>
+#include <memory>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 
@@ -68,7 +70,7 @@ public:
                  || std::same_as<std::decay_t<T>, const Char*>
                  || std::same_as<std::decay_t<T>, Char*>)
     // NOLINTNEXTLINE(*-explicit-conversions)
-    consteval Format(T fmt, const Location& loc = Location::current())
+    consteval Format(T fmt, Location loc = Location::current()) // cppcheck-suppress passedByValue
         : m_fmt(std::move(fmt))
         , m_loc(loc)
     {
@@ -118,7 +120,7 @@ private:
  * @tparam Traits Traits (\a std::char_traits<Char>) for the particular char type.
  * @tparam Allocator Allocator (\a std::allocator<Char>) for the buffer data.
  */
-template<typename Char, size_t BufferSize, typename Allocator = std::allocator<Char>>
+template<typename Char, std::size_t BufferSize, typename Allocator = std::allocator<Char>>
 class FormatBuffer final : public MemoryBuffer<Char, BufferSize, Allocator> {
 public:
     using MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;

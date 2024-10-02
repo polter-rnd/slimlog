@@ -5,13 +5,13 @@
 
 #pragma once
 
-#include <type_traits>
+#include <limits>
 
 namespace PlainCloud::Util::Unicode {
 
 template<typename Char>
     requires std::is_integral_v<Char>
-constexpr inline auto code_point_length(const Char* begin) -> int
+constexpr auto code_point_length(const Char* begin) -> int
 {
     if constexpr (sizeof(Char) != 1) {
         return 1;
@@ -56,7 +56,7 @@ constexpr inline auto code_point_length(const Char* begin) -> int
 
 template<typename Char>
     requires std::is_integral_v<Char>
-constexpr inline auto to_ascii(Char chr) -> char
+constexpr auto to_ascii(Char chr) -> char
 {
     return chr <= std::numeric_limits<unsigned char>::max() ? static_cast<char>(chr) : '\0';
 }

@@ -6,19 +6,17 @@
 #pragma once
 
 #include "format.h"
-#include "level.h"
 #include "location.h"
 #include "pattern.h"
 #include "policy.h"
 #include "record.h"
 
-#include <array>
 #include <atomic>
+#include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <memory>
-#include <memory_resource>
 #include <queue>
-#include <string>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -28,6 +26,8 @@
 // IWYU pragma: no_include <functional>
 
 namespace PlainCloud::Log {
+
+enum class Level : std::uint8_t;
 
 /**
  * @brief Base abstract sink class.
@@ -337,7 +337,7 @@ public:
         Level level,
         T&& callback,
         StringViewType category,
-        Location location = Location::current(),
+        Location location = Location::current(), // cppcheck-suppress passedByValue
         Args&&... args) const -> void
     {
         FormatBufferType buffer;
@@ -362,7 +362,7 @@ public:
                     record.message = RecordStringView(buffer.data(), buffer.size());
                     // Update pointer to message on every buffer re-allocation
                     buffer.on_grow(
-                        [](const CharType* data, size_t, void* message) {
+                        [](const CharType* data, std::size_t, void* message) {
                             static_cast<RecordStringView<CharType>*>(message)->update_data_ptr(
                                 data);
                         },
@@ -597,7 +597,7 @@ public:
         Level level,
         T&& callback,
         StringViewType category,
-        Location location = Location::current(),
+        Location location = Location::current(), // cppcheck-suppress passedByValue
         Args&&... args) const -> void
     {
         ReadLock lock(m_mutex);

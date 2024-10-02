@@ -5,27 +5,27 @@
 
 #pragma once
 
+#include "format.h"
 #include "level.h"
-#include "location.h"
-#include "logger.h"
 #include "record.h"
 #include "util/types.h"
 #include "util/unicode.h"
 
-#include <algorithm>
 #include <array>
-#include <charconv>
+#include <climits>
+#include <cstdint>
 #include <cuchar>
 #include <cwchar>
+#include <functional>
 #include <initializer_list>
 #include <iosfwd>
-#include <iostream>
 #include <iterator>
-#include <span>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace PlainCloud::Log {
@@ -36,8 +36,8 @@ namespace Detail {
 
 namespace Char8Fallback {
 template<typename T = char8_t>
-auto mbrtoc8(T* /*unused*/, const char* /*unused*/, size_t /*unused*/, mbstate_t* /*unused*/)
-    -> size_t
+auto mbrtoc8(T* /*unused*/, const char* /*unused*/, std::size_t /*unused*/, mbstate_t* /*unused*/)
+    -> std::size_t
 {
     static_assert(
         Util::Types::AlwaysFalse<T>{},
@@ -143,12 +143,12 @@ public:
 
     struct Placeholder {
         /** @brief Log pattern placeholder types */
-        enum class Type { None, Category, Level, File, Line, Message };
+        enum class Type : std::uint8_t { None, Category, Level, File, Line, Message };
 
-        enum class Align { None, Left, Right, Center };
+        enum class Align : std::uint8_t { None, Left, Right, Center };
 
         struct StringSpecs {
-            size_t width = 0;
+            std::size_t width = 0;
             Align align = Align::None;
             StringViewType fill = StringSpecs::DefaultFill.data();
 
@@ -425,7 +425,7 @@ protected:
         return begin;
     }
 
-    auto append_placeholder(Placeholder::Type type, size_t count, size_t shift = 0)
+    auto append_placeholder(Placeholder::Type type, std::size_t count, std::size_t shift = 0)
     {
         auto data = StringViewType{m_pattern}.substr(m_pattern.size() - count - shift, count);
         if (type == Placeholder::Type::None && !m_placeholders.empty()
@@ -555,7 +555,7 @@ protected:
     {
         Char wchr;
         auto state = std::mbstate_t{};
-        size_t (*towc_func)(Char*, const T*, size_t, mbstate_t*) = nullptr;
+        std::size_t (*towc_func)(Char*, const T*, std::size_t, mbstate_t*) = nullptr;
         if constexpr (std::is_same_v<Char, wchar_t>) {
             towc_func = std::mbrtowc;
 #ifdef __cpp_lib_char8_t
@@ -582,20 +582,20 @@ protected:
         const auto spec_width
             = static_cast<std::make_unsigned_t<decltype(specs.width)>>(specs.width);
         const auto width = src.codepoints();
-        const size_t padding = spec_width > width ? spec_width - width : 0;
+        const auto padding = spec_width > width ? spec_width - width : 0;
 
         // Shifts are encoded as string literals because static constexpr is not
         // supported in constexpr functions.
         const char* shifts = "\x1f\x1f\x00\x01";
-        const size_t left_padding
+        const auto left_padding
             = padding >> static_cast<unsigned>(*std::next(shifts, static_cast<int>(specs.align)));
-        const size_t right_padding = padding - left_padding;
+        const auto right_padding = padding - left_padding;
 
         // Reserve exact amount for data + padding
         dst.reserve(dst.size() + src.size() + padding * specs.fill.size());
 
         // Lambda for filling with single character or multibyte pattern
-        auto fill_pattern = [&dst, &fill = specs.fill](size_t fill_len) {
+        auto fill_pattern = [&dst, &fill = specs.fill](std::size_t fill_len) {
             const auto* src = fill.data();
             auto block_size = fill.size();
             auto* dest = std::prev(dst.end(), fill_len * block_size);
@@ -638,7 +638,7 @@ protected:
     }
 
     template<typename T>
-    inline auto format_string(
+    auto format_string(
         auto& result, const Placeholder::StringSpecs& specs, RecordStringView<T>& data) -> void
     {
         if (specs.width > 0) {

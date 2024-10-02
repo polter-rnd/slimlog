@@ -14,6 +14,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -21,7 +22,7 @@
 namespace PlainCloud::Log {
 
 /** Default buffer size for log messages */
-static constexpr size_t DefaultBufferSize = 1024;
+static constexpr auto DefaultBufferSize = 1024U;
 
 /**
  * @brief A logger front-end class.
@@ -49,7 +50,7 @@ template<
     typename String,
     typename Char = Util::Types::UnderlyingCharType<String>,
     typename ThreadingPolicy = MultiThreadedPolicy<>,
-    size_t StaticBufferSize = DefaultBufferSize>
+    std::size_t StaticBufferSize = DefaultBufferSize>
 class Logger {
 public:
     /** @brief String type for log messages. */
@@ -307,7 +308,7 @@ Logger(String, Level = Level::Info) -> Logger<String>;
  *
  * @tparam String String type for log messages.
  */
-template<typename Char, size_t N>
+template<typename Char, std::size_t N>
 Logger(
     const Char (&)[N], // NOLINT(*-avoid-c-arrays)
     Level = Level::Info) -> Logger<std::basic_string_view<Char>>;

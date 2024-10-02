@@ -1,9 +1,10 @@
 #pragma once
 
-#include <algorithm>
-#include <functional>
-#include <iostream>
+#include <algorithm> // IWYU pragma: keep
+#include <cstddef>
+#include <iterator>
 #include <memory>
+#include <type_traits>
 
 #ifdef ENABLE_FMTLIB
 template<typename T>
@@ -37,13 +38,13 @@ public:
     }
 
     /// Returns the size of this buffer.
-    [[nodiscard]] constexpr auto size() const noexcept -> size_t
+    [[nodiscard]] constexpr auto size() const noexcept -> std::size_t
     {
         return m_size;
     }
 
     /// Returns the capacity of this buffer.
-    [[nodiscard]] constexpr auto capacity() const noexcept -> size_t
+    [[nodiscard]] constexpr auto capacity() const noexcept -> std::size_t
     {
         return m_capacity;
     }
@@ -66,7 +67,7 @@ public:
 
     // Tries resizing the buffer to contain `count` elements. If T is a POD type
     // the new elements may not be initialized.
-    constexpr void try_resize(size_t count)
+    constexpr void try_resize(std::size_t count)
     {
         try_reserve(count);
         m_size = count <= m_capacity ? count : m_capacity;
@@ -76,7 +77,7 @@ public:
     // capacity by a smaller amount than requested but guarantees there is space
     // for at least one additional element either by increasing the capacity or by
     // flushing the buffer if it is full.
-    constexpr void try_reserve(size_t new_capacity)
+    constexpr void try_reserve(std::size_t new_capacity)
     {
         if (new_capacity > m_capacity) {
             m_grow(*this, new_capacity);
@@ -105,7 +106,7 @@ public:
                 std::uninitialized_copy_n(begin, count, std::next(m_ptr, m_size));
             } else {
                 T* out = std::next(m_ptr, m_size);
-                for (size_t i = 0; i < count; ++i) {
+                for (std::size_t i = 0; i < count; ++i) {
                     *std::next(out, i) = *std::next(begin, i);
                 }
             }
@@ -127,9 +128,9 @@ public:
     }
 
 protected:
-    using GrowCallback = void (*)(Buffer& buf, size_t capacity);
+    using GrowCallback = void (*)(Buffer& buf, std::size_t capacity);
 
-    constexpr Buffer(GrowCallback grow, size_t size) noexcept
+    constexpr Buffer(GrowCallback grow, std::size_t size) noexcept
         : m_ptr(nullptr)
         , m_size(size)
         , m_capacity(size)
@@ -138,7 +139,10 @@ protected:
     }
 
     explicit constexpr Buffer(
-        GrowCallback grow, T* ptr = nullptr, size_t size = 0, size_t capacity = 0) noexcept
+        GrowCallback grow,
+        T* ptr = nullptr,
+        std::size_t size = 0,
+        std::size_t capacity = 0) noexcept
         : m_ptr(ptr)
         , m_size(size)
         , m_capacity(capacity)
@@ -151,7 +155,7 @@ protected:
     auto operator=(Buffer&&) -> Buffer& = default;
 
     /// Sets the buffer data and capacity.
-    constexpr void set(T* buf_data, size_t buf_capacity) noexcept
+    constexpr void set(T* buf_data, std::size_t buf_capacity) noexcept
     {
         m_ptr = buf_data;
         m_capacity = buf_capacity;
@@ -159,19 +163,19 @@ protected:
 
 private:
     T* m_ptr;
-    size_t m_size;
-    size_t m_capacity;
+    std::size_t m_size;
+    std::size_t m_capacity;
     GrowCallback m_grow;
 };
 #endif
 
-template<typename T, size_t Size, typename Allocator = std::allocator<T>>
+template<typename T, std::size_t Size, typename Allocator = std::allocator<T>>
 class MemoryBuffer : public Buffer<T> {
 public:
     using value_type = T; // NOLINT(readability-identifier-naming)
     using const_reference = const T&; // NOLINT(readability-identifier-naming)
 
-    using OnGrowCallback = void (*)(const T*, size_t, void*);
+    using OnGrowCallback = void (*)(const T*, std::size_t, void*);
 
     constexpr explicit MemoryBuffer(const Allocator& allocator = Allocator())
 #if defined(ENABLE_FMTLIB) && FMT_VERSION < 110000
@@ -219,13 +223,13 @@ public:
 
     /// Resizes the buffer to contain `count` elements. If T is a POD type new
     /// elements may not be initialized.
-    constexpr void resize(size_t count)
+    constexpr void resize(std::size_t count)
     {
         this->try_resize(count);
     }
 
     /// Increases the buffer capacity to `new_capacity`.
-    void reserve(size_t new_capacity)
+    void reserve(std::size_t new_capacity)
     {
         this->try_reserve(new_capacity);
     }
@@ -244,17 +248,17 @@ public:
 
 protected:
 #if defined(ENABLE_FMTLIB) && FMT_VERSION < 110000
-    constexpr void grow(size_t size) override
+    constexpr void grow(std::size_t size) override
     {
         auto& self = *this;
 #else
-    static constexpr void grow(Buffer<T>& buf, size_t size)
+    static constexpr void grow(Buffer<T>& buf, std::size_t size)
     {
         auto& self = static_cast<MemoryBuffer&>(buf);
 #endif
-        const size_t max_size = std::allocator_traits<Allocator>::max_size(self.m_allocator);
-        const size_t old_capacity = self.capacity();
-        size_t new_capacity = old_capacity + old_capacity / 2;
+        const std::size_t max_size = std::allocator_traits<Allocator>::max_size(self.m_allocator);
+        const std::size_t old_capacity = self.capacity();
+        std::size_t new_capacity = old_capacity + old_capacity / 2;
         if (size > new_capacity) {
             new_capacity = size;
         } else if (new_capacity > max_size) {
@@ -292,8 +296,8 @@ private:
     {
         m_allocator = std::move(other.m_allocator);
         T* data = other.data();
-        const size_t size = other.size();
-        const size_t capacity = other.capacity();
+        const std::size_t size = other.size();
+        const std::size_t capacity = other.capacity();
         if (data == other.m_store) {
             this->set(m_store, capacity);
             // m_store.append(other.m_store, other.m_store + size);

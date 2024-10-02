@@ -1,19 +1,26 @@
+// NOLINTBEGIN
+
 #include "log/format.h"
 #include "log/level.h"
 #include "log/logger.h"
-#include "log/policy.h"
 #include "log/sinks/dummy_sink.h"
 #include "log/sinks/ostream_sink.h"
 #include "util/locale.h"
 
+#include <unistd.h>
+
 #include <algorithm>
+#include <chrono>
+#include <cstdlib>
+#include <ctime>
 #include <exception>
 #include <iostream>
 #include <memory>
-#include <random>
-#include <sstream>
+#include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
+#include <vector>
 
 class null_out_buf : public std::basic_streambuf<wchar_t> {
 public:
@@ -188,7 +195,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         log_root->info(L"Hello {}! ({})", L"World", 4);
 
         auto log_child = std::make_shared<Log::Logger<std::wstring_view>>(L"child", log_root);
-        log_child->add_sink<Log::OStreamSink>(std::wcout);
+        log_child->add_sink<Log::DummySink>();
         log_child->add_sink(sink2);
         log_child->set_sink_enabled(sink2, false);
         log_child->info(L"One two three!");
@@ -218,3 +225,5 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
 
     return 0;
 }
+
+// NOLINTEND

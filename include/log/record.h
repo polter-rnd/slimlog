@@ -5,16 +5,19 @@
 
 #pragma once
 
-#include "level.h"
 #include "util/unicode.h"
 
 #include <atomic>
-#include <iostream>
+#include <cstddef>
+#include <cstdint>
+#include <functional>
 #include <iterator>
 #include <string_view>
 #include <variant>
 
 namespace PlainCloud::Log {
+
+enum class Level : std::uint8_t;
 
 template<typename T>
 class RecordStringView : public std::basic_string_view<T> {
@@ -82,9 +85,9 @@ public:
         *static_cast<std::basic_string_view<T>*>(this) = {data, this->size()};
     }
 
-    auto codepoints() -> size_t
+    auto codepoints() -> std::size_t
     {
-        size_t codepoints = m_codepoints.load(std::memory_order_consume);
+        std::size_t codepoints = m_codepoints.load(std::memory_order_consume);
         if (codepoints == std::string_view::npos) {
             codepoints = 0;
             if constexpr (sizeof(T) != 1) {
@@ -92,7 +95,7 @@ public:
             } else {
                 const auto size = this->size();
                 const auto data = this->data();
-                for (size_t idx = 0; idx < size; codepoints++) {
+                for (std::size_t idx = 0; idx < size; codepoints++) {
                     idx += Util::Unicode::code_point_length(std::next(data, idx));
                 }
             }
@@ -102,18 +105,18 @@ public:
     }
 
 private:
-    std::atomic<size_t> m_codepoints = std::string_view::npos;
+    std::atomic<std::size_t> m_codepoints = std::string_view::npos;
 };
 
 template<typename Char>
-RecordStringView(const Char*, size_t) -> RecordStringView<Char>;
+RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
 
 template<typename Char, typename StringType>
 struct Record {
     struct Location {
         RecordStringView<char> filename = {};
         RecordStringView<char> function = {};
-        size_t line = {};
+        std::size_t line = {};
     };
 
     Level level = {};

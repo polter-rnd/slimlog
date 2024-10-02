@@ -5,14 +5,10 @@
 
 #pragma once
 
-#include "log/level.h"
-#include "log/location.h"
 #include "log/sink.h" // IWYU pragma: export
 
-#include <concepts>
 #include <iterator>
 #include <ostream>
-#include <string_view>
 #include <utility>
 
 namespace PlainCloud::Log {
@@ -23,12 +19,9 @@ namespace PlainCloud::Log {
  * @tparam Logger %Logger class type intended for the sink to be used with.
  */
 template<typename Logger>
-//    requires(std::convertible_to<typename Logger::StringType, typename Logger::StringViewType>)
 class OStreamSink : public Sink<Logger> {
 public:
     using typename Sink<Logger>::CharType;
-    using typename Sink<Logger>::StringType;
-    using typename Sink<Logger>::StringViewType;
     using typename Sink<Logger>::FormatBufferType;
     using typename Sink<Logger>::RecordType;
 
@@ -62,7 +55,7 @@ public:
 
     auto message(FormatBufferType& buffer, RecordType& record) -> void override
     {
-        auto orig_size = buffer.size();
+        const auto orig_size = buffer.size();
         this->format(buffer, record);
         buffer.push_back('\n');
         m_ostream.write(std::next(buffer.begin(), orig_size), buffer.size() - orig_size);

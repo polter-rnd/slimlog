@@ -24,6 +24,14 @@
         ]
     },
     {
+        "include": [
+            "<bits/chrono.h>",
+            "private",
+            "<chrono>",
+            "public"
+        ]
+    },
+    {
         "symbol": [
             "std::pair",
             "private",

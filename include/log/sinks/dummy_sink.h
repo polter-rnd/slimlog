@@ -5,9 +5,9 @@
 
 #pragma once
 
-#include "log/level.h"
-#include "log/location.h"
 #include "log/sink.h" // IWYU pragma: export
+
+#include <utility>
 
 namespace PlainCloud::Log {
 
@@ -21,8 +21,7 @@ namespace PlainCloud::Log {
 template<typename Logger>
 class DummySink : public Sink<Logger> {
 public:
-    using typename Sink<Logger>::StringType;
-    using typename Sink<Logger>::StringViewType;
+    using typename Sink<Logger>::RecordType;
     using typename Sink<Logger>::FormatBufferType;
 
     /**
@@ -37,22 +36,12 @@ public:
     {
     }
 
-    auto message(
-        FormatBufferType& buffer,
-        Level level,
-        StringViewType category,
-        StringType message,
-        Location location) -> void override
+    auto message(FormatBufferType& buffer, RecordType& record) -> void override
     {
-        buffer.assign(message);
-        this->message(buffer, level, category, location);
-    }
-
-    auto message(FormatBufferType& buffer, Level level, StringViewType category, Location location)
-        -> void override
-    {
-        this->apply_pattern(buffer, level, category, location);
+        const auto orig_size = buffer.size();
+        this->format(buffer, record);
         buffer.push_back('\n');
+        buffer.resize(orig_size);
     }
 
     auto flush() -> void override
