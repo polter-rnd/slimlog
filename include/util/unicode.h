@@ -1,5 +1,5 @@
 /**
- * @file util.h
+ * @file unicode.h
  * @brief Various utility classes and functions.
  */
 
@@ -9,6 +9,13 @@
 
 namespace PlainCloud::Util::Unicode {
 
+/**
+ * @brief Calculate length of Unicode code point
+ *
+ * @tparam Char Char type.
+ * @param begin Pointer to start of unicode sequence.
+ * @return Length of the code point.
+ */
 template<typename Char>
     requires std::is_integral_v<Char>
 constexpr auto code_point_length(const Char* begin) -> int
@@ -54,6 +61,13 @@ constexpr auto code_point_length(const Char* begin) -> int
     }
 }
 
+/**
+ * @brief Convert character code to ASCII.
+ *
+ * @tparam Char Char type.
+ * @param chr Character code.
+ * @return \b 0 if code is greater then 0xFF, otherwise the same character code.
+ */
 template<typename Char>
     requires std::is_integral_v<Char>
 constexpr auto to_ascii(Char chr) -> char

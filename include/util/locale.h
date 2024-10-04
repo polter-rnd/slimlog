@@ -1,5 +1,5 @@
 /**
- * @file util.h
+ * @file locale.h
  * @brief Various utility classes and functions.
  */
 

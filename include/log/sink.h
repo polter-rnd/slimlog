@@ -92,18 +92,6 @@ public:
     virtual ~Sink() = default;
 
     /**
-     * @brief Convert from `std::string` to logger string type.
-     *
-     * Specialize this function for logger string type to be able
-     * to use compile-time formatting for non-standard string types.
-     *
-     * @tparam String Type of logger string.
-     * @param str Original string.
-     * @return Converted string.
-     */
-    //[[maybe_unused]] virtual auto to_string_view(const StringType& str) -> StringViewType;
-
-    /**
      * @brief Set the log message pattern.
      *
      * Usage example:
@@ -166,9 +154,7 @@ protected:
      * and it should be overwritten with formatted result.
      *
      * @param result Buffer containing raw message and to be overwritten with formatted result.
-     * @param level Log level.
-     * @param category %Logger category name.
-     * @param location Caller location (file, line, function).
+     * @param record Log record.
      */
     auto format(FormatBufferType& result, RecordType& record) -> void
     {
@@ -213,6 +199,12 @@ public:
     /** @brief Log record type. */
     using RecordType = typename Sink<Logger>::RecordType;
 
+    /**
+     * @brief Construct a new SinkDriver object
+     *
+     * @param logger Pointer to the logger.
+     * @param parent Pointer to the parent instance (if any).
+     */
     explicit SinkDriver(const Logger* logger, SinkDriver* parent = nullptr)
         : m_logger(logger)
         , m_parent(parent)
@@ -325,10 +317,9 @@ public:
      * @tparam Logger %Logger argument type
      * @tparam T Invocable type for the callback. Deduced from argument.
      * @tparam Args Format argument types. Deduced from arguments.
-     * @param arena Continious space for internal memory allocations.
-     * @param logger %Logger object.
      * @param level Logging level.
      * @param callback Log callback or message.
+     * @param category %Logger category.
      * @param location Caller location (file, line, function).
      * @param args Format arguments.
      */
@@ -398,32 +389,49 @@ public:
     }
 
 protected:
+    /**
+     * @brief Return pointer to the parent sink (or `nullptr` if none).
+     *
+     * @return Pointer to the parent sink.
+     */
     auto parent() -> SinkDriver*
     {
         return m_parent;
     }
 
+    /**
+     * @brief Set the parent sink object.
+     *
+     * @param parent Pointer to the parent sink driver.
+     */
     auto set_parent(SinkDriver* parent) -> void
     {
         m_parent = parent;
     }
 
+    /**
+     * @brief Add child sink driver.
+     *
+     * @param child Pointer to the child sink driver.
+     */
     auto add_child(SinkDriver* child) -> void
     {
-        // std::wcout << "add_child\n";
-
         m_children.insert(child);
         update_effective_sinks();
     }
 
+    /**
+     * @brief Remove child sink driver.
+     *
+     * @param child Pointer to the child sink driver.
+     */
     auto remove_child(SinkDriver* child) -> void
     {
-        // std::wcout << "remove_child\n";
-
         m_children.erase(child);
         update_effective_sinks();
     }
 
+private:
     auto update_effective_sinks() -> void
     {
         // Queue for level order traversal
@@ -456,7 +464,6 @@ protected:
         }
     }
 
-private:
     const Logger* m_logger;
     SinkDriver* m_parent;
     std::unordered_set<SinkDriver*> m_children;
@@ -485,6 +492,12 @@ public:
     /** @brief String view type for log category. */
     using StringViewType = typename Logger::StringViewType;
 
+    /**
+     * @brief Construct a new SinkDriver object
+     *
+     * @param logger Pointer to the logger.
+     * @param parent Pointer to the parent instance (if any).
+     */
     explicit SinkDriver(const Logger* logger, SinkDriver* parent = nullptr)
         : SinkDriver<Logger, SingleThreadedPolicy>(logger)
     {
@@ -586,9 +599,9 @@ public:
      * @tparam Logger %Logger argument type
      * @tparam T Invocable type for the callback. Deduced from argument.
      * @tparam Args Format argument types. Deduced from arguments.
-     * @param logger %Logger object.
      * @param level Logging level.
      * @param callback Log callback or message.
+     * @param category %Logger category.
      * @param location Caller location (file, line, function).
      * @param args Format arguments.
      */
@@ -610,17 +623,25 @@ public:
     }
 
 protected:
+    /**
+     * @brief Add child sink driver.
+     *
+     * @param child Pointer to the child sink driver.
+     */
     auto add_child(SinkDriver* child) -> void
     {
         WriteLock lock(m_mutex);
-        // std::wcout << "!!!!!!!!!!!!!!!!!!! MULTITHREAD: add_child\n";
         SinkDriver<Logger, SingleThreadedPolicy>::add_child(child);
     }
 
+    /**
+     * @brief Remove child sink driver.
+     *
+     * @param child Pointer to the child sink driver.
+     */
     auto remove_child(SinkDriver* child) -> void
     {
         WriteLock lock(m_mutex);
-        // std::wcout << "!!!!!!!!!!!!!!!!!!! MULTITHREAD: remove_child\n";
         SinkDriver<Logger, SingleThreadedPolicy>::remove_child(child);
     }
 

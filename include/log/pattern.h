@@ -69,7 +69,7 @@ template<typename Char, typename String>
 [[maybe_unused]] constexpr auto to_string_view(const String& str) -> std::basic_string_view<Char>;
 
 /**
- * @brief Log message pattern.
+ * @brief Log message pattern specifying message format.
  *
  * @tparam Char Char type for pattern string.
  */
@@ -81,6 +81,12 @@ public:
 
     /** @brief Log level names */
     struct Levels {
+        /**
+         * @brief Get log level name.
+         *
+         * @param level Log level.
+         * @return Log level name.
+         */
         auto get(Level level) -> RecordStringView<Char>&
         {
             switch (level) {
@@ -101,6 +107,12 @@ public:
             }
         }
 
+        /**
+         * @brief Set log level name.
+         *
+         * @param level Log level.
+         * @param name Level name.
+         */
         auto set(Level level, StringViewType name) -> void
         {
             switch (level) {
@@ -141,21 +153,35 @@ public:
         RecordStringView<Char> m_fatal{DefaultFatal.data()}; ///< Fatal level
     };
 
+    /**
+     * @brief %Placeholder for message pattern.
+     *
+     * Specifies available fields for message pattern.
+     */
     struct Placeholder {
-        /** @brief Log pattern placeholder types */
+        /** @brief Log pattern field types */
         enum class Type : std::uint8_t { None, Category, Level, File, Line, Message };
 
+        /** @brief Field alignment */
         enum class Align : std::uint8_t { None, Left, Right, Center };
 
+        /** @brief String field parameters */
         struct StringSpecs {
-            std::size_t width = 0;
-            Align align = Align::None;
-            StringViewType fill = StringSpecs::DefaultFill.data();
+            std::size_t width = 0; ///< Field width.
+            Align align = Align::None; ///< Field align.
+            StringViewType fill = StringSpecs::DefaultFill.data(); ///< Fill character.
 
         private:
             static constexpr std::array<Char, 2> DefaultFill{' ', '\0'};
         };
 
+        /**
+         * @brief Check if placeholder is for string.
+         *
+         * @param type %Placeholder type.
+         * @return \b true if placeholder is string.
+         * @return \b false if placeholder is not a string.
+         */
         static auto is_string(Type type) -> bool
         {
             switch (type) {
@@ -173,10 +199,13 @@ public:
             return false;
         }
 
-        Type type = Type::None;
-        std::variant<StringViewType, StringSpecs> value = StringViewType{};
+        Type type = Type::None; ///< Placeholder type.
+        std::variant<StringViewType, StringSpecs> value = StringViewType{}; ///< Placeholder value.
     };
 
+    /**
+     * @brief %Placeholder field names.
+     */
     struct Placeholders {
     private:
         static constexpr std::array<Char, 9> Category{'c', 'a', 't', 'e', 'g', 'o', 'r', 'y', '\0'};
@@ -186,6 +215,7 @@ public:
         static constexpr std::array<Char, 8> Message{'m', 'e', 's', 's', 'a', 'g', 'e', '\0'};
 
     public:
+        /** @brief List of placeholder names. */
         static constexpr std::array<Placeholder, 5> List{
             {{Placeholder::Type::Category, Placeholders::Category.data()},
              {Placeholder::Type::Level, Placeholders::Level.data()},
@@ -233,13 +263,11 @@ public:
     }
 
     /**
-     * @brief Format message according to the pattern.
+     * @brief %Format message according to the pattern.
      *
-     * @tparam String %Logger string type.
+     * @tparam StringType %Logger string type.
      * @param result Buffer storing the raw message to be overwritten with result.
-     * @param level Log level.
-     * @param category %Logger category name.
-     * @param location Caller location (file, line, function).
+     * @param record Log record.
      */
     template<typename StringType>
     auto format(auto& result, Record<Char, StringType>& record) -> void
@@ -347,6 +375,15 @@ public:
     }
 
 protected:
+    /**
+     * @brief Convert string to non-negative integer.
+     *
+     * @param begin Reference to pointer to the beginning of the string.
+     *              Will be shifted after processing by the number of processed characters.
+     * @param end Pointer to past-the-end of the string.
+     * @param error_value Default value to return in case of conversion error.
+     * @return Parsed integer.
+     */
     constexpr auto
     parse_nonnegative_int(const Char*& begin, const Char* end, int error_value) noexcept -> int
     {
@@ -359,7 +396,7 @@ protected:
             value = value * Base + static_cast<unsigned>(*ptr - '0');
             ++ptr;
         }
-        auto num_digits = ptr - begin;
+        const auto num_digits = ptr - begin;
         begin = ptr;
 
         constexpr auto Digits10 = static_cast<int>(sizeof(int) * CHAR_BIT * 3 / Base);
@@ -375,6 +412,14 @@ protected:
             : error_value;
     }
 
+    /**
+     * @brief Parse alignment (^, <, >) and fill character from the formatting field.
+     *
+     * @param begin Pointer to the beginning of the string.
+     * @param end Pointer to past-the-end of the string.
+     * @param specs Reference to output specs structure.
+     * @return Pointer to past-the-end of processed characters.
+     */
     constexpr auto
     parse_align(const Char* begin, const Char* end, Placeholder::StringSpecs& specs) -> const Char*
     {
@@ -425,7 +470,16 @@ protected:
         return begin;
     }
 
-    auto append_placeholder(Placeholder::Type type, std::size_t count, std::size_t shift = 0)
+    /**
+     * @brief Append pattern placeholder to the list of placeholders.
+     *
+     * Parses placeholder from the end of the string and appends to the list of placeholders.
+     *
+     * @param type %Placeholder type.
+     * @param count %Placeholder length.
+     * @param shift Margin from the end of pattern string.
+     */
+    void append_placeholder(Placeholder::Type type, std::size_t count, std::size_t shift = 0)
     {
         auto data = StringViewType{m_pattern}.substr(m_pattern.size() - count - shift, count);
         if (type == Placeholder::Type::None && !m_placeholders.empty()
@@ -441,7 +495,13 @@ protected:
         }
     };
 
-    auto get_string_specs(StringViewType value)
+    /**
+     * @brief Parse the string specifications from the formatting field.
+     *
+     * @param value String value of placeholder field.
+     * @return Placeholder::StringSpecs object.
+     */
+    auto get_string_specs(StringViewType value) -> Placeholder::StringSpecs
     {
         typename Placeholder::StringSpecs specs = {};
         if (value.size() > 2) {
@@ -472,7 +532,12 @@ protected:
         return specs;
     }
 
-    auto compile(StringViewType pattern)
+    /**
+     * @brief Compile pattern string to fast-lookup representation.
+     *
+     * @param pattern Pattern string.
+     */
+    void compile(StringViewType pattern)
     {
         m_placeholders.clear();
         m_pattern.clear();
@@ -544,11 +609,11 @@ protected:
     }
 
     /**
-     * @brief Convert from multi-byte to single-byte string
+     * @brief Convert from multi-byte to single-byte string.
      *
-     * @tparam T Char type
-     * @param result Destination stream buffer
-     * @param data Source string
+     * @tparam T Char type.
+     * @param result Destination stream buffer.
+     * @param data Source string.
      */
     template<typename T>
     static void from_multibyte(auto& result, std::basic_string_view<T> data)
@@ -575,8 +640,16 @@ protected:
         }
     }
 
+    /**
+     * @brief Write source string to destination buffer with specific alignment.
+     *
+     * @tparam T Char type for the string view.
+     * @param dst Destination buffer.
+     * @param src Source string view.
+     * @param specs String specs (alignment and fill character).
+     */
     template<typename T>
-    constexpr auto
+    constexpr void
     write_padded(auto& dst, RecordStringView<T>& src, const Placeholder::StringSpecs& specs)
     {
         const auto spec_width
@@ -637,6 +710,14 @@ protected:
         }
     }
 
+    /**
+     * @brief %Format string accordingly to the specs.
+     *
+     * @tparam T Char type for the string.
+     * @param result Resulting buffer.
+     * @param specs String specs (alignment and fill character).
+     * @param data Source string.
+     */
     template<typename T>
     auto format_string(
         auto& result, const Placeholder::StringSpecs& specs, RecordStringView<T>& data) -> void

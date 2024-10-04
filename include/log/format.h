@@ -35,11 +35,13 @@ namespace PlainCloud::Log {
 /** @brief Alias for \a fmt::basic_format_string  */
 template<typename T, typename... Args>
 using FormatString = fmt::basic_format_string<T, Args...>;
+/** @brief Alias for \a fmt::format_error */
 using FormatError = fmt::format_error;
 #else
 /** @brief Alias for \a std::basic_format_string  */
 template<typename T, typename... Args>
 using FormatString = std::basic_format_string<T, Args...>;
+/** @brief Alias for \a std::format_error */
 using FormatError = std::format_error;
 #endif
 
@@ -64,6 +66,8 @@ public:
      * @brief Construct a new Format object from format string and location.
      *
      * @tparam T Format string type. Deduced from argument.
+     * @param fmt Format string.
+     * @param loc Source code location.
      */
     template<typename T>
         requires(std::constructible_from<FormatString<Char, Args...>, T>
@@ -126,7 +130,7 @@ public:
     using MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;
 
     /**
-     * @brief Format log message wich compile-time argument checks.
+     * @brief Format log message with compile-time argument checks.
      *
      * @tparam Args Format argument types. Deduced from arguments.
      * @param fmt Format string.
@@ -153,6 +157,14 @@ public:
 #endif
     }
 
+    /**
+     * @brief Format log message.
+     *
+     * @tparam Args Format argument types. Deduced from arguments.
+     * @param fmt Format string.
+     * @param args Format arguments.
+     * @throws FormatError if fmt is not a valid format string for the provided arguments.
+     */
     template<typename... Args>
     auto format_runtime(std::basic_string_view<Char> fmt, Args&... args) -> void
     {

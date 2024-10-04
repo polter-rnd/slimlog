@@ -84,9 +84,9 @@ public:
     /**
      * @brief Construct a new child %Logger object.
      *
-     * @param name %Logger category name. Can be used in logger messages.
-     * @param parent Parent logger to inherit sinks from.
+     * @param category %Logger category name. Can be used in logger messages.
      * @param level Logging level.
+     * @param parent Parent logger to inherit sinks from.
      */
     explicit Logger(StringViewType category, Level level, const std::shared_ptr<Logger>& parent)
         : m_parent(parent)
@@ -99,7 +99,7 @@ public:
     /**
      * @brief Construct a new child %Logger object.
      *
-     * @param name %Logger category name. Can be used in logger messages.
+     * @param category %Logger category name. Can be used in logger messages.
      * @param parent Parent logger to inherit sinks and logging level from.
      */
     explicit Logger(StringViewType category, const std::shared_ptr<Logger>& parent)
@@ -111,9 +111,9 @@ public:
     }
 
     /**
-     * @brief Get logger name
+     * @brief Get logger category
      *
-     * @return %Logger name
+     * @return %Logger category
      */
     [[nodiscard]] auto category() const -> StringViewType
     {
