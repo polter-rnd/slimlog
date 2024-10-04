@@ -13,13 +13,13 @@
 
 #ifdef ENABLE_FMTLIB
 /**
- * @brief Alias for fmt::detail::buffer.
+ * @brief Defines an alias for `fmt::detail::buffer`.
  */
 template<typename T>
 using Buffer = fmt::detail::buffer<T>;
 #else
 /**
- * @brief A contiguous memory buffer with an optional growing ability.
+ * @brief Represents a contiguous memory buffer with an optional growing ability.
  */
 template<typename T>
 class Buffer {
@@ -33,7 +33,7 @@ public:
     void operator=(const Buffer&) = delete;
 
     /**
-     * @brief Begin iterator.
+     * @brief Returns a pointer to the beginning of the buffer.
      *
      * @return Pointer to the beginning of the buffer.
      */
@@ -43,7 +43,7 @@ public:
     }
 
     /**
-     * @brief End iterator.
+     * @brief Returns a pointer to past-the-end of the buffer.
      *
      * @return Pointer to past-the-end of the buffer.
      */
@@ -53,7 +53,7 @@ public:
     }
 
     /**
-     * @brief Constant begin iterator.
+     * @brief Returns a constant pointer to the beginning of the buffer.
      *
      * @return Constant pointer to the beginning of the buffer.
      */
@@ -63,9 +63,9 @@ public:
     }
 
     /**
-     * @brief Constant end iterator.
+     * @brief Returns a constant pointer to past-the-end of the buffer.
      *
-     * @return Constant ointer to past-the-end of the buffer.
+     * @return Constant pointer to past-the-end of the buffer.
      */
     [[nodiscard]] auto end() const noexcept -> const T*
     {
@@ -73,7 +73,7 @@ public:
     }
 
     /**
-     * @brief Return the size of this buffer.
+     * @brief Returns the size of this buffer.
      *
      * @return Size of the buffer.
      */
@@ -83,7 +83,7 @@ public:
     }
 
     /**
-     * @brief Return the capacity of this buffer.
+     * @brief Returns the capacity of this buffer.
      *
      * @return Capacity of the buffer.
      */
@@ -113,7 +113,7 @@ public:
     }
 
     /**
-     * @brief Clear this buffer.
+     * @brief Clears this buffer.
      */
     void clear()
     {
@@ -121,9 +121,9 @@ public:
     }
 
     /**
-     * @brief Try to resizw the buffer to contain `count` elements.
+     * @brief Tries to resize the buffer to contain `count` elements.
      *
-     * If T is a POD type the new elements may not be initialized.
+     * If T is a POD type, the new elements may not be initialized.
      *
      * @param count Desired size of the buffer.
      */
@@ -133,7 +133,8 @@ public:
         m_size = count <= m_capacity ? count : m_capacity;
     }
 
-    /** Try to increase the buffer capacity to `new_capacity`.
+    /**
+     * @brief Tries to increase the buffer capacity to `new_capacity`.
      *
      * It can increase the capacity by a smaller amount than requested
      * but guarantees there is space for at least one additional element
@@ -149,7 +150,7 @@ public:
     }
 
     /**
-     * Add one element to the buffer.
+     * @brief Adds one element to the buffer.
      *
      * @param value Element value.
      */
@@ -159,7 +160,8 @@ public:
         *std::next(m_ptr, m_size++) = value;
     }
 
-    /** Append data to the end of the buffer.
+    /**
+     * @brief Appends data to the end of the buffer.
      *
      * @param begin Begin iterator of the source data.
      * @param end End iterator of the source data.
@@ -190,7 +192,7 @@ public:
     }
 
     /**
-     * Access element reference by index.
+     * @brief Accesses element reference by index.
      *
      * @param index Element index.
      * @return Reference to the element.
@@ -202,7 +204,7 @@ public:
     }
 
     /**
-     * Access element constant reference by index.
+     * @brief Accesses element constant reference by index.
      *
      * @param index Element index.
      * @return Constant reference to the element.
@@ -223,7 +225,7 @@ protected:
     using GrowCallback = void (*)(Buffer& buf, std::size_t capacity);
 
     /**
-     * @brief Construct new Buffer object
+     * @brief Constructs a new Buffer object.
      *
      * @param grow Pointer to grow callback function.
      * @param size Initial buffer size.
@@ -237,7 +239,7 @@ protected:
     }
 
     /**
-     * @brief Construct new Buffer object
+     * @brief Constructs a new Buffer object.
      *
      * @param grow Pointer to grow callback function.
      * @param ptr Pointer to initial data.
@@ -269,7 +271,7 @@ protected:
     auto operator=(Buffer&&) -> Buffer& = default;
 
     /**
-     * @brief Set the buffer data and capacity.
+     * @brief Sets the buffer data and capacity.
      *
      * @param buf_data Pointer to the new data.
      * @param buf_capacity New capacity.
@@ -289,10 +291,10 @@ private:
 #endif
 
 /**
- * @brief A dynamically growing memory buffer for trivially copyable/constructible types.
+ * @brief Represents a dynamically growing memory buffer for trivially copyable/constructible types.
  *
- * Types with the first `Size` elements stored in the object itself.
- * In case of overflow allocates new buffer on the heap.
+ * Stores the first `Size` elements in the object itself. Allocates a new buffer on the heap in case
+ *of overflow.
  *
  * **Example**:
  *```cpp
@@ -300,9 +302,9 @@ private:
  * auto out = MemoryBuffer<char, 1024>();
  * out.append(str);
  *```
-
- * This will append the string to the stack-allocated buffer. If the buffer
- * does not have enough space, it will be re-allocated in the heap using specified allocator.
+ *
+ * Appends the string to the stack-allocated buffer. If the buffer does not have enough space, it
+ *reallocates on the heap using the specified allocator.
  */
 template<typename T, std::size_t Size, typename Allocator = std::allocator<T>>
 class MemoryBuffer : public Buffer<T> {
@@ -313,7 +315,7 @@ public:
     /// @endcond
 
     /**
-     * @brief Callback to be called after buffer grow happened.
+     * @brief Defines a callback to be called after the buffer grows.
      *
      * @param data Pointer to the data.
      * @param size Updated size.
@@ -322,7 +324,7 @@ public:
     using OnGrowCallback = void (*)(const T* data, std::size_t size, void* userdata);
 
     /**
-     * @brief Create new MemoryBuffer object.
+     * @brief Constructs a new MemoryBuffer object.
      *
      * @param allocator Allocator for growing the buffer.
      */
@@ -341,7 +343,7 @@ public:
     }
 
     /**
-     * @brief Destroy the MemoryBuffer object.
+     * @brief Destroys the MemoryBuffer object.
      */
     constexpr ~MemoryBuffer()
     {
@@ -349,7 +351,7 @@ public:
     }
 
     /**
-     * @brief Construct a MemoryBuffer object moving the content of the other object to it.
+     * @brief Constructs a MemoryBuffer object by moving the content of another object to it.
      */
     constexpr MemoryBuffer(MemoryBuffer&& other) noexcept
         : Buffer<T>(grow)
@@ -358,7 +360,7 @@ public:
     }
 
     /**
-     * @brief Move the content of the other `MemoryBuffer` object to this one.
+     * @brief Moves the content of another `MemoryBuffer` object to this one.
      */
     auto operator=(MemoryBuffer&& other) noexcept -> MemoryBuffer&
     {
@@ -371,7 +373,7 @@ public:
     auto operator=(const MemoryBuffer& other) = delete;
 
     /**
-     * @brief Return a copy of the allocator associated with this buffer.
+     * @brief Returns a copy of the allocator associated with this buffer.
      *
      * @return Allocator associated with the buffer.
      */
@@ -381,9 +383,9 @@ public:
     }
 
     /**
-     * @brief Resize the buffer to contain `count` elements.
+     * @brief Resizes the buffer to contain `count` elements.
      *
-     * If T is a POD type new elements may not be initialized.
+     * If T is a POD type, new elements may not be initialized.
      *
      * @param count Desired buffer size.
      */
@@ -393,7 +395,7 @@ public:
     }
 
     /**
-     * @brief Increase the buffer capacity to `new_capacity`.
+     * @brief Increases the buffer capacity to `new_capacity`.
      *
      * @param new_capacity Desired buffer capacity.
      */
@@ -402,7 +404,8 @@ public:
         this->try_reserve(new_capacity);
     }
 
-    /** Append data to the end of the buffer.
+    /**
+     * @brief Appends data to the end of the buffer.
      *
      * @tparam ContiguousRange Type of the source object.
      *
@@ -415,10 +418,10 @@ public:
     }
 
     /**
-     * Set the callback to be called after buffer grows.
+     * @brief Sets the callback to be called after the buffer grows.
      *
      * @param callback Pointer to the callback function.
-     * @param userdata Pointer tho the user data passed to the callback.
+     * @param userdata Pointer to the user data passed to the callback.
      */
     void on_grow(OnGrowCallback callback, void* userdata = nullptr)
     {
@@ -429,7 +432,7 @@ public:
 protected:
 #if defined(ENABLE_FMTLIB) && FMT_VERSION < 110000
     /**
-     * @brief Grow the buffer to the desired size.
+     * @brief Grows the buffer to the desired size.
      *
      * @param size Desired buffer size.
      */
@@ -438,7 +441,7 @@ protected:
         auto& self = *this;
 #else
     /**
-     * @brief Grow the buffer to the desired size.
+     * @brief Grows the buffer to the desired size.
      *
      * @param buf Reference to the buffer.
      * @param size Desired buffer size.
@@ -471,6 +474,9 @@ protected:
     }
 
 private:
+    /**
+     * @brief Deallocates the buffer.
+     */
     constexpr void deallocate()
     {
         T* data = this->data();
@@ -479,7 +485,11 @@ private:
         }
     }
 
-    // Move data from other to this buffer.
+    /**
+     * @brief Moves data from another buffer to this buffer.
+     *
+     * @param other Reference to the other buffer.
+     */
     constexpr void move_from(MemoryBuffer& other)
     {
         m_allocator = std::move(other.m_allocator);

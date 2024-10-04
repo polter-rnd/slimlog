@@ -1,6 +1,6 @@
 /**
  * @file location.h
- * @brief Contains definition of Location class.
+ * @brief Contains the definition of the Location class.
  */
 
 #pragma once
@@ -12,17 +12,28 @@
 namespace PlainCloud::Log {
 
 #ifdef __cpp_lib_source_location
+/** @brief Alias for std::source_location. */
 using Location = std::source_location;
 #else
 /**
- * @brief Certain place in source code.
+ * @brief Represents a specific location in the source code.
  *
- * Consists of source file name, function and line.
- * Compatible with `std::source_location`. See documentation for it.
+ * The Location class provides information about the source file name, function name, and line
+ * number. It is compatible with `std::source_location` and can be used similarly.
  */
 class Location {
 public:
-    /** @brief Current source location */
+    /**
+     * @brief Gets the current source location.
+     *
+     * This function captures the current source location, including the file name, function name,
+     * and line number.
+     *
+     * @param file The name of the source file. Defaults to the current file.
+     * @param function The name of the function. Defaults to the current function.
+     * @param line The line number in the source file. Defaults to the current line.
+     * @return A Location object representing the current source location.
+     */
     [[nodiscard]] static constexpr auto current(
 #ifndef __has_builtin
 /** @cond */
@@ -47,19 +58,31 @@ public:
         return loc;
     }
 
-    /** @brief Source location: file name */
+    /**
+     * @brief Gets the source file name.
+     *
+     * @return The name of the source file.
+     */
     [[nodiscard]] constexpr auto file_name() const noexcept
     {
         return m_file;
     }
 
-    /** @brief Source location: function name */
+    /**
+     * @brief Gets the function name.
+     *
+     * @return The name of the function.
+     */
     [[nodiscard]] constexpr auto function_name() const noexcept
     {
         return m_function;
     }
 
-    /** @brief Source location: line */
+    /**
+     * @brief Gets the line number.
+     *
+     * @return The line number in the source file.
+     */
     [[nodiscard]] constexpr auto line() const noexcept
     {
         return m_line;

@@ -1,6 +1,6 @@
 /**
  * @file record.h
- * @brief Contains definition of Record class.
+ * @brief Contains the definition of the Record class.
  */
 
 #pragma once
@@ -20,12 +20,12 @@ namespace PlainCloud::Log {
 enum class Level : std::uint8_t;
 
 /**
- * @brief Record string view type
+ * @brief Record string view type.
  *
- * Same as `std::basic_string_view<T>` but with codepoints() method
- * to calculate number of symbols in unicode string.
+ * This is similar to `std::basic_string_view<T>` but includes a `codepoints()` method
+ * to calculate the number of symbols in a Unicode string.
  *
- * @tparam T Char type
+ * @tparam T Character type.
  */
 template<typename T>
 class RecordStringView : public std::basic_string_view<T> {
@@ -36,6 +36,7 @@ public:
 
     /**
      * @brief Copy constructor.
+     * @param str_view The RecordStringView to copy from.
      */
     constexpr RecordStringView(const RecordStringView& str_view) noexcept
         : std::basic_string_view<T>(str_view)
@@ -45,6 +46,7 @@ public:
 
     /**
      * @brief Move constructor.
+     * @param str_view The RecordStringView to move from.
      */
     constexpr RecordStringView(RecordStringView&& str_view) noexcept
         : std::basic_string_view<T>(std::move(static_cast<std::basic_string_view<T>&&>(str_view)))
@@ -54,6 +56,7 @@ public:
 
     /**
      * @brief Constructor from `std::basic_string_view`.
+     * @param str_view The std::basic_string_view to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
     constexpr RecordStringView(const std::basic_string_view<T>& str_view) noexcept
@@ -63,6 +66,8 @@ public:
 
     /**
      * @brief Assignment operator.
+     * @param str_view The RecordStringView to assign from.
+     * @return Reference to this RecordStringView.
      */
     constexpr auto operator=(const RecordStringView& str_view) noexcept -> RecordStringView&
     {
@@ -78,6 +83,8 @@ public:
 
     /**
      * @brief Move assignment operator.
+     * @param str_view The RecordStringView to move from.
+     * @return Reference to this RecordStringView.
      */
     constexpr auto operator=(RecordStringView&& str_view) noexcept -> RecordStringView&
     {
@@ -94,6 +101,8 @@ public:
 
     /**
      * @brief Assignment from `std::basic_string_view`.
+     * @param str_view The std::basic_string_view to assign from.
+     * @return Reference to this RecordStringView.
      */
     constexpr auto
     operator=(const std::basic_string_view<T>& str_view) noexcept -> RecordStringView&
@@ -106,9 +115,9 @@ public:
     }
 
     /**
-     * @brief Update pointer to the string data.
+     * @brief Update the pointer to the string data.
      *
-     * Keeps number of codepoints untouched.
+     * Keeps the number of codepoints unchanged.
      *
      * @param data New data pointer.
      */
@@ -119,7 +128,7 @@ public:
     }
 
     /**
-     * @brief Calculate number of unicode code points.
+     * @brief Calculate the number of Unicode code points.
      *
      * @return Number of code points.
      */
@@ -149,7 +158,7 @@ private:
 /**
  * @brief Deduction guide for a constructor call with a pointer and size.
  *
- * @tparam Char Char type for the string view.
+ * @tparam Char Character type for the string view.
  */
 template<typename Char>
 RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
@@ -157,7 +166,7 @@ RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
 /**
  * @brief Log record.
  *
- * @tparam Char Char type.
+ * @tparam Char Character type.
  * @tparam String String type.
  */
 template<typename Char, typename String>

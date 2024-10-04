@@ -1,6 +1,6 @@
 /**
  * @file types.h
- * @brief Various utility classes and functions.
+ * @brief Provides various utility classes and functions.
  */
 
 #pragma once
@@ -10,9 +10,9 @@
 namespace PlainCloud::Util::Types {
 
 /**
- * @brief Helper type for the `std::visitor`.
+ * @brief Defines a helper type for the `std::visit` function.
  *
- * Usage example:
+ * Example usage:
  * ```cpp
  * std::visit(Overloaded{
  *     [](auto arg) { std::cout << arg << ' '; },
@@ -29,9 +29,9 @@ struct Overloaded : Ts... {
 };
 
 /**
- * @brief Always false type for unconditional static assertions.
+ * @brief Defines a type that is always false for unconditional static assertions.
  *
- * Usage example:
+ * Example usage:
  * ```cpp
  * static_assert(Util::Types::AlwaysFalse<T>{}, "Assertion failed");
  * ```
@@ -47,33 +47,33 @@ struct UnderlyingChar {
 /// @endcond
 
 /**
- * @brief Helper for detecting underlying char type of string.
+ * @brief Detects the underlying char type of a string.
  *
  * @tparam T String type.
  */
 template<typename T>
     requires std::is_integral_v<typename std::remove_cvref_t<T>::value_type>
 struct UnderlyingChar<T> {
-    /** @brief Underlying char type, specialization for STL strings. */
+    /** @brief Defines the underlying char type, specialization for STL strings. */
     using Type = typename std::remove_cvref_t<T>::value_type;
 };
 
 template<typename T>
     requires std::is_array_v<std::remove_cvref_t<T>>
 struct UnderlyingChar<T> {
-    /** @brief Underlying char type, pecialization for char arrays. */
+    /** @brief Defines the underlying char type, specialization for char arrays. */
     using Type = typename std::remove_cvref_t<typename std::remove_all_extents_t<T>>;
 };
 
 template<typename T>
     requires std::is_integral_v<typename std::remove_pointer_t<T>>
 struct UnderlyingChar<T> {
-    /** @brief Underlying char type, specialization for char pointers. */
+    /** @brief Defines the underlying char type, specialization for char pointers. */
     using Type = typename std::remove_cvref_t<typename std::remove_pointer_t<T>>;
 };
 
 /**
- * @brief Alias for UnderlyingChar<T>::Type.
+ * @brief Provides an alias for UnderlyingChar<T>::Type.
  *
  * @tparam T String type.
  */

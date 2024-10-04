@@ -1,6 +1,6 @@
 /**
  * @file locale.h
- * @brief Various utility classes and functions.
+ * @brief Provides utility classes and functions for locale management.
  */
 
 #pragma once
@@ -11,9 +11,10 @@
 namespace PlainCloud::Util::Locale {
 
 /**
- * @brief RAII wrapper for `std::locale::global`
+ * @brief RAII wrapper for `std::locale::global`.
  *
- * Used to set locale information once created, and roll back on destruction.
+ * This class sets the global locale upon creation
+ * and restores the previous locale upon destruction.
  */
 class ScopedGlobalLocale {
 public:
@@ -24,10 +25,12 @@ public:
     auto operator=(ScopedGlobalLocale&&) -> ScopedGlobalLocale& = delete;
 
     /**
-     * @brief Construct a new global locale object
+     * @brief Constructs a new ScopedGlobalLocale object.
      *
-     * @tparam Args Types for `std::locale::global` constructor arguments.
-     * @param args Arguments for `std::locale::global` constructor.
+     * Sets the global locale to the specified locale and stores the previous locale.
+     *
+     * @tparam Args Types for `std::locale` constructor arguments.
+     * @param args Arguments for `std::locale` constructor.
      */
     template<typename... Args>
     explicit ScopedGlobalLocale(Args&&... args)

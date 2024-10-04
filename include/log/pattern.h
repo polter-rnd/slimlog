@@ -1,6 +1,6 @@
 /**
  * @file pattern.h
- * @brief Contains definition of Pattern class.
+ * @brief Contains the definition of the Pattern class.
  */
 
 #pragma once
@@ -56,22 +56,25 @@ using namespace std;
 /** @endcond */
 
 /**
- * @brief Convert from `std::string` to logger string type.
+ * @brief Converts a string to a `std::basic_string_view`.
  *
- * Specialize this function for logger string type to be able
- * to use compile-time formatting for non-standard string types.
+ * This function takes a String object and returns a `std::basic_string_view`
+ * of the same character type.
  *
- * @tparam String Type of logger string.
- * @param str Original string.
- * @return Converted string.
+ * @tparam Char Type of the characters in the string.
+ * @tparam String String type.
+ * @param str The input string object to be converted.
+ * @return A `std::basic_string_view` of the same character type as the input string.
  */
 template<typename Char, typename String>
 [[maybe_unused]] constexpr auto to_string_view(const String& str) -> std::basic_string_view<Char>;
 
 /**
- * @brief Log message pattern specifying message format.
+ * @brief Represents a log message pattern specifying the message format.
  *
- * @tparam Char Char type for pattern string.
+ * This class defines the pattern used for formatting log messages.
+ *
+ * @tparam Char The character type for the pattern string.
  */
 template<typename Char>
 class Pattern {
@@ -79,13 +82,15 @@ public:
     /** @brief String type for pattern (`std::basic_string_view<Char>`). */
     using StringViewType = typename std::basic_string_view<Char>;
 
-    /** @brief Log level names */
+    /**
+     * @brief Struct for managing log level names.
+     */
     struct Levels {
         /**
-         * @brief Get log level name.
+         * @brief Retrieves the name of the specified log level.
          *
-         * @param level Log level.
-         * @return Log level name.
+         * @param level The log level.
+         * @return A reference to the name of the specified log level.
          */
         auto get(Level level) -> RecordStringView<Char>&
         {
@@ -108,10 +113,10 @@ public:
         }
 
         /**
-         * @brief Set log level name.
+         * @brief Sets the name for the specified log level.
          *
-         * @param level Log level.
-         * @param name Level name.
+         * @param level The log level.
+         * @param name The new name for the log level.
          */
         auto set(Level level, StringViewType name) -> void
         {
@@ -159,16 +164,16 @@ public:
      * Specifies available fields for message pattern.
      */
     struct Placeholder {
-        /** @brief Log pattern field types */
+        /** @brief Log pattern field types. */
         enum class Type : std::uint8_t { None, Category, Level, File, Line, Message };
 
-        /** @brief Field alignment */
+        /** @brief Field alignment options. */
         enum class Align : std::uint8_t { None, Left, Right, Center };
 
-        /** @brief String field parameters */
+        /** @brief Parameters for string fields. */
         struct StringSpecs {
             std::size_t width = 0; ///< Field width.
-            Align align = Align::None; ///< Field align.
+            Align align = Align::None; ///< Field alignment.
             StringViewType fill = StringSpecs::DefaultFill.data(); ///< Fill character.
 
         private:
@@ -176,11 +181,11 @@ public:
         };
 
         /**
-         * @brief Check if placeholder is for string.
+         * @brief Checks if the placeholder is for a string.
          *
-         * @param type %Placeholder type.
-         * @return \b true if placeholder is string.
-         * @return \b false if placeholder is not a string.
+         * @param type Placeholder type.
+         * @return \b true if the placeholder is a string.
+         * @return \b false if the placeholder is not a string.
          */
         static auto is_string(Type type) -> bool
         {
@@ -225,10 +230,12 @@ public:
     };
 
     /**
-     * @brief Construct a new Pattern object.
+     * @brief Constructs a new Pattern object.
      *
-     * Usage:
+     * This constructor initializes a Pattern object with a specified pattern string
+     * and optional log level pairs.
      *
+     * Usage example:
      * ```cpp
      * Log::Pattern<char> pattern(
      *       "(%t) [%l] %F|%L: %m",
@@ -252,10 +259,10 @@ public:
     }
 
     /**
-     * @brief Check if pattern is empty.
+     * @brief Checks if the pattern is empty.
      *
-     * @return \b true if pattern is an empty string.
-     * @return \b false if pattern is not an empty string.
+     * @return \b true if the pattern is an empty string.
+     * @return \b false if the pattern is not an empty string.
      */
     [[nodiscard]] auto empty() const -> bool
     {
@@ -263,10 +270,12 @@ public:
     }
 
     /**
-     * @brief %Format message according to the pattern.
+     * @brief Formats a message according to the pattern.
+     *
+     * This function formats a log message based on the specified pattern.
      *
      * @tparam StringType %Logger string type.
-     * @param result Buffer storing the raw message to be overwritten with result.
+     * @param result Buffer storing the raw message to be overwritten with the result.
      * @param record Log record.
      */
     template<typename StringType>
@@ -338,10 +347,11 @@ public:
     }
 
     /**
-     * @brief Set the message pattern.
+     * @brief Sets the message pattern.
+     *
+     * This function sets the pattern used for formatting log messages.
      *
      * Usage example:
-     *
      * ```cpp
      * Log::Logger log("test", Log::Level::Info);
      * log.add_sink<Log::OStreamSink>(std::cerr)->set_pattern("(%t) [%l] %F|%L: %m");
@@ -355,14 +365,14 @@ public:
     }
 
     /**
-     * @brief Set the log level names.
+     * @brief Sets the log level names.
      *
-     * Set a name for each log level. Usage example:
+     * This function sets a name for each log level.
      *
+     * Usage example:
      * ```cpp
      * Log::Logger log("test", Log::Level::Info);
-     * log.add_sink<Log::OStreamSink>(std::cerr)->set_levels({{Log::Level::Info,
-     * "Information"}});
+     * log.add_sink<Log::OStreamSink>(std::cerr)->set_levels({{Log::Level::Info, "Information"}});
      * ```
      *
      * @param levels Initializer list of log level pairs.
@@ -376,13 +386,15 @@ public:
 
 protected:
     /**
-     * @brief Convert string to non-negative integer.
+     * @brief Converts a string to a non-negative integer.
      *
-     * @param begin Reference to pointer to the beginning of the string.
-     *              Will be shifted after processing by the number of processed characters.
-     * @param end Pointer to past-the-end of the string.
-     * @param error_value Default value to return in case of conversion error.
-     * @return Parsed integer.
+     * This function parses a string and converts it to a non-negative integer.
+     *
+     * @param begin Reference to a pointer to the beginning of the string.
+     *              The pointer will be advanced by the number of characters processed.
+     * @param end Pointer to the past-the-end character of the string.
+     * @param error_value The default value to return in case of a conversion error.
+     * @return The parsed integer, or error_value if the conversion fails.
      */
     constexpr auto
     parse_nonnegative_int(const Char*& begin, const Char* end, int error_value) noexcept -> int
@@ -413,12 +425,15 @@ protected:
     }
 
     /**
-     * @brief Parse alignment (^, <, >) and fill character from the formatting field.
+     * @brief Parses alignment (^, <, >) and fill character from the formatting field.
+     *
+     * This function parses the alignment and fill character from the given string
+     * and updates the provided specs structure with the parsed values.
      *
      * @param begin Pointer to the beginning of the string.
-     * @param end Pointer to past-the-end of the string.
-     * @param specs Reference to output specs structure.
-     * @return Pointer to past-the-end of processed characters.
+     * @param end Pointer to the past-the-end of the string.
+     * @param specs Reference to the output specs structure to be updated.
+     * @return Pointer to the past-the-end of the processed characters.
      */
     constexpr auto
     parse_align(const Char* begin, const Char* end, Placeholder::StringSpecs& specs) -> const Char*
@@ -471,13 +486,14 @@ protected:
     }
 
     /**
-     * @brief Append pattern placeholder to the list of placeholders.
+     * @brief Append a pattern placeholder to the list of placeholders.
      *
-     * Parses placeholder from the end of the string and appends to the list of placeholders.
+     * This function parses a placeholder from the end of the string and appends it to the list of
+     * placeholders.
      *
-     * @param type %Placeholder type.
-     * @param count %Placeholder length.
-     * @param shift Margin from the end of pattern string.
+     * @param type Placeholder type.
+     * @param count Placeholder length.
+     * @param shift Margin from the end of the pattern string.
      */
     void append_placeholder(Placeholder::Type type, std::size_t count, std::size_t shift = 0)
     {
@@ -496,10 +512,13 @@ protected:
     };
 
     /**
-     * @brief Parse the string specifications from the formatting field.
+     * @brief Parses the string specifications from the formatting field.
      *
-     * @param value String value of placeholder field.
-     * @return Placeholder::StringSpecs object.
+     * This function extracts the string specifications, such as width, alignment, and fill
+     * character, from the given placeholder field value.
+     *
+     * @param value The string value of the placeholder field.
+     * @return A Placeholder::StringSpecs object containing the parsed specifications.
      */
     auto get_string_specs(StringViewType value) -> Placeholder::StringSpecs
     {
@@ -533,9 +552,12 @@ protected:
     }
 
     /**
-     * @brief Compile pattern string to fast-lookup representation.
+     * @brief Compiles the pattern string into a fast-lookup representation.
      *
-     * @param pattern Pattern string.
+     * This function processes the provided pattern string and converts it into
+     * an internal representation that allows for efficient formatting of log messages.
+     *
+     * @param pattern The pattern string to be compiled.
      */
     void compile(StringViewType pattern)
     {
@@ -609,11 +631,14 @@ protected:
     }
 
     /**
-     * @brief Convert from multi-byte to single-byte string.
+     * @brief Converts a multi-byte string to a single-byte string.
      *
-     * @tparam T Char type.
-     * @param result Destination stream buffer.
-     * @param data Source string.
+     * This function converts a multi-byte string to a single-byte string and appends the result to
+     * the provided destination stream buffer.
+     *
+     * @tparam T Character type of the source string.
+     * @param result Destination stream buffer where the converted string will be appended.
+     * @param data Source multi-byte string to be converted.
      */
     template<typename T>
     static void from_multibyte(auto& result, std::basic_string_view<T> data)
@@ -641,12 +666,15 @@ protected:
     }
 
     /**
-     * @brief Write source string to destination buffer with specific alignment.
+     * @brief Writes the source string to the destination buffer with specific alignment.
      *
-     * @tparam T Char type for the string view.
-     * @param dst Destination buffer.
-     * @param src Source string view.
-     * @param specs String specs (alignment and fill character).
+     * This function writes the source string to the destination buffer, applying the specified
+     * alignment and fill character.
+     *
+     * @tparam T Character type for the string view.
+     * @param dst Destination buffer where the string will be written.
+     * @param src Source string view to be written.
+     * @param specs String specifications, including alignment and fill character.
      */
     template<typename T>
     constexpr void
@@ -711,12 +739,15 @@ protected:
     }
 
     /**
-     * @brief %Format string accordingly to the specs.
+     * @brief Formats a string according to the specified specifications.
      *
-     * @tparam T Char type for the string.
-     * @param result Resulting buffer.
-     * @param specs String specs (alignment and fill character).
-     * @param data Source string.
+     * This function formats the source string based on the provided specifications,
+     * including alignment and fill character, and appends the result to the given buffer.
+     *
+     * @tparam T Character type for the string.
+     * @param result Buffer where the formatted string will be appended.
+     * @param specs Specifications for the string formatting (alignment and fill character).
+     * @param data Source string to be formatted.
      */
     template<typename T>
     auto format_string(

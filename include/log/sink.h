@@ -1,6 +1,6 @@
 /**
  * @file sink.h
- * @brief Contains definition of Sink and SinkDriver classes.
+ * @brief Contains the definition of Sink and SinkDriver classes.
  */
 
 #pragma once
@@ -33,9 +33,9 @@ enum class Level : std::uint8_t;
  * @brief Base abstract sink class.
  *
  * Sink represents a logger back-end.
- * It processes messages and forwards them to final destination.
+ * It processes messages and forwards them to the final destination.
  *
- * @tparam Logger %Logger class type intended for the sink to be used with.
+ * @tparam Logger Logger class type intended for the sink to be used with.
  */
 template<typename Logger>
 class Sink : public std::enable_shared_from_this<Sink<Logger>> {
@@ -52,7 +52,7 @@ public:
     using RecordType = Record<CharType, StringType>;
 
     /**
-     * @brief Construct a new Sink object.
+     * @brief Constructs a new Sink object.
      *
      * Usage example:
      * ```cpp
@@ -92,7 +92,7 @@ public:
     virtual ~Sink() = default;
 
     /**
-     * @brief Set the log message pattern.
+     * @brief Sets the log message pattern.
      *
      * Usage example:
      * ```cpp
@@ -110,7 +110,7 @@ public:
     }
 
     /**
-     * @brief Set the log level names.
+     * @brief Sets the log level names.
      *
      * Usage example:
      * ```cpp
@@ -129,13 +129,13 @@ public:
     }
 
     /**
-     * @brief Emit log record.
+     * @brief Emits a log record.
      *
      * Message is stored in `std::variant<StringType, RecordStringView<Char>>`.
      * The former type is used for direct passing custom string type, while latter is for
-     * types convertable to `std::basic_string_view<Char>`.
+     * types convertible to `std::basic_string_view<Char>`.
      *
-     * @param buffer Buffer where final message should be put.
+     * @param buffer Buffer where the final message should be put.
      *               It already contains a message, feel free to overwrite it.
      * @param record Log record (message, category, etc.).
      */
@@ -148,12 +148,12 @@ public:
 
 protected:
     /**
-     * @brief Format record according to the pattern.
+     * @brief Formats record according to the pattern.
      *
      * Raw message is stored in \a result argument,
-     * and it should be overwritten with formatted result.
+     * and it should be overwritten with the formatted result.
      *
-     * @param result Buffer containing raw message and to be overwritten with formatted result.
+     * @param result Buffer containing raw message and to be overwritten with the formatted result.
      * @param record Log record.
      */
     auto format(FormatBufferType& result, RecordType& record) -> void
@@ -170,12 +170,12 @@ private:
  *
  * @tparam String Base string type used for log messages.
  * @tparam ThreadingPolicy Threading policy used for operating over sinks
- *                         (e.g. SingleThreadedPolicy or MultiThreadedPolicy).
+ *                         (e.g., SingleThreadedPolicy or MultiThreadedPolicy).
  *
- * @note Class doesn't have a virtual destructor
+ * @note This class doesn't have a virtual destructor
  *       as the intended usage scenario is to
- *       use it as a private base class explicitly
- *       moving access functions to public part of a base class.
+ *       use it as a private base class, explicitly
+ *       moving access functions to the public part of a derived class.
  */
 template<typename String, typename ThreadingPolicy>
 class SinkDriver final { };
@@ -183,24 +183,24 @@ class SinkDriver final { };
 /**
  * @brief Single-threaded log sink driver.
  *
- * Handles sinks access without any synchronization.
+ * Manages sink access without any synchronization.
  *
- * @tparam String Base string type used for log messages.
+ * @tparam Logger Base logger type used for log messages.
  */
 template<typename Logger>
 class SinkDriver<Logger, SingleThreadedPolicy> {
 public:
-    /** @brief Char type for log messages. */
+    /** @brief Character type for log messages. */
     using CharType = typename Logger::CharType;
     /** @brief String view type for log category. */
     using StringViewType = typename Logger::StringViewType;
-    /** @brief Buffer used for log message formatting. */
+    /** @brief Buffer type used for log message formatting. */
     using FormatBufferType = typename Sink<Logger>::FormatBufferType;
     /** @brief Log record type. */
     using RecordType = typename Sink<Logger>::RecordType;
 
     /**
-     * @brief Construct a new SinkDriver object
+     * @brief Constructs a new SinkDriver object.
      *
      * @param logger Pointer to the logger.
      * @param parent Pointer to the parent instance (if any).
@@ -219,6 +219,9 @@ public:
     auto operator=(const SinkDriver&) -> SinkDriver& = delete;
     auto operator=(SinkDriver&&) -> SinkDriver& = delete;
 
+    /**
+     * @brief Destroys the SinkDriver object.
+     */
     ~SinkDriver()
     {
         if (m_parent) {
@@ -227,11 +230,11 @@ public:
     }
 
     /**
-     * @brief Add existing sink.
+     * @brief Adds an existing sink.
      *
      * @param sink Pointer to the sink.
-     * @return \b true if sink was actually inserted.
-     * @return \b false if sink is already present in this logger.
+     * @return \b true if the sink was actually inserted.
+     * @return \b false if the sink is already present in this logger.
      */
     auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
@@ -241,11 +244,11 @@ public:
     }
 
     /**
-     * @brief Create and emplace a new sink.
+     * @brief Creates and emplaces a new sink.
      *
-     * @tparam T %Sink type (e.g. ConsoleSink)
-     * @tparam Args %Sink constructor argument types (deduced from arguments).
-     * @param args Any arguments accepted by specified sink constructor.
+     * @tparam T Sink type (e.g., ConsoleSink).
+     * @tparam Args Sink constructor argument types (deduced from arguments).
+     * @param args Any arguments accepted by the specified sink constructor.
      * @return Pointer to the created sink.
      */
     template<typename T, typename... Args>
@@ -259,11 +262,11 @@ public:
     }
 
     /**
-     * @brief Remove sink.
+     * @brief Removes a sink.
      *
      * @param sink Pointer to the sink.
-     * @return \b true if sink was actually removed.
-     * @return \b false if sink does not exist in this logger.
+     * @return \b true if the sink was actually removed.
+     * @return \b false if the sink does not exist in this logger.
      */
     auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
@@ -275,12 +278,12 @@ public:
     }
 
     /**
-     * @brief Enable or disable sink for this logger.
+     * @brief Enables or disables a sink for this logger.
      *
      * @param sink Pointer to the sink.
      * @param enabled Enabled flag.
-     * @return \b true if sink exists and enabled.
-     * @return \b false if sink does not exist in this logger.
+     * @return \b true if the sink exists and is enabled.
+     * @return \b false if the sink does not exist in this logger.
      */
     auto set_sink_enabled(const std::shared_ptr<Sink<Logger>>& sink, bool enabled) -> bool
     {
@@ -293,11 +296,11 @@ public:
     }
 
     /**
-     * @brief Check if sink is enabled.
+     * @brief Checks if a sink is enabled.
      *
      * @param sink Pointer to the sink.
-     * @return \b true if sink is enabled.
-     * @return \b false if sink is disabled.
+     * @return \b true if the sink is enabled.
+     * @return \b false if the sink is disabled.
      */
     auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
@@ -308,18 +311,18 @@ public:
     }
 
     /**
-     * @brief Emit new callback-based log message if it fits for specified logging level.
+     * @brief Emits a new callback-based log message if it fits the specified logging level.
      *
-     * Method to emit log message from callback return value convertible to logger string type.
-     * Used to postpone formatting or other preparations to the next steps after filtering.
-     * Makes logging almost zero-cost in case if it does not fit for current logging level.
+     * Emits a log message from the callback return value convertible to the logger string type.
+     * Postpones formatting or other preparations to the next steps after filtering.
+     * Makes logging almost zero-cost if it does not fit the current logging level.
      *
-     * @tparam Logger %Logger argument type
-     * @tparam T Invocable type for the callback. Deduced from argument.
-     * @tparam Args Format argument types. Deduced from arguments.
+     * @tparam Logger Logger argument type.
+     * @tparam T Invocable type for the callback. Deduced from the argument.
+     * @tparam Args Format argument types. Deduced from the arguments.
      * @param level Logging level.
      * @param callback Log callback or message.
-     * @param category %Logger category.
+     * @param category Logger category.
      * @param location Caller location (file, line, function).
      * @param args Format arguments.
      */
@@ -390,7 +393,7 @@ public:
 
 protected:
     /**
-     * @brief Return pointer to the parent sink (or `nullptr` if none).
+     * @brief Returns a pointer to the parent sink (or `nullptr` if none).
      *
      * @return Pointer to the parent sink.
      */
@@ -400,7 +403,7 @@ protected:
     }
 
     /**
-     * @brief Set the parent sink object.
+     * @brief Sets the parent sink object.
      *
      * @param parent Pointer to the parent sink driver.
      */
@@ -410,7 +413,7 @@ protected:
     }
 
     /**
-     * @brief Add child sink driver.
+     * @brief Adds a child sink driver.
      *
      * @param child Pointer to the child sink driver.
      */
@@ -421,7 +424,7 @@ protected:
     }
 
     /**
-     * @brief Remove child sink driver.
+     * @brief Removes a child sink driver.
      *
      * @param child Pointer to the child sink driver.
      */
@@ -432,6 +435,9 @@ protected:
     }
 
 private:
+    /**
+     * @brief Updates the effective sinks for the current sink driver and its children.
+     */
     auto update_effective_sinks() -> void
     {
         // Queue for level order traversal
@@ -474,7 +480,7 @@ private:
 /**
  * @brief Multi-threaded log sink driver.
  *
- * Handles sinks access with locking a mutex.
+ * Handles sink access by locking a mutex.
  *
  * @tparam String Base string type used for log messages.
  */
@@ -493,7 +499,7 @@ public:
     using StringViewType = typename Logger::StringViewType;
 
     /**
-     * @brief Construct a new SinkDriver object
+     * @brief Constructs a new SinkDriver object.
      *
      * @param logger Pointer to the logger.
      * @param parent Pointer to the parent instance (if any).
@@ -512,6 +518,9 @@ public:
     auto operator=(const SinkDriver&) -> SinkDriver& = delete;
     auto operator=(SinkDriver&&) -> SinkDriver& = delete;
 
+    /**
+     * @brief Destroys the SinkDriver object.
+     */
     ~SinkDriver()
     {
         if (auto* parent_ptr = static_cast<SinkDriver*>(this->parent()); parent_ptr) {
@@ -521,11 +530,11 @@ public:
     }
 
     /**
-     * @brief Add existing sink.
+     * @brief Adds an existing sink.
      *
      * @param sink Pointer to the sink.
-     * @return \b true if sink was actually inserted.
-     * @return \b false if sink is already present in this logger.
+     * @return \b true if the sink was actually inserted.
+     * @return \b false if the sink is already present in this logger.
      */
     auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
@@ -534,11 +543,11 @@ public:
     }
 
     /**
-     * @brief Create and emplace a new sink.
+     * @brief Creates and emplaces a new sink.
      *
-     * @tparam T %Sink type (e.g. ConsoleSink)
-     * @tparam Args %Sink constructor argument types (deduced from arguments).
-     * @param args Any arguments accepted by specified sink constructor.
+     * @tparam T Sink type (e.g., ConsoleSink).
+     * @tparam Args Sink constructor argument types (deduced from arguments).
+     * @param args Any arguments accepted by the specified sink constructor.
      * @return Pointer to the created sink.
      */
     template<typename T, typename... Args>
@@ -550,11 +559,11 @@ public:
     }
 
     /**
-     * @brief Remove sink.
+     * @brief Removes a sink.
      *
      * @param sink Pointer to the sink.
-     * @return \b true if sink was actually removed.
-     * @return \b false if sink does not exist in this logger.
+     * @return \b true if the sink was actually removed.
+     * @return \b false if the sink does not exist in this logger.
      */
     auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
@@ -563,12 +572,12 @@ public:
     }
 
     /**
-     * @brief Enable or disable sink for this logger.
+     * @brief Enables or disables a sink for this logger.
      *
      * @param sink Pointer to the sink.
      * @param enabled Enabled flag.
-     * @return \b true if sink exists and enabled.
-     * @return \b false if sink does not exist in this logger.
+     * @return \b true if the sink exists and is enabled.
+     * @return \b false if the sink does not exist in this logger.
      */
     auto set_sink_enabled(const std::shared_ptr<Sink<Logger>>& sink, bool enabled) -> bool
     {
@@ -577,11 +586,11 @@ public:
     }
 
     /**
-     * @brief Check if sink is enabled.
+     * @brief Checks if a sink is enabled.
      *
      * @param sink Pointer to the sink.
-     * @return \b true if sink is enabled.
-     * @return \b false if sink is disabled.
+     * @return \b true if the sink is enabled.
+     * @return \b false if the sink is disabled.
      */
     auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
@@ -590,18 +599,18 @@ public:
     }
 
     /**
-     * @brief Emit new callback-based log message if it fits for specified logging level.
+     * @brief Emits a new callback-based log message if it fits the specified logging level.
      *
-     * Method to emit log message from callback return value convertible to logger string type.
-     * Used to postpone formatting or other preparations to the next steps after filtering.
-     * Makes logging almost zero-cost in case if it does not fit for current logging level.
+     * Emits a log message from the callback return value convertible to the logger string type.
+     * Postpones formatting or other preparations to the next steps after filtering.
+     * Makes logging almost zero-cost if it does not fit the current logging level.
      *
-     * @tparam Logger %Logger argument type
-     * @tparam T Invocable type for the callback. Deduced from argument.
-     * @tparam Args Format argument types. Deduced from arguments.
+     * @tparam Logger Logger argument type.
+     * @tparam T Invocable type for the callback. Deduced from the argument.
+     * @tparam Args Format argument types. Deduced from the arguments.
      * @param level Logging level.
      * @param callback Log callback or message.
-     * @param category %Logger category.
+     * @param category Logger category.
      * @param location Caller location (file, line, function).
      * @param args Format arguments.
      */
@@ -624,7 +633,7 @@ public:
 
 protected:
     /**
-     * @brief Add child sink driver.
+     * @brief Adds a child sink driver.
      *
      * @param child Pointer to the child sink driver.
      */
@@ -635,7 +644,7 @@ protected:
     }
 
     /**
-     * @brief Remove child sink driver.
+     * @brief Removes a child sink driver.
      *
      * @param child Pointer to the child sink driver.
      */

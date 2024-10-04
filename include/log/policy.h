@@ -1,6 +1,6 @@
 /**
  * @file policy.h
- * @brief Contains definition of SingleThreadedPolicy and MultiThreadedPolicy classes.
+ * @brief Defines the SingleThreadedPolicy and MultiThreadedPolicy classes.
  */
 
 #pragma once
@@ -12,22 +12,22 @@
 namespace PlainCloud::Log {
 
 /**
- * @brief Single-threaded policy.
+ * @brief Policy for single-threaded data manipulation.
  *
- * Used to handle data manipulation without any locks or atomics.
+ * This policy handles data manipulation without using any locks or atomic operations.
  */
 struct SingleThreadedPolicy final { };
 
 /**
- * @brief Multi-threaded policy.
+ * @brief Policy for multi-threaded data manipulation.
  *
- * Used to handle thread-safe data manipulation at cost of possible locking.
+ * This policy ensures thread-safe data manipulation, potentially involving locking mechanisms.
  *
- * @tparam Mutex Mutex type used for locking.
- * @tparam ReadLock Lock type used for read-only access.
- * @tparam WriteLock Lock type used for write access.
- * @tparam LoadOrder Memory order for loading value.
- * @tparam StoreOrder Memory order for storing new value.
+ * @tparam Mutex Type of mutex used for locking.
+ * @tparam ReadLock Type of lock used for read-only access.
+ * @tparam WriteLock Type of lock used for write access.
+ * @tparam LoadOrder Memory order used for loading values.
+ * @tparam StoreOrder Memory order used for storing new values.
  */
 template<
     typename Mutex = std::shared_mutex,

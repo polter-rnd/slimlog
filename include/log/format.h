@@ -1,6 +1,6 @@
 /**
  * @file format.h
- * @brief Contains definition of FormatString, FormatBuffer and Format classes.
+ * @brief Contains definitions of FormatString, FormatBuffer, and Format classes.
  */
 
 #pragma once
@@ -32,40 +32,50 @@
 namespace PlainCloud::Log {
 
 #ifdef ENABLE_FMTLIB
-/** @brief Alias for \a fmt::basic_format_string  */
+/**
+ * @brief Alias for \a fmt::basic_format_string.
+ *
+ * @tparam T Character type.
+ * @tparam Args Format argument types.
+ */
 template<typename T, typename... Args>
 using FormatString = fmt::basic_format_string<T, Args...>;
-/** @brief Alias for \a fmt::format_error */
+/** @brief Alias for \a fmt::format_error. */
 using FormatError = fmt::format_error;
 #else
-/** @brief Alias for \a std::basic_format_string  */
+/**
+ * @brief Alias for std::basic_format_string.
+ *
+ * @tparam T Character type.
+ * @tparam Args Format argument types.
+ */
 template<typename T, typename... Args>
 using FormatString = std::basic_format_string<T, Args...>;
-/** @brief Alias for \a std::format_error */
+/** @brief Alias for \a std::format_error. */
 using FormatError = std::format_error;
 #endif
 
 /**
- * @brief Wrapper class consisting of format string and location.
+ * @brief Wrapper class consisting of a format string and location.
  *
- * This way it is possible to pass location as default constructor argument
- * in template parameter pack (see Logger::emit).
+ * This class allows passing location as a default constructor argument
+ * in a template parameter pack (see Logger::emit).
  *
- * @tparam Char Character type of a format string (`char` or `wchar_t`)
+ * @tparam Char Character type of the format string (`char` or `wchar_t`).
  * @tparam Args Format argument types. Should be specified explicitly.
  *
- * @note Class doesn't have a virtual destructor
+ * @note This class doesn't have a virtual destructor
  *       as the intended usage scenario is to
- *       use it as a private base class explicitly
- *       moving access functions to public part of a base class.
+ *       use it as a private base class, explicitly
+ *       moving access functions to the public part of a base class.
  */
 template<typename Char, typename... Args>
 class Format final {
 public:
     /**
-     * @brief Construct a new Format object from format string and location.
+     * @brief Constructs a new Format object from a format string and location.
      *
-     * @tparam T Format string type. Deduced from argument.
+     * @tparam T Format string type. Deduced from the argument.
      * @param fmt Format string.
      * @param loc Source code location.
      */
@@ -93,9 +103,9 @@ public:
     auto operator=(Format&&) noexcept -> Format& = default;
 
     /**
-     * @brief Get format string.
+     * @brief Gets the format string.
      *
-     * @return Format string.
+     * @return The format string.
      */
     [[nodiscard]] constexpr auto fmt() const -> const auto&
     {
@@ -103,9 +113,9 @@ public:
     }
 
     /**
-     * @brief Get location.
+     * @brief Gets the location.
      *
-     * @return Location.
+     * @return The location.
      */
     [[nodiscard]] constexpr auto loc() const -> const auto&
     {
@@ -120,9 +130,9 @@ private:
 /**
  * @brief Buffer used for log message formatting.
  *
- * @tparam Char Underlying char type for the string.
- * @tparam Traits Traits (\a std::char_traits<Char>) for the particular char type.
- * @tparam Allocator Allocator (\a std::allocator<Char>) for the buffer data.
+ * @tparam Char Underlying character type for the string.
+ * @tparam BufferSize Size of the buffer.
+ * @tparam Allocator Allocator for the buffer data.
  */
 template<typename Char, std::size_t BufferSize, typename Allocator = std::allocator<Char>>
 class FormatBuffer final : public MemoryBuffer<Char, BufferSize, Allocator> {
@@ -130,7 +140,7 @@ public:
     using MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;
 
     /**
-     * @brief Format log message with compile-time argument checks.
+     * @brief Formats a log message with compile-time argument checks.
      *
      * @tparam Args Format argument types. Deduced from arguments.
      * @param fmt Format string.
@@ -158,7 +168,7 @@ public:
     }
 
     /**
-     * @brief Format log message.
+     * @brief Formats a log message.
      *
      * @tparam Args Format argument types. Deduced from arguments.
      * @param fmt Format string.
