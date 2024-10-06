@@ -386,6 +386,152 @@ public:
 
 protected:
     /**
+     * @brief Compiles the pattern string into a fast-lookup representation.
+     *
+     * This function processes the provided pattern string and converts it into
+     * an internal representation that allows for efficient formatting of log messages.
+     *
+     * @param pattern The pattern string to be compiled.
+     */
+    void compile(StringViewType pattern)
+    {
+        m_placeholders.clear();
+        m_pattern.clear();
+        m_pattern.reserve(pattern.size());
+
+        bool inside_placeholder = false;
+        for (;;) {
+            static constexpr std::array<Char, 3> Delimeters{'{', '}', '\0'};
+            const auto pos = pattern.find_first_of(Delimeters.data());
+            const auto len = pattern.size();
+
+            if (pos == pattern.npos) {
+                // Append leftovers, if any
+                if (inside_placeholder) {
+                    throw FormatError("format error: unmatched '{' in format string");
+                }
+                if (!pattern.empty()) {
+                    m_pattern.append(pattern);
+                    append_placeholder(Placeholder::Type::None, len);
+                }
+                break;
+            }
+
+            const auto chr = Util::Unicode::to_ascii(pattern[pos]);
+
+            // Handle escaped braces
+            if (!inside_placeholder && pos < len - 1
+                && chr == static_cast<char>(pattern[pos + 1])) {
+                m_pattern.append(pattern.substr(0, pos + 1));
+                pattern = pattern.substr(pos + 2);
+                append_placeholder(Placeholder::Type::None, pos + 1);
+                continue;
+            }
+
+            if (!inside_placeholder && chr == '{') {
+                // Enter inside placeholder
+                m_pattern.append(pattern.substr(0, pos + 1));
+                pattern = pattern.substr(pos + 1);
+                append_placeholder(Placeholder::Type::None, pos, 1);
+
+                inside_placeholder = true;
+            } else if (inside_placeholder && chr == '}') {
+                // Leave the placeholder
+                Placeholder placeholder;
+                for (const auto& item : Placeholders::List) {
+                    if (pattern.starts_with(std::get<StringViewType>(item.value))) {
+                        placeholder = item;
+                        break;
+                    }
+                }
+
+                auto delta = std::get<StringViewType>(placeholder.value).size();
+                auto type = placeholder.type;
+
+                m_pattern.append(pattern.substr(delta, pos + 1 - delta));
+                pattern = pattern.substr(pos + 1);
+
+                // Save empty string view instead of {} to mark unformatted placeholder
+                append_placeholder(type, pos - delta + 2);
+
+                inside_placeholder = false;
+            } else {
+                // Unescaped brace found
+                throw FormatError(
+                    std::string("format error: unmatched '") + chr + "' in format string");
+                break;
+            }
+        }
+    }
+
+    /**
+     * @brief Converts a multi-byte string to a single-byte string.
+     *
+     * This function converts a multi-byte string to a single-byte string and appends the result to
+     * the provided destination stream buffer.
+     *
+     * @tparam T Character type of the source string.
+     * @param result Destination stream buffer where the converted string will be appended.
+     * @param data Source multi-byte string to be converted.
+     */
+    template<typename T>
+    static void from_multibyte(auto& result, std::basic_string_view<T> data)
+    {
+        Char wchr;
+        auto state = std::mbstate_t{};
+        std::size_t (*towc_func)(Char*, const T*, std::size_t, mbstate_t*) = nullptr;
+        if constexpr (std::is_same_v<Char, wchar_t>) {
+            towc_func = std::mbrtowc;
+#ifdef __cpp_lib_char8_t
+        } else if constexpr (std::is_same_v<Char, char8_t>) {
+            towc_func = Detail::Char8::mbrtoc8;
+#endif
+        } else if constexpr (std::is_same_v<Char, char16_t>) {
+            towc_func = std::mbrtoc16;
+        } else if constexpr (std::is_same_v<Char, char32_t>) {
+            towc_func = std::mbrtoc32;
+        }
+
+        for (int ret{};
+             (ret = static_cast<int>(towc_func(&wchr, data.data(), data.size(), &state))) > 0;
+             data = data.substr(ret)) {
+            result.push_back(wchr);
+        }
+    }
+
+    /**
+     * @brief Formats a string according to the specified specifications.
+     *
+     * This function formats the source string based on the provided specifications,
+     * including alignment and fill character, and appends the result to the given buffer.
+     *
+     * @tparam T Character type for the string.
+     * @param result Buffer where the formatted string will be appended.
+     * @param specs Specifications for the string formatting (alignment and fill character).
+     * @param data Source string to be formatted.
+     */
+    template<typename T>
+    auto format_string(
+        auto& result, const Placeholder::StringSpecs& specs, RecordStringView<T>& data) -> void
+    {
+        if (specs.width > 0) {
+            this->write_padded(result, data, specs);
+        } else {
+            if constexpr (std::is_same_v<T, char> && !std::is_same_v<Char, char>) {
+                this->from_multibyte(result, data); // NOLINT(cppcoreguidelines-slicing)
+            } else {
+                // Special case: since formatted message is stored
+                // at the beginning of the buffer, we have to reserve
+                // capacity first to prevent changing buffer address
+                // while re-allocating later.
+                result.reserve(result.size() + data.size());
+                result.append(data);
+            }
+        }
+    }
+
+private:
+    /**
      * @brief Converts a string to a non-negative integer.
      *
      * This function parses a string and converts it to a non-negative integer.
@@ -552,120 +698,6 @@ protected:
     }
 
     /**
-     * @brief Compiles the pattern string into a fast-lookup representation.
-     *
-     * This function processes the provided pattern string and converts it into
-     * an internal representation that allows for efficient formatting of log messages.
-     *
-     * @param pattern The pattern string to be compiled.
-     */
-    void compile(StringViewType pattern)
-    {
-        m_placeholders.clear();
-        m_pattern.clear();
-        m_pattern.reserve(pattern.size());
-
-        bool inside_placeholder = false;
-        for (;;) {
-            static constexpr std::array<Char, 3> Delimeters{'{', '}', '\0'};
-            const auto pos = pattern.find_first_of(Delimeters.data());
-            const auto len = pattern.size();
-
-            if (pos == pattern.npos) {
-                // Append leftovers, if any
-                if (inside_placeholder) {
-                    throw FormatError("format error: unmatched '{' in format string");
-                }
-                if (!pattern.empty()) {
-                    m_pattern.append(pattern);
-                    append_placeholder(Placeholder::Type::None, len);
-                }
-                break;
-            }
-
-            const auto chr = Util::Unicode::to_ascii(pattern[pos]);
-
-            // Handle escaped braces
-            if (!inside_placeholder && pos < len - 1
-                && chr == static_cast<char>(pattern[pos + 1])) {
-                m_pattern.append(pattern.substr(0, pos + 1));
-                pattern = pattern.substr(pos + 2);
-                append_placeholder(Placeholder::Type::None, pos + 1);
-                continue;
-            }
-
-            if (!inside_placeholder && chr == '{') {
-                // Enter inside placeholder
-                m_pattern.append(pattern.substr(0, pos + 1));
-                pattern = pattern.substr(pos + 1);
-                append_placeholder(Placeholder::Type::None, pos, 1);
-
-                inside_placeholder = true;
-            } else if (inside_placeholder && chr == '}') {
-                // Leave the placeholder
-                Placeholder placeholder;
-                for (const auto& item : Placeholders::List) {
-                    if (pattern.starts_with(std::get<StringViewType>(item.value))) {
-                        placeholder = item;
-                        break;
-                    }
-                }
-
-                auto delta = std::get<StringViewType>(placeholder.value).size();
-                auto type = placeholder.type;
-
-                m_pattern.append(pattern.substr(delta, pos + 1 - delta));
-                pattern = pattern.substr(pos + 1);
-
-                // Save empty string view instead of {} to mark unformatted placeholder
-                append_placeholder(type, pos - delta + 2);
-
-                inside_placeholder = false;
-            } else {
-                // Unescaped brace found
-                throw FormatError(
-                    std::string("format error: unmatched '") + chr + "' in format string");
-                break;
-            }
-        }
-    }
-
-    /**
-     * @brief Converts a multi-byte string to a single-byte string.
-     *
-     * This function converts a multi-byte string to a single-byte string and appends the result to
-     * the provided destination stream buffer.
-     *
-     * @tparam T Character type of the source string.
-     * @param result Destination stream buffer where the converted string will be appended.
-     * @param data Source multi-byte string to be converted.
-     */
-    template<typename T>
-    static void from_multibyte(auto& result, std::basic_string_view<T> data)
-    {
-        Char wchr;
-        auto state = std::mbstate_t{};
-        std::size_t (*towc_func)(Char*, const T*, std::size_t, mbstate_t*) = nullptr;
-        if constexpr (std::is_same_v<Char, wchar_t>) {
-            towc_func = std::mbrtowc;
-#ifdef __cpp_lib_char8_t
-        } else if constexpr (std::is_same_v<Char, char8_t>) {
-            towc_func = Detail::Char8::mbrtoc8;
-#endif
-        } else if constexpr (std::is_same_v<Char, char16_t>) {
-            towc_func = std::mbrtoc16;
-        } else if constexpr (std::is_same_v<Char, char32_t>) {
-            towc_func = std::mbrtoc32;
-        }
-
-        for (int ret{};
-             (ret = static_cast<int>(towc_func(&wchr, data.data(), data.size(), &state))) > 0;
-             data = data.substr(ret)) {
-            result.push_back(wchr);
-        }
-    }
-
-    /**
      * @brief Writes the source string to the destination buffer with specific alignment.
      *
      * This function writes the source string to the destination buffer, applying the specified
@@ -738,38 +770,6 @@ protected:
         }
     }
 
-    /**
-     * @brief Formats a string according to the specified specifications.
-     *
-     * This function formats the source string based on the provided specifications,
-     * including alignment and fill character, and appends the result to the given buffer.
-     *
-     * @tparam T Character type for the string.
-     * @param result Buffer where the formatted string will be appended.
-     * @param specs Specifications for the string formatting (alignment and fill character).
-     * @param data Source string to be formatted.
-     */
-    template<typename T>
-    auto format_string(
-        auto& result, const Placeholder::StringSpecs& specs, RecordStringView<T>& data) -> void
-    {
-        if (specs.width > 0) {
-            this->write_padded(result, data, specs);
-        } else {
-            if constexpr (std::is_same_v<T, char> && !std::is_same_v<Char, char>) {
-                this->from_multibyte(result, data); // NOLINT(cppcoreguidelines-slicing)
-            } else {
-                // Special case: since formatted message is stored
-                // at the beginning of the buffer, we have to reserve
-                // capacity first to prevent changing buffer address
-                // while re-allocating later.
-                result.reserve(result.size() + data.size());
-                result.append(data);
-            }
-        }
-    }
-
-private:
     std::basic_string<Char> m_pattern;
     std::vector<Placeholder> m_placeholders;
     Levels m_levels;

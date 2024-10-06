@@ -83,7 +83,7 @@ public:
     }
 
 private:
-    Level m_level; ///< The current log level.
+    Level m_level;
 };
 
 /**

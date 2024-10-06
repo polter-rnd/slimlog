@@ -31,11 +31,11 @@ static constexpr auto DefaultBufferSize = 1024U;
  * Sink objects represent back-ends used for emitting the message.
  *
  * Usage example:
- * @code
+ * ```cpp
  * Log::Logger log("main");
  * log.add_sink<Log::OStreamSink>(std::cerr, "(%t) [%l] %F|%L: %m");
  * log.info("Hello {}!", "World");
- * @endcode
+ * ```
  *
  * @tparam String String type for logging messages (e.g., `std::string`).
  *                Can be deduced from logger name.
