@@ -5,12 +5,13 @@
 
 #pragma once
 
-#include "policy.h"
-
 #include <atomic>
 #include <cstdint>
 
 namespace PlainCloud::Log {
+
+struct MultiThreadedPolicy;
+struct SingleThreadedPolicy;
 
 /**
  * @brief Logging level enumeration.
@@ -90,20 +91,9 @@ private:
  * @brief Multi-threaded log level driver.
  *
  * Handles log level access with atomic operations.
- *
- * @tparam Mutex Mutex type for synchronization.
- * @tparam ReadLock Read lock type for synchronization.
- * @tparam WriteLock Write lock type for synchronization.
- * @tparam LoadOrder Memory order for load operations.
- * @tparam StoreOrder Memory order for store operations.
  */
-template<
-    typename Mutex,
-    typename ReadLock,
-    typename WriteLock,
-    std::memory_order LoadOrder,
-    std::memory_order StoreOrder>
-class LevelDriver<MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>> final {
+template<>
+class LevelDriver<MultiThreadedPolicy> final {
 public:
     /**
      * @brief Constructs a new LevelDriver object.
@@ -122,7 +112,7 @@ public:
      */
     explicit operator Level() const noexcept
     {
-        return m_level.load(LoadOrder);
+        return m_level.load(std::memory_order_relaxed);
     }
 
     /**
@@ -133,7 +123,7 @@ public:
      */
     auto operator=(Level level) noexcept -> auto&
     {
-        m_level.store(level, StoreOrder);
+        m_level.store(level, std::memory_order_relaxed);
         return *this;
     }
 

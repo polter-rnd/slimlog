@@ -8,10 +8,8 @@
 #include "format.h"
 #include "location.h"
 #include "pattern.h"
-#include "policy.h"
 #include "record.h"
 
-#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
@@ -166,29 +164,16 @@ private:
 };
 
 /**
- * @brief Basic log sink driver class.
+ * @brief Sink driver for the logger.
  *
- * @tparam String Base string type used for log messages.
- * @tparam ThreadingPolicy Threading policy used for operating over sinks
- *                         (e.g., SingleThreadedPolicy or MultiThreadedPolicy).
- *
- * @note This class doesn't have a virtual destructor
- *       as the intended usage scenario is to
- *       use it as a private base class, explicitly
- *       moving access functions to the public part of a derived class.
- */
-template<typename String, typename ThreadingPolicy>
-class SinkDriver final { };
-
-/**
- * @brief Single-threaded log sink driver.
- *
- * Manages sink access without any synchronization.
+ * Manages sinks with or without synchronization,
+ * depending on the threading policy.
  *
  * @tparam Logger Base logger type used for log messages.
+ * @tparam ThreadingPolicy Singlethreaded or multithreaded policy.
  */
-template<typename Logger>
-class SinkDriver<Logger, SingleThreadedPolicy> {
+template<typename Logger, typename ThreadingPolicy>
+class SinkDriver final {
 public:
     /** @brief Character type for log messages. */
     using CharType = typename Logger::CharType;
@@ -211,6 +196,7 @@ public:
     {
         if (m_parent) {
             m_parent->add_child(this);
+            update_effective_sinks();
         }
     }
 
@@ -224,6 +210,10 @@ public:
      */
     ~SinkDriver()
     {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        for (auto* child : m_children) {
+            child->set_parent(m_parent);
+        }
         if (m_parent) {
             m_parent->remove_child(this);
         }
@@ -238,6 +228,7 @@ public:
      */
     auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
         const auto result = m_sinks.insert_or_assign(sink, true).second;
         update_effective_sinks();
         return result;
@@ -254,6 +245,7 @@ public:
     template<typename T, typename... Args>
     auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Logger>>
     {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
         const auto result
             = m_sinks.insert_or_assign(std::make_shared<T>(std::forward<Args>(args)...), true)
                   .first->first;
@@ -270,6 +262,7 @@ public:
      */
     auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
         if (m_sinks.erase(sink) == 1) {
             update_effective_sinks();
             return true;
@@ -287,6 +280,7 @@ public:
      */
     auto set_sink_enabled(const std::shared_ptr<Sink<Logger>>& sink, bool enabled) -> bool
     {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
         if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
             itr->second = enabled;
             update_effective_sinks();
@@ -304,6 +298,7 @@ public:
      */
     auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
+        const typename ThreadingPolicy::ReadLock lock(m_mutex);
         if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
             return itr->second;
         }
@@ -343,6 +338,7 @@ public:
         // Flag to check that message has been evaluated
         bool evaluated = false;
 
+        const typename ThreadingPolicy::ReadLock lock(m_mutex);
         for (const auto& [sink, logger] : m_effective_sinks) {
             if (!logger->level_enabled(level)) {
                 continue;
@@ -399,6 +395,7 @@ protected:
      */
     auto parent() -> SinkDriver*
     {
+        const typename ThreadingPolicy::ReadLock lock(m_mutex);
         return m_parent;
     }
 
@@ -409,7 +406,9 @@ protected:
      */
     auto set_parent(SinkDriver* parent) -> void
     {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
         m_parent = parent;
+        update_effective_sinks();
     }
 
     /**
@@ -419,8 +418,8 @@ protected:
      */
     auto add_child(SinkDriver* child) -> void
     {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
         m_children.insert(child);
-        update_effective_sinks();
     }
 
     /**
@@ -430,8 +429,8 @@ protected:
      */
     auto remove_child(SinkDriver* child) -> void
     {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
         m_children.erase(child);
-        update_effective_sinks();
     }
 
 private:
@@ -475,187 +474,7 @@ private:
     std::unordered_set<SinkDriver*> m_children;
     std::unordered_map<Sink<Logger>*, const Logger*> m_effective_sinks;
     std::unordered_map<std::shared_ptr<Sink<Logger>>, bool> m_sinks;
-};
-
-/**
- * @brief Multi-threaded log sink driver.
- *
- * Handles sink access by locking a mutex.
- *
- * @tparam String Base string type used for log messages.
- */
-template<
-    typename Logger,
-    typename Mutex,
-    typename ReadLock,
-    typename WriteLock,
-    std::memory_order LoadOrder,
-    std::memory_order StoreOrder>
-class SinkDriver<Logger, MultiThreadedPolicy<Mutex, ReadLock, WriteLock, LoadOrder, StoreOrder>>
-    : public SinkDriver<Logger, SingleThreadedPolicy> {
-public:
-    using SinkDriver<Logger, SingleThreadedPolicy>::SinkDriver;
-    /** @brief String view type for log category. */
-    using StringViewType = typename Logger::StringViewType;
-
-    /**
-     * @brief Constructs a new SinkDriver object.
-     *
-     * @param logger Pointer to the logger.
-     * @param parent Pointer to the parent instance (if any).
-     */
-    explicit SinkDriver(const Logger* logger, SinkDriver* parent = nullptr)
-        : SinkDriver<Logger, SingleThreadedPolicy>(logger)
-    {
-        if (parent) {
-            SinkDriver<Logger, SingleThreadedPolicy>::set_parent(parent);
-            parent->add_child(this);
-        }
-    }
-
-    SinkDriver(const SinkDriver&) = delete;
-    SinkDriver(SinkDriver&&) = delete;
-    auto operator=(const SinkDriver&) -> SinkDriver& = delete;
-    auto operator=(SinkDriver&&) -> SinkDriver& = delete;
-
-    /**
-     * @brief Destroys the SinkDriver object.
-     */
-    ~SinkDriver()
-    {
-        if (auto* parent_ptr = static_cast<SinkDriver*>(this->parent()); parent_ptr) {
-            SinkDriver<Logger, SingleThreadedPolicy>::set_parent(nullptr);
-            parent_ptr->remove_child(this);
-        }
-    }
-
-    /**
-     * @brief Adds an existing sink.
-     *
-     * @param sink Pointer to the sink.
-     * @return \b true if the sink was actually inserted.
-     * @return \b false if the sink is already present in this logger.
-     */
-    auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
-    {
-        WriteLock lock(m_mutex);
-        return SinkDriver<Logger, SingleThreadedPolicy>::add_sink(sink);
-    }
-
-    /**
-     * @brief Creates and emplaces a new sink.
-     *
-     * @tparam T Sink type (e.g., ConsoleSink).
-     * @tparam Args Sink constructor argument types (deduced from arguments).
-     * @param args Any arguments accepted by the specified sink constructor.
-     * @return Pointer to the created sink.
-     */
-    template<typename T, typename... Args>
-    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Logger>>
-    {
-        WriteLock lock(m_mutex);
-        return SinkDriver<Logger, SingleThreadedPolicy>::template add_sink<T>(
-            std::forward<Args>(args)...);
-    }
-
-    /**
-     * @brief Removes a sink.
-     *
-     * @param sink Pointer to the sink.
-     * @return \b true if the sink was actually removed.
-     * @return \b false if the sink does not exist in this logger.
-     */
-    auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
-    {
-        WriteLock lock(m_mutex);
-        return SinkDriver<Logger, SingleThreadedPolicy>::remove_sink(sink);
-    }
-
-    /**
-     * @brief Enables or disables a sink for this logger.
-     *
-     * @param sink Pointer to the sink.
-     * @param enabled Enabled flag.
-     * @return \b true if the sink exists and is enabled.
-     * @return \b false if the sink does not exist in this logger.
-     */
-    auto set_sink_enabled(const std::shared_ptr<Sink<Logger>>& sink, bool enabled) -> bool
-    {
-        WriteLock lock(m_mutex);
-        return SinkDriver<Logger, SingleThreadedPolicy>::set_sink_enabled(sink, enabled);
-    }
-
-    /**
-     * @brief Checks if a sink is enabled.
-     *
-     * @param sink Pointer to the sink.
-     * @return \b true if the sink is enabled.
-     * @return \b false if the sink is disabled.
-     */
-    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool
-    {
-        ReadLock lock(m_mutex);
-        return SinkDriver<Logger, SingleThreadedPolicy>::sink_enabled(sink);
-    }
-
-    /**
-     * @brief Emits a new callback-based log message if it fits the specified logging level.
-     *
-     * Emits a log message from the callback return value convertible to the logger string type.
-     * Postpones formatting or other preparations to the next steps after filtering.
-     * Makes logging almost zero-cost if it does not fit the current logging level.
-     *
-     * @tparam Logger Logger argument type.
-     * @tparam T Invocable type for the callback. Deduced from the argument.
-     * @tparam Args Format argument types. Deduced from the arguments.
-     * @param level Logging level.
-     * @param callback Log callback or message.
-     * @param category Logger category.
-     * @param location Caller location (file, line, function).
-     * @param args Format arguments.
-     */
-    template<typename T, typename... Args>
-    auto message(
-        Level level,
-        T&& callback,
-        StringViewType category,
-        Location location = Location::current(), // cppcheck-suppress passedByValue
-        Args&&... args) const -> void
-    {
-        ReadLock lock(m_mutex);
-        SinkDriver<Logger, SingleThreadedPolicy>::message(
-            level,
-            std::forward<T>(callback), // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
-            category,
-            location,
-            std::forward<Args>(args)...);
-    }
-
-protected:
-    /**
-     * @brief Adds a child sink driver.
-     *
-     * @param child Pointer to the child sink driver.
-     */
-    auto add_child(SinkDriver* child) -> void
-    {
-        WriteLock lock(m_mutex);
-        SinkDriver<Logger, SingleThreadedPolicy>::add_child(child);
-    }
-
-    /**
-     * @brief Removes a child sink driver.
-     *
-     * @param child Pointer to the child sink driver.
-     */
-    auto remove_child(SinkDriver* child) -> void
-    {
-        WriteLock lock(m_mutex);
-        SinkDriver<Logger, SingleThreadedPolicy>::remove_child(child);
-    }
-
-private:
-    mutable Mutex m_mutex;
+    mutable ThreadingPolicy::Mutex m_mutex;
 };
 
 } // namespace PlainCloud::Log

@@ -48,7 +48,7 @@ static constexpr auto DefaultBufferSize = 1024U;
 template<
     typename String,
     typename Char = Util::Types::UnderlyingCharType<String>,
-    typename ThreadingPolicy = MultiThreadedPolicy<>,
+    typename ThreadingPolicy = MultiThreadedPolicy,
     std::size_t StaticBufferSize = DefaultBufferSize>
 class Logger {
 public:
@@ -87,11 +87,10 @@ public:
      * @param level Logging level.
      * @param parent Parent logger to inherit sinks from.
      */
-    explicit Logger(StringViewType category, Level level, const std::shared_ptr<Logger>& parent)
-        : m_parent(parent)
-        , m_category(category)
+    explicit Logger(StringViewType category, Level level, Logger& parent)
+        : m_category(category)
         , m_level(level)
-        , m_sinks(this, &parent->m_sinks)
+        , m_sinks(this, &parent.m_sinks)
     {
     }
 
@@ -101,11 +100,10 @@ public:
      * @param category Logger category name. Can be used in logger messages.
      * @param parent Parent logger to inherit sinks and logging level from.
      */
-    explicit Logger(StringViewType category, const std::shared_ptr<Logger>& parent)
-        : m_parent(parent)
-        , m_category(category)
-        , m_level(parent->level())
-        , m_sinks(this, &parent->m_sinks)
+    explicit Logger(StringViewType category, Logger& parent)
+        : m_category(category)
+        , m_level(parent.level())
+        , m_sinks(this, &parent.m_sinks)
     {
     }
 
@@ -288,7 +286,6 @@ public:
     }
 
 private:
-    std::shared_ptr<Logger> m_parent;
     std::basic_string<Char> m_category;
     LevelDriver<ThreadingPolicy> m_level;
     SinkDriver<Logger, ThreadingPolicy> m_sinks;

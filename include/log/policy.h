@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include <atomic>
 #include <mutex>
 #include <shared_mutex>
 
@@ -16,25 +15,33 @@ namespace PlainCloud::Log {
  *
  * This policy handles data manipulation without using any locks or atomic operations.
  */
-struct SingleThreadedPolicy final { };
+struct SingleThreadedPolicy final {
+    /** @brief Dummy mutex. */
+    struct Mutex {
+        /** @brief Lock method that does nothing. */
+        static void lock()
+        {
+        }
+
+        /** @brief Unlock method that does nothing. */
+        static void unlock()
+        {
+        }
+    };
+
+    using ReadLock = std::lock_guard<Mutex>; ///< Dummy read lock.
+    using WriteLock = std::lock_guard<Mutex>; ///< Dummy write lock.
+};
 
 /**
  * @brief Policy for multi-threaded data manipulation.
  *
- * This policy ensures thread-safe data manipulation, potentially involving locking mechanisms.
- *
- * @tparam Mutex Type of mutex used for locking.
- * @tparam ReadLock Type of lock used for read-only access.
- * @tparam WriteLock Type of lock used for write access.
- * @tparam LoadOrder Memory order used for loading values.
- * @tparam StoreOrder Memory order used for storing new values.
+ * This policy ensures thread-safe data manipulation involving locking mechanisms.
  */
-template<
-    typename Mutex = std::shared_mutex,
-    typename ReadLock = std::shared_lock<Mutex>,
-    typename WriteLock = std::unique_lock<Mutex>,
-    std::memory_order LoadOrder = std::memory_order_relaxed,
-    std::memory_order StoreOrder = std::memory_order_relaxed>
-struct MultiThreadedPolicy final { };
+struct MultiThreadedPolicy final {
+    using Mutex = std::shared_mutex; ///< Type of mutex used for locking.
+    using ReadLock = std::shared_lock<Mutex>; ///< Type of lock used for read-only access.
+    using WriteLock = std::unique_lock<Mutex>; ///< Type of lock used for write access.
+};
 
 } // namespace PlainCloud::Log

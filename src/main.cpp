@@ -107,7 +107,7 @@ void do_test()
     std::vector<std::shared_ptr<Log::Logger<std::wstring_view>>> log_children;
     for (int i = 0; i < 10; i++) {
         auto child = std::make_shared<Log::Logger<std::wstring_view>>(
-            L"child_" + std::to_wstring(i), log_root);
+            L"child_" + std::to_wstring(i), *log_root);
         log_children.push_back(child);
 
         for (int j = 0; j < 100; j++) {
@@ -126,7 +126,7 @@ void do_test()
         std::shared_ptr<Log::Logger<std::wstring_view>> child2 = child;
         for (int i = 0; i < 100; i++) {
             child2 = std::make_shared<Log::Logger<std::wstring_view>>(
-                L"child_new_" + std::to_wstring(i), child2);
+                L"child_new_" + std::to_wstring(i), *child2);
             children2.push_back(child2);
 
             for (int j = 0; j < 10; j++) {
@@ -154,6 +154,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
     namespace Util = PlainCloud::Util;
     namespace Log = PlainCloud::Log;
 
+#if 1
     try {
         // replace the C++ global locale and the "C" locale with the user-preferred locale
         const Util::Locale::ScopedGlobalLocale myloc("");
@@ -161,7 +162,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         std::cout << "*** This is simple test for the logger ***\n";
         std::cout << "==========================================\n";
 
-#ifdef ENABLE_FMTLIB
+#if 0
         const std::basic_stringstream<char8_t> mystream;
         Log::Logger log19{u8"uchar8 log"};
         log19.add_sink<Log::OStreamSink>(
@@ -194,13 +195,13 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         log_root->message(Log::Level::Warning, L"Hello {}! ({})", L"World", 3);
         log_root->info(L"Hello {}! ({})", L"World", 4);
 
-        auto log_child = std::make_shared<Log::Logger<std::wstring_view>>(L"child", log_root);
+        auto log_child = std::make_shared<Log::Logger<std::wstring_view>>(L"child", *log_root);
         log_child->add_sink<Log::DummySink>();
         log_child->add_sink(sink2);
         log_child->set_sink_enabled(sink2, false);
         log_child->info(L"One two three!");
 
-        auto log_child2 = std::make_shared<Log::Logger<std::wstring_view>>(L"child2", log_child);
+        auto log_child2 = std::make_shared<Log::Logger<std::wstring_view>>(L"child2", *log_child);
         log_child2->info(L"Three two one!");
 
         log_child->add_sink(sink1);
@@ -222,7 +223,51 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         std::cerr << "Exception: " << e.what() << '\n';
         return 1;
     }
+#else
+    auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
+    auto sink1 = log_root->add_sink<Log::OStreamSink>(
+        std::wcout,
+        L"!!!!! {category} [{level}] {file}|{line}: {message}",
+        std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
+    log_root->info(L"Test from root !好!");
 
+    std::wcout << L"====================\n";
+
+    auto log_child = std::make_shared<Log::Logger<std::wstring_view>>(L"slave", *log_root);
+    auto sink2 = log_child->add_sink<Log::OStreamSink>(
+        std::wcout,
+        L"????? {category} [{level}] {file}|{line}: {message}",
+        std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
+    log_child->info(L"Test from slave !好!");
+
+    std::wcout << L"====================\n";
+
+    auto log_superchild
+        = std::make_shared<Log::Logger<std::wstring_view>>(L"super_slave", *log_child);
+    auto sink3 = log_superchild->add_sink<Log::OStreamSink>(
+        std::wcout,
+        L"----- {category} [{level}] {file}|{line}: {message}",
+        std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
+        std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
+    log_superchild->info(L"Test from super slave !好!");
+
+    std::wcout << L"====================\n";
+
+    log_child.reset();
+
+    log_superchild->info(L"Test 2 from super slave !好!");
+#endif
     return 0;
 }
 
