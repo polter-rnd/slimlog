@@ -345,6 +345,8 @@ public:
             }
 
             if (!evaluated) {
+                evaluated = true;
+
                 using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
                 if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
                     // Callable with buffer argument: message will be stored in buffer.
@@ -361,7 +363,7 @@ public:
                     if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
                         // Void callable without arguments: there is no message, just a callback
                         callback(std::forward<Args>(args)...);
-                        return;
+                        break;
                     } else {
                         // Non-void callable without arguments: message is the return value
                         auto message = callback(std::forward<Args>(args)...);
@@ -380,7 +382,6 @@ public:
                 } else {
                     record.message = std::forward<T>(callback);
                 }
-                evaluated = true;
             }
 
             sink->message(buffer, record);

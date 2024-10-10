@@ -7,7 +7,9 @@
 #include "log/sinks/ostream_sink.h"
 #include "util/locale.h"
 
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -65,7 +67,11 @@ std::basic_string_view<T> gen_random(const int len)
                                 L"абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
                                 L" \t";
     static std::basic_string<T> tmp_s;
+#ifndef _MSC_VER
     static auto seed = (unsigned)time(NULL) * getpid();
+#else
+    static auto seed = (unsigned)time(NULL) * _getpid();
+#endif
     tmp_s.clear();
     tmp_s.reserve(len);
 
@@ -77,7 +83,7 @@ std::basic_string_view<T> gen_random(const int len)
     return std::basic_string_view<T>{tmp_s};
 }
 
-double percentile(std::vector<double>& vectorIn, double percent)
+double percentile(std::vector<double>& vectorIn, int percent)
 {
     auto nth = vectorIn.begin() + (percent * vectorIn.size()) / 100;
     std::nth_element(vectorIn.begin(), nth, vectorIn.end());
@@ -162,7 +168,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         std::cout << "*** This is simple test for the logger ***\n";
         std::cout << "==========================================\n";
 
-#if 0
+#if ENABLE_FMTLIB && __GNUC__
         const std::basic_stringstream<char8_t> mystream;
         Log::Logger log19{u8"uchar8 log"};
         log19.add_sink<Log::OStreamSink>(
