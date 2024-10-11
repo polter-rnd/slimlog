@@ -10,11 +10,13 @@
 #include "pattern.h"
 #include "record.h"
 
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
 #include <queue>
+#include <thread>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -333,7 +335,9 @@ public:
         RecordType record
             = {level,
                {location.file_name(), location.function_name(), location.line()},
-               std::move(category)};
+               std::move(category),
+               std::chrono::system_clock::now(),
+               std::hash<std::thread::id>{}(std::this_thread::get_id())};
 
         // Flag to check that message has been evaluated
         bool evaluated = false;

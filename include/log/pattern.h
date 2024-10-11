@@ -165,7 +165,17 @@ public:
      */
     struct Placeholder {
         /** @brief Log pattern field types. */
-        enum class Type : std::uint8_t { None, Category, Level, File, Line, Message };
+        enum class Type : std::uint8_t {
+            None,
+            Category,
+            Level,
+            File,
+            Line,
+            Message,
+            Function,
+            Time,
+            Thread
+        };
 
         /** @brief Field alignment options. */
         enum class Align : std::uint8_t { None, Left, Right, Center };
@@ -196,6 +206,8 @@ public:
                 [[fallthrough]];
             case Placeholder::Type::File:
                 [[fallthrough]];
+            case Placeholder::Type::Function:
+                [[fallthrough]];
             case Placeholder::Type::Message:
                 return true;
             default:
@@ -217,15 +229,21 @@ public:
         static constexpr std::array<Char, 6> Level{'l', 'e', 'v', 'e', 'l', '\0'};
         static constexpr std::array<Char, 5> File{'f', 'i', 'l', 'e', '\0'};
         static constexpr std::array<Char, 5> Line{'l', 'i', 'n', 'e', '\0'};
+        static constexpr std::array<Char, 9> Function{'f', 'u', 'n', 'c', 't', 'i', 'o', 'n', '\0'};
+        static constexpr std::array<Char, 5> Time{'t', 'i', 'm', 'e', '\0'};
+        static constexpr std::array<Char, 7> Thread{'t', 'h', 'r', 'e', 'a', 'd', '\0'};
         static constexpr std::array<Char, 8> Message{'m', 'e', 's', 's', 'a', 'g', 'e', '\0'};
 
     public:
         /** @brief List of placeholder names. */
-        static constexpr std::array<Placeholder, 5> List{
+        static constexpr std::array<Placeholder, 8> List{
             {{Placeholder::Type::Category, Placeholders::Category.data()},
              {Placeholder::Type::Level, Placeholders::Level.data()},
              {Placeholder::Type::File, Placeholders::File.data()},
              {Placeholder::Type::Line, Placeholders::Line.data()},
+             {Placeholder::Type::Function, Placeholders::Function.data()},
+             {Placeholder::Type::Time, Placeholders::Time.data()},
+             {Placeholder::Type::Thread, Placeholders::Thread.data()},
              {Placeholder::Type::Message, Placeholders::Message.data()}}};
     };
 
@@ -314,9 +332,19 @@ public:
                     format_string(
                         result, std::get<StringSpecs>(item.value), record.location.filename);
                     break;
+                case Placeholder::Type::Function:
+                    format_string(
+                        result, std::get<StringSpecs>(item.value), record.location.function);
+                    break;
                 case Placeholder::Type::Line:
                     result.format_runtime(
                         std::get<StringViewType>(item.value), record.location.line);
+                    break;
+                case Placeholder::Type::Time:
+                    result.format_runtime(std::get<StringViewType>(item.value), record.time);
+                    break;
+                case Placeholder::Type::Thread:
+                    result.format_runtime(std::get<StringViewType>(item.value), record.thread_id);
                     break;
                 case Placeholder::Type::Message:
                     std::visit(

@@ -21,7 +21,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <variant>
 #include <vector>
 
 class null_out_buf : public std::basic_streambuf<wchar_t> {
@@ -233,7 +232,8 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
     auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
     auto sink1 = log_root->add_sink<Log::OStreamSink>(
         std::wcout,
-        L"!!!!! {category} [{level}] {file}|{line}: {message}",
+        L"!!!!! {category} [{level}] <{time:%Y-%m-%d %X}> {thread} "
+        L"{file}|{line}|{function}: {message}",
         std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),

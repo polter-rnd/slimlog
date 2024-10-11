@@ -8,6 +8,7 @@
 #include "util/unicode.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -182,6 +183,8 @@ struct Record {
     Level level = {}; ///< Log level.
     Location location = {}; ///< Source code location.
     RecordStringView<Char> category = {}; ///< Log category.
+    std::chrono::system_clock::time_point time; ///< Event time.
+    std::size_t thread_id = {}; ///< Thread ID.
     std::variant<std::reference_wrapper<String>, RecordStringView<Char>> message
         = RecordStringView<Char>{}; ///< Log message.
 };
