@@ -11,6 +11,7 @@
 #else
 #include <fmt/core.h> // IWYU pragma: export
 #endif
+#include <fmt/chrono.h> // IWYU pragma: keep
 #include <fmt/format.h> // IWYU pragma: keep
 #include <fmt/xchar.h> // IWYU pragma: keep
 #else

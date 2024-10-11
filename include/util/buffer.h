@@ -330,7 +330,7 @@ public:
      */
     constexpr explicit MemoryBuffer(const Allocator& allocator = Allocator())
 #if defined(ENABLE_FMTLIB) && FMT_VERSION < 110000
-        : m_allocator(alloc)
+        : m_allocator(allocator)
 #else
         : Buffer<T>(grow)
         , m_allocator(allocator)
