@@ -59,8 +59,8 @@ public:
      * @param str_view The std::basic_string_view to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
-    constexpr RecordStringView(const std::basic_string_view<T>& str_view) noexcept
-        : std::basic_string_view<T>(str_view)
+    constexpr RecordStringView(std::basic_string_view<T> str_view) noexcept
+        : std::basic_string_view<T>(std::move(str_view))
     {
     }
 
@@ -104,11 +104,10 @@ public:
      * @param str_view The std::basic_string_view to assign from.
      * @return Reference to this RecordStringView.
      */
-    constexpr auto
-    operator=(const std::basic_string_view<T>& str_view) noexcept -> RecordStringView&
+    constexpr auto operator=(std::basic_string_view<T> str_view) noexcept -> RecordStringView&
     {
         if (this != &str_view) {
-            std::basic_string_view<T>::operator=(str_view);
+            std::basic_string_view<T>::operator=(std::move(str_view));
             m_codepoints.store(std::string_view::npos, std::memory_order_relaxed);
         }
         return *this;
