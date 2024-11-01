@@ -7,17 +7,20 @@
 
 #include <algorithm> // IWYU pragma: keep
 #include <cstddef>
-#include <iterator>
 #include <memory>
 #include <type_traits>
 
 #ifdef ENABLE_FMTLIB
+#include <fmt/base.h>
+
 /**
- * @brief Defines an alias for `fmt::detail::buffer`.
+ * @brief Defines an alias for `fmt::detail::buffer<T>`.
  */
 template<typename T>
 using Buffer = fmt::detail::buffer<T>;
 #else
+#include <iterator>
+
 /**
  * @brief Represents a contiguous memory buffer with an optional growing ability.
  */
@@ -173,11 +176,11 @@ public:
             auto count = static_cast<std::make_unsigned_t<decltype(end - begin)>>(end - begin);
             try_reserve(m_size + count);
 
-            auto free_cap = m_capacity - m_size;
+            const auto free_cap = m_capacity - m_size;
             if (free_cap < count) {
                 count = free_cap;
             }
-            if (std::is_same<T, U>::value) {
+            if constexpr (std::is_same_v<T, U>) {
                 std::uninitialized_copy_n(begin, count, std::next(m_ptr, m_size));
             } else {
                 T* out = std::next(m_ptr, m_size);
@@ -315,15 +318,6 @@ public:
     /// @endcond
 
     /**
-     * @brief Defines a callback to be called after the buffer grows.
-     *
-     * @param data Pointer to the data.
-     * @param size Updated size.
-     * @param userdata Pointer to the user data.
-     */
-    using OnGrowCallback = void (*)(const T* data, std::size_t size, void* userdata);
-
-    /**
      * @brief Constructs a new MemoryBuffer object.
      *
      * @param allocator Allocator for growing the buffer.
@@ -418,15 +412,16 @@ public:
     }
 
     /**
-     * @brief Sets the callback to be called after the buffer grows.
+     * @brief Appends data to the end of the buffer.
      *
-     * @param callback Pointer to the callback function.
-     * @param userdata Pointer to the user data passed to the callback.
+     * @tparam U Input data type.
+     * @param begin Begin iterator of the source data.
+     * @param end End iterator of the source data.
      */
-    void on_grow(OnGrowCallback callback, void* userdata = nullptr)
+    template<typename U>
+    void append(const U* begin, const U* end)
     {
-        m_on_grow = callback;
-        m_on_grow_userdata = userdata;
+        Buffer<T>::append(begin, end);
     }
 
 protected:
@@ -467,9 +462,6 @@ protected:
         // the buffer already uses the new storage and will deallocate it in destructor.
         if (old_data != static_cast<T*>(self.m_store)) {
             self.m_allocator.deallocate(old_data, old_capacity);
-        }
-        if (self.m_on_grow) {
-            self.m_on_grow(new_data, new_capacity, self.m_on_grow_userdata);
         }
     }
 
@@ -512,6 +504,4 @@ private:
 
     T m_store[Size]; // NOLINT(*-avoid-c-arrays)
     Allocator m_allocator;
-    OnGrowCallback m_on_grow = nullptr;
-    void* m_on_grow_userdata = nullptr;
 };

@@ -5,16 +5,8 @@
 
 #pragma once
 
-#if __has_include(<source_location>)
-#include <source_location>
-#endif
-
 namespace PlainCloud::Log {
 
-#ifdef __cpp_lib_source_location
-/** @brief Alias for std::source_location. */
-using Location = std::source_location;
-#else
 /**
  * @brief Represents a specific location in the source code.
  *
@@ -43,7 +35,7 @@ public:
 #if __has_builtin(__builtin_FILE) and __has_builtin(__builtin_FUNCTION)                            \
         and __has_builtin(__builtin_LINE)                                                          \
     or defined(_MSC_VER) and _MSC_VER > 192
-        const char* file = __builtin_FILE(),
+        const char* file = extract_file_name(__builtin_FILE()),
         const char* function = __builtin_FUNCTION(),
         int line = __builtin_LINE()
 #else
@@ -89,9 +81,27 @@ public:
     }
 
 private:
+    consteval static auto extract_file_name(const char* path) -> const char*
+    {
+        const char* file = path;
+        const char sep =
+#ifdef _WIN32
+            '\\';
+#else
+            '/';
+#endif
+        while (*path != '\0') {
+            // NOLINTNEXTLINE (cppcoreguidelines-pro-bounds-pointer-arithmetic)
+            if (*path++ == sep) {
+                file = path;
+            }
+        }
+        return file;
+    }
+
     const char* m_file{""};
     const char* m_function{""};
     int m_line{};
 };
-#endif
+
 } // namespace PlainCloud::Log

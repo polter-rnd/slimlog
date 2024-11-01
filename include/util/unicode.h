@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <cstddef>
+#include <iterator>
 #include <limits>
 
 namespace PlainCloud::Util::Unicode {
@@ -47,6 +49,27 @@ constexpr auto code_point_length(const Char* begin) -> int
         const auto chr = static_cast<unsigned char>(*begin);
         constexpr auto CodepointLengths = 0x3a55000000000000ULL;
         return static_cast<int>((CodepointLengths >> (2U * (chr >> 3U))) & 0x3U) + 1;
+    }
+}
+
+/**
+ * @brief Calculates number of Unicode code points in a source data.
+ *
+ * @tparam Char Character type.
+ * @param begin Pointer to the start of the Unicode sequence.
+ * @param len Number of bytes in a source data.
+ */
+template<typename Char>
+constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size_t
+{
+    if constexpr (sizeof(Char) != 1) {
+        return len;
+    } else {
+        std::size_t codepoints = 0;
+        for (const auto* end = std::next(begin, len); begin != end; ++codepoints) {
+            std::advance(begin, Util::Unicode::code_point_length(begin));
+        }
+        return codepoints;
     }
 }
 

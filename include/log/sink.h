@@ -9,14 +9,14 @@
 #include "location.h"
 #include "pattern.h"
 #include "record.h"
+#include "util/os.h"
 
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
 #include <queue>
-#include <thread>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -135,11 +135,9 @@ public:
      * The former type is used for direct passing custom string type, while latter is for
      * types convertible to `std::basic_string_view<Char>`.
      *
-     * @param buffer Buffer where the final message should be put.
-     *               It already contains a message, feel free to overwrite it.
      * @param record Log record (message, category, etc.).
      */
-    virtual auto message(FormatBufferType& buffer, RecordType& record) -> void = 0;
+    virtual auto message(RecordType& record) -> void = 0;
 
     /**
      * @brief Flush message cache, if any.
@@ -331,51 +329,47 @@ public:
         Location location = Location::current(), // cppcheck-suppress passedByValue
         Args&&... args) const -> void
     {
-        FormatBufferType buffer;
+        FormatBufferType buffer; // NOLINT(misc-const-correctness)
         RecordType record
             = {level,
-               {location.file_name(), location.function_name(), location.line()},
+               {location.file_name(),
+                location.function_name(),
+                static_cast<std::size_t>(location.line())},
                std::move(category),
-               std::chrono::system_clock::now(),
-               std::hash<std::thread::id>{}(std::this_thread::get_id())};
+               Util::OS::thread_id()};
+        std::tie(record.time.local, record.time.nsec)
+            = Util::OS::local_time<RecordTime::TimePoint>();
 
         // Flag to check that message has been evaluated
         bool evaluated = false;
 
         const typename ThreadingPolicy::ReadLock lock(m_mutex);
         for (const auto& [sink, logger] : m_effective_sinks) {
-            if (!logger->level_enabled(level)) {
+            if (!logger->level_enabled(level)) [[unlikely]] {
                 continue;
             }
 
-            if (!evaluated) {
+            if (!evaluated) [[unlikely]] {
                 evaluated = true;
 
                 using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
                 if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
                     // Callable with buffer argument: message will be stored in buffer.
                     callback(buffer, std::forward<Args>(args)...);
-                    record.message = RecordStringView(buffer.data(), buffer.size());
-                    // Update pointer to message on every buffer re-allocation
-                    buffer.on_grow(
-                        [](const CharType* data, std::size_t, void* message) {
-                            static_cast<RecordStringView<CharType>*>(message)->update_data_ptr(
-                                data);
-                        },
-                        &std::get<RecordStringView<CharType>>(record.message));
+                    record.message = RecordStringView{buffer.data(), buffer.size()};
                 } else if constexpr (std::is_invocable_v<T, Args...>) {
-                    if constexpr (std::is_void_v<typename std::invoke_result_t<T, Args...>>) {
+                    using RetType = typename std::invoke_result_t<T, Args...>;
+                    if constexpr (std::is_void_v<RetType>) {
                         // Void callable without arguments: there is no message, just a callback
                         callback(std::forward<Args>(args)...);
                         break;
                     } else {
                         // Non-void callable without arguments: message is the return value
                         auto message = callback(std::forward<Args>(args)...);
-                        using Ret = std::invoke_result_t<T>;
-                        if constexpr (std::is_convertible_v<Ret, RecordStringView<CharType>>) {
+                        if constexpr (std::is_convertible_v<RetType, RecordStringView<CharType>>) {
                             record.message = RecordStringView<CharType>{std::move(message)};
                         } else {
-                            record.message = std::move(message);
+                            record.message = message;
                         }
                     }
                 } else if constexpr (std::is_convertible_v<T, RecordStringView<CharType>>) {
@@ -384,11 +378,11 @@ public:
                     // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                     record.message = RecordStringView<CharType>{std::forward<T>(callback)};
                 } else {
-                    record.message = std::forward<T>(callback);
+                    record.message = callback;
                 }
             }
 
-            sink->message(buffer, record);
+            sink->message(record);
         }
     }
 
@@ -480,6 +474,6 @@ private:
     std::unordered_map<Sink<Logger>*, const Logger*> m_effective_sinks;
     std::unordered_map<std::shared_ptr<Sink<Logger>>, bool> m_sinks;
     mutable ThreadingPolicy::Mutex m_mutex;
-};
+}; // namespace PlainCloud::Log
 
 } // namespace PlainCloud::Log

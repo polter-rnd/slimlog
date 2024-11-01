@@ -36,12 +36,11 @@ public:
     {
     }
 
-    auto message(FormatBufferType& buffer, RecordType& record) -> void override
+    auto message(RecordType& record) -> void override
     {
-        const auto orig_size = buffer.size();
-        this->format(buffer, record);
+        FormatBufferType buffer;
+        Sink<Logger>::format(buffer, record);
         buffer.push_back('\n');
-        buffer.resize(orig_size);
     }
 
     auto flush() -> void override

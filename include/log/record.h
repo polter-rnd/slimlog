@@ -8,13 +8,17 @@
 #include "util/unicode.h"
 
 #include <atomic>
-#include <chrono>
-#include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <iterator>
 #include <string_view>
 #include <variant>
+
+#ifdef ENABLE_FMTLIB
+#include <ctime> // IWYU pragma: no_forward_declare tm
+#else
+#include <chrono>
+#include <cstddef>
+#endif
 
 namespace PlainCloud::Log {
 
@@ -134,18 +138,9 @@ public:
      */
     auto codepoints() -> std::size_t
     {
-        auto codepoints = m_codepoints.load(std::memory_order_consume);
+        auto codepoints = m_codepoints.load(std::memory_order_acquire);
         if (codepoints == std::string_view::npos) {
-            codepoints = 0;
-            if constexpr (sizeof(T) != 1) {
-                codepoints = this->size();
-            } else {
-                const auto size = this->size();
-                const auto data = this->data();
-                for (std::size_t idx = 0; idx < size; codepoints++) {
-                    idx += Util::Unicode::code_point_length(std::next(data, idx));
-                }
-            }
+            codepoints = Util::Unicode::count_codepoints(this->data(), this->size());
             m_codepoints.store(codepoints, std::memory_order_release);
         }
         return codepoints;
@@ -164,6 +159,30 @@ template<typename Char>
 RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
 
 /**
+ * @brief Time tag of the log record.
+ */
+struct RecordTime {
+#ifdef ENABLE_FMTLIB
+    /** @brief Alias for \a std::tm. */
+    using TimePoint = std::tm;
+#else
+    /** @brief Alias for \a std::chrono::sys_seconds. */
+    using TimePoint = std::chrono::sys_seconds;
+#endif
+    TimePoint local; ///< Local time (seconds precision).
+    std::size_t nsec = {}; ///< Event time (nsec part).
+};
+
+/**
+ * @brief Source code location.
+ */
+struct RecordLocation {
+    RecordStringView<char> filename = {}; ///< File name.
+    RecordStringView<char> function = {}; ///< Function name.
+    std::size_t line = {}; ///< Line number.
+};
+
+/**
  * @brief Log record.
  *
  * @tparam Char Character type.
@@ -171,20 +190,11 @@ RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
  */
 template<typename Char, typename String>
 struct Record {
-    /**
-     * @brief Source code location.
-     */
-    struct Location {
-        RecordStringView<char> filename = {}; ///< File name.
-        RecordStringView<char> function = {}; ///< Function name.
-        std::size_t line = {}; ///< Line number.
-    };
-
     Level level = {}; ///< Log level.
-    Location location = {}; ///< Source code location.
+    RecordLocation location = {}; ///< Source code location.
     RecordStringView<Char> category = {}; ///< Log category.
-    std::chrono::system_clock::time_point time; ///< Event time.
     std::size_t thread_id = {}; ///< Thread ID.
+    RecordTime time = {}; ///< Record time.
     std::variant<std::reference_wrapper<String>, RecordStringView<Char>> message
         = RecordStringView<Char>{}; ///< Log message.
 };

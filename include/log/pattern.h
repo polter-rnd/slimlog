@@ -13,6 +13,7 @@
 
 #include <array>
 #include <climits>
+#include <concepts>
 #include <cstdint>
 #include <cuchar>
 #include <cwchar>
@@ -67,7 +68,16 @@ using namespace std;
  * @return A `std::basic_string_view` of the same character type as the input string.
  */
 template<typename Char, typename String>
-[[maybe_unused]] constexpr auto to_string_view(const String& str) -> std::basic_string_view<Char>;
+struct ConvertString {
+    auto operator()(const String&) const -> std::basic_string_view<Char> = delete;
+};
+
+namespace Detail {
+template<typename Char, typename StringType>
+concept HasConvertString = requires(StringType value) {
+    { ConvertString<Char, StringType>{}(value) } -> std::same_as<std::basic_string_view<Char>>;
+};
+} // namespace Detail
 
 /**
  * @brief Represents a log message pattern specifying the message format.
@@ -174,14 +184,17 @@ public:
             Message,
             Function,
             Time,
+            Msec,
+            Usec,
+            Nsec,
             Thread
         };
 
-        /** @brief Field alignment options. */
-        enum class Align : std::uint8_t { None, Left, Right, Center };
-
         /** @brief Parameters for string fields. */
         struct StringSpecs {
+            /** @brief Field alignment options. */
+            enum class Align : std::uint8_t { None, Left, Right, Center };
+
             std::size_t width = 0; ///< Field width.
             Align align = Align::None; ///< Field alignment.
             StringViewType fill = StringSpecs::DefaultFill.data(); ///< Fill character.
@@ -190,34 +203,13 @@ public:
             static constexpr std::array<Char, 2> DefaultFill{' ', '\0'};
         };
 
-        /**
-         * @brief Checks if the placeholder is for a string.
-         *
-         * @param type Placeholder type.
-         * @return \b true if the placeholder is a string.
-         * @return \b false if the placeholder is not a string.
-         */
-        static auto is_string(Type type) -> bool
-        {
-            switch (type) {
-            case Placeholder::Type::Category:
-                [[fallthrough]];
-            case Placeholder::Type::Level:
-                [[fallthrough]];
-            case Placeholder::Type::File:
-                [[fallthrough]];
-            case Placeholder::Type::Function:
-                [[fallthrough]];
-            case Placeholder::Type::Message:
-                return true;
-            default:
-                break;
-            }
-            return false;
-        }
-
         Type type = Type::None; ///< Placeholder type.
-        std::variant<StringViewType, StringSpecs> value = StringViewType{}; ///< Placeholder value.
+        std::variant<
+            StringViewType,
+            StringSpecs,
+            CachedFormatter<std::size_t, Char>,
+            CachedFormatter<RecordTime::TimePoint, Char>>
+            value = StringViewType{}; ///< Placeholder value.
     };
 
     /**
@@ -231,18 +223,24 @@ public:
         static constexpr std::array<Char, 5> Line{'l', 'i', 'n', 'e', '\0'};
         static constexpr std::array<Char, 9> Function{'f', 'u', 'n', 'c', 't', 'i', 'o', 'n', '\0'};
         static constexpr std::array<Char, 5> Time{'t', 'i', 'm', 'e', '\0'};
+        static constexpr std::array<Char, 5> Msec{'m', 's', 'e', 'c', '\0'};
+        static constexpr std::array<Char, 5> Usec{'u', 's', 'e', 'c', '\0'};
+        static constexpr std::array<Char, 5> Nsec{'n', 's', 'e', 'c', '\0'};
         static constexpr std::array<Char, 7> Thread{'t', 'h', 'r', 'e', 'a', 'd', '\0'};
         static constexpr std::array<Char, 8> Message{'m', 'e', 's', 's', 'a', 'g', 'e', '\0'};
 
     public:
         /** @brief List of placeholder names. */
-        static constexpr std::array<Placeholder, 8> List{
+        static constexpr std::array<std::pair<typename Placeholder::Type, StringViewType>, 11> List{
             {{Placeholder::Type::Category, Placeholders::Category.data()},
              {Placeholder::Type::Level, Placeholders::Level.data()},
              {Placeholder::Type::File, Placeholders::File.data()},
              {Placeholder::Type::Line, Placeholders::Line.data()},
              {Placeholder::Type::Function, Placeholders::Function.data()},
              {Placeholder::Type::Time, Placeholders::Time.data()},
+             {Placeholder::Type::Msec, Placeholders::Msec.data()},
+             {Placeholder::Type::Usec, Placeholders::Usec.data()},
+             {Placeholder::Type::Nsec, Placeholders::Nsec.data()},
              {Placeholder::Type::Thread, Placeholders::Thread.data()},
              {Placeholder::Type::Message, Placeholders::Message.data()}}};
     };
@@ -293,83 +291,72 @@ public:
      * This function formats a log message based on the specified pattern.
      *
      * @tparam StringType %Logger string type.
-     * @param result Buffer storing the raw message to be overwritten with the result.
+     * @param out Buffer storing the raw message to be overwritten with the result.
      * @param record Log record.
      */
     template<typename StringType>
-    auto format(auto& result, Record<Char, StringType>& record) -> void
+    auto format(auto& out, Record<Char, StringType>& record) -> void
     {
-        if (empty()) {
-            // Empty format, just append message
-            std::visit(
-                Util::Types::Overloaded{
-                    [&result](std::reference_wrapper<StringType> arg) {
-                        if constexpr (std::is_convertible_v<StringType, StringViewType>) {
-                            result.append(arg.get());
-                        } else {
-                            result.append(to_string_view<Char>(arg.get()));
-                        }
-                    },
-                    [&result](auto&& arg) { result.append(std::forward<decltype(arg)>(arg)); }},
-                record.message);
-        } else {
-            using StringSpecs = typename Placeholder::StringSpecs;
+        constexpr std::size_t MsecInNsec = 1000000;
+        constexpr std::size_t UsecInNsec = 1000;
 
-            // Process format placeholders
-            for (auto& item : m_placeholders) {
-                switch (item.type) {
-                case Placeholder::Type::None:
-                    result.append(std::get<StringViewType>(item.value));
-                    break;
-                case Placeholder::Type::Category:
-                    format_string(result, std::get<StringSpecs>(item.value), record.category);
-                    break;
-                case Placeholder::Type::Level:
-                    format_string(
-                        result, std::get<StringSpecs>(item.value), m_levels.get(record.level));
-                    break;
-                case Placeholder::Type::File:
-                    format_string(
-                        result, std::get<StringSpecs>(item.value), record.location.filename);
-                    break;
-                case Placeholder::Type::Function:
-                    format_string(
-                        result, std::get<StringSpecs>(item.value), record.location.function);
-                    break;
-                case Placeholder::Type::Line:
-                    result.format_runtime(
-                        std::get<StringViewType>(item.value), record.location.line);
-                    break;
-                case Placeholder::Type::Time:
-                    result.format_runtime(std::get<StringViewType>(item.value), record.time);
-                    break;
-                case Placeholder::Type::Thread:
-                    result.format_runtime(std::get<StringViewType>(item.value), record.thread_id);
-                    break;
-                case Placeholder::Type::Message:
-                    std::visit(
-                        Util::Types::Overloaded{
-                            [this, &result, &specs = std::get<StringSpecs>(item.value)](
-                                std::reference_wrapper<StringType> arg) {
-                                if constexpr (std::is_convertible_v<StringType, StringViewType>) {
-                                    RecordStringView message{StringViewType{arg.get()}};
-                                    this->format_string(result, specs, message);
-                                } else {
-                                    RecordStringView message{to_string_view<Char>(arg.get())};
-                                    this->format_string(result, specs, message);
-                                }
-                            },
-                            [this, &result, &specs = std::get<StringSpecs>(item.value)](
-                                auto&& arg) {
-                                this->format_string(
-                                    result, specs, std::forward<decltype(arg)>(arg));
-                            },
+        // Process format placeholders
+        for (auto& item : m_placeholders) {
+            switch (item.type) {
+            case Placeholder::Type::None:
+                out.append(std::get<StringViewType>(item.value));
+                break;
+            case Placeholder::Type::Category:
+                format_string(out, item.value, record.category);
+                break;
+            case Placeholder::Type::Level:
+                format_string(out, item.value, m_levels.get(record.level));
+                break;
+            case Placeholder::Type::File:
+                format_string(out, item.value, record.location.filename);
+                break;
+            case Placeholder::Type::Function:
+                format_string(out, item.value, record.location.function);
+                break;
+            case Placeholder::Type::Line:
+                format_generic(out, item.value, record.location.line);
+                break;
+            case Placeholder::Type::Time:
+                format_generic(out, item.value, record.time.local);
+                break;
+            case Placeholder::Type::Msec:
+                format_generic(out, item.value, record.time.nsec / MsecInNsec);
+                break;
+            case Placeholder::Type::Usec:
+                format_generic(out, item.value, record.time.nsec / UsecInNsec);
+                break;
+            case Placeholder::Type::Nsec:
+                format_generic(out, item.value, record.time.nsec);
+                break;
+            case Placeholder::Type::Thread:
+                format_generic(out, item.value, record.thread_id);
+                break;
+            case Placeholder::Type::Message:
+                std::visit(
+                    Util::Types::Overloaded{
+                        [&out, &value = item.value](std::reference_wrapper<StringType> arg) {
+                            if constexpr (Detail::HasConvertString<Char, StringType>) {
+                                format_string(
+                                    out, value, ConvertString<Char, StringType>{}(arg.get()));
+                            } else {
+                                (void)out;
+                                (void)value;
+                                (void)arg;
+                                throw FormatError(
+                                    "No corresponding Log::ConvertString<> specialization found");
+                            }
                         },
-                        record.message);
-                    break;
-                default:
-                    break;
-                }
+                        [&out, &value = item.value](auto&& arg) {
+                            format_string(out, value, std::forward<decltype(arg)>(arg));
+                        },
+                    },
+                    record.message);
+                break;
             }
         }
     }
@@ -465,22 +452,22 @@ protected:
                 inside_placeholder = true;
             } else if (inside_placeholder && chr == '}') {
                 // Leave the placeholder
-                Placeholder placeholder;
+                std::pair<typename Placeholder::Type, StringViewType> placeholder;
                 for (const auto& item : Placeholders::List) {
-                    if (pattern.starts_with(std::get<StringViewType>(item.value))) {
+                    if (pattern.starts_with(item.second)) {
                         placeholder = item;
                         break;
                     }
                 }
 
-                auto delta = std::get<StringViewType>(placeholder.value).size();
-                auto type = placeholder.type;
+                const auto type = placeholder.first;
+                const auto delta = placeholder.second.size();
 
                 m_pattern.append(pattern.substr(delta, pos + 1 - delta));
                 pattern = pattern.substr(pos + 1);
 
                 // Save empty string view instead of {} to mark unformatted placeholder
-                append_placeholder(type, pos - delta + 2);
+                append_placeholder(type, pos - delta);
 
                 inside_placeholder = false;
             } else {
@@ -490,6 +477,12 @@ protected:
                 break;
             }
         }
+
+        // If no placeholders found, just add message as a default
+        /*if (m_placeholders.empty()) {
+            m_placeholders.emplace_back(
+                Placeholder::Type::Message, typename Placeholder::StringSpecs{});
+        }*/
     }
 
     /**
@@ -499,15 +492,16 @@ protected:
      * the provided destination stream buffer.
      *
      * @tparam T Character type of the source string.
-     * @param result Destination stream buffer where the converted string will be appended.
+     * @param out Destination stream buffer where the converted string will be appended.
      * @param data Source multi-byte string to be converted.
      */
     template<typename T>
-    static void from_multibyte(auto& result, std::basic_string_view<T> data)
+    static void from_multibyte(auto& out, std::basic_string_view<T> data)
     {
         Char wchr;
         auto state = std::mbstate_t{};
         std::size_t (*towc_func)(Char*, const T*, std::size_t, mbstate_t*) = nullptr;
+
         if constexpr (std::is_same_v<Char, wchar_t>) {
             towc_func = std::mbrtowc;
 #ifdef __cpp_lib_char8_t
@@ -523,39 +517,53 @@ protected:
         for (int ret{};
              (ret = static_cast<int>(towc_func(&wchr, data.data(), data.size(), &state))) > 0;
              data = data.substr(ret)) {
-            result.push_back(wchr);
+            out.push_back(wchr);
         }
     }
 
     /**
-     * @brief Formats a string according to the specified specifications.
+     * @brief Formats a string according to the specifications.
      *
      * This function formats the source string based on the provided specifications,
      * including alignment and fill character, and appends the result to the given buffer.
      *
-     * @tparam T Character type for the string.
-     * @param result Buffer where the formatted string will be appended.
-     * @param specs Specifications for the string formatting (alignment and fill character).
+     * @tparam StringView Source string type (can be std::string_view or RecordStringView).
+     * @param out Buffer where the formatted string will be appended.
+     * @param item Variant holding either StringSpecs or RecordStringView.
      * @param data Source string to be formatted.
      */
-    template<typename T>
-    auto format_string(
-        auto& result, const Placeholder::StringSpecs& specs, RecordStringView<T>& data) -> void
+    template<typename StringView>
+    static void format_string(auto& out, const auto& item, StringView&& data)
     {
-        if (specs.width > 0) {
-            this->write_padded(result, data, specs);
+        if (auto& specs = std::get<typename Placeholder::StringSpecs>(item); specs.width > 0)
+            [[unlikely]] {
+            write_padded(out, std::forward<StringView>(data), specs);
         } else {
-            if constexpr (std::is_same_v<T, char> && !std::is_same_v<Char, char>) {
-                this->from_multibyte(result, data); // NOLINT(cppcoreguidelines-slicing)
+            using DataChar = typename std::remove_cvref_t<StringView>::value_type;
+            if constexpr (std::is_same_v<DataChar, char> && !std::is_same_v<Char, char>) {
+                // NOLINTNEXTLINE (cppcoreguidelines-slicing)
+                from_multibyte(out, std::forward<StringView>(data));
             } else {
-                // Special case: since formatted message is stored
-                // at the beginning of the buffer, we have to reserve
-                // capacity first to prevent changing buffer address
-                // while re-allocating later.
-                result.reserve(result.size() + data.size());
-                result.append(data);
+                out.append(std::forward<StringView>(data));
             }
         }
+    }
+
+    /**
+     * @brief Formats data according to the cached format context.
+     *
+     * This function formats the source data based on the format context from CachedFormatter,
+     * including alignment and fill character, and appends the out to the given buffer.
+     *
+     * @tparam T Data type.
+     * @param out Buffer where the formatted data will be appended.
+     * @param item Variant holding CachedFormatter<T, Char>, where T is the data type.
+     * @param data Source data to be formatted.
+     */
+    template<typename T>
+    static void format_generic(auto& out, const auto& item, T data)
+    {
+        std::get<CachedFormatter<T, Char>>(item).format(out, data);
     }
 
 private:
@@ -570,7 +578,7 @@ private:
      * @param error_value The default value to return in case of a conversion error.
      * @return The parsed integer, or error_value if the conversion fails.
      */
-    constexpr auto
+    static constexpr auto
     parse_nonnegative_int(const Char*& begin, const Char* end, int error_value) noexcept -> int
     {
         unsigned value = 0;
@@ -609,10 +617,10 @@ private:
      * @param specs Reference to the output specs structure to be updated.
      * @return Pointer to the past-the-end of the processed characters.
      */
-    constexpr auto
+    static constexpr auto
     parse_align(const Char* begin, const Char* end, Placeholder::StringSpecs& specs) -> const Char*
     {
-        auto align = Placeholder::Align::None;
+        auto align = Placeholder::StringSpecs::Align::None;
         auto* ptr = std::next(begin, Util::Unicode::code_point_length(begin));
         if (end - ptr <= 0) {
             ptr = begin;
@@ -621,16 +629,16 @@ private:
         for (;;) {
             switch (Util::Unicode::to_ascii(*ptr)) {
             case '<':
-                align = Placeholder::Align::Left;
+                align = Placeholder::StringSpecs::Align::Left;
                 break;
             case '>':
-                align = Placeholder::Align::Right;
+                align = Placeholder::StringSpecs::Align::Right;
                 break;
             case '^':
-                align = Placeholder::Align::Center;
+                align = Placeholder::StringSpecs::Align::Center;
                 break;
             }
-            if (align != Placeholder::Align::None) {
+            if (align != Placeholder::StringSpecs::Align::None) {
                 if (ptr != begin) {
                     // Actually this check is redundant, cause using '{' or '}'
                     // as a fill character will cause parsing failure earlier.
@@ -662,8 +670,8 @@ private:
     /**
      * @brief Append a pattern placeholder to the list of placeholders.
      *
-     * This function parses a placeholder from the end of the string and appends it to the list of
-     * placeholders.
+     * This function parses a placeholder from the end of the string and appends it to the list
+     * of placeholders.
      *
      * @param type Placeholder type.
      * @param count Placeholder length.
@@ -672,16 +680,34 @@ private:
     void append_placeholder(Placeholder::Type type, std::size_t count, std::size_t shift = 0)
     {
         auto data = StringViewType{m_pattern}.substr(m_pattern.size() - count - shift, count);
-        if (type == Placeholder::Type::None && !m_placeholders.empty()
-            && m_placeholders.back().type == type) {
-            // In case of raw text, we can safely merge current chunk with the last one
-            auto& format = std::get<StringViewType>(m_placeholders.back().value);
-            format = StringViewType{format.data(), format.size() + data.size()};
-        } else if (Placeholder::is_string(type)) {
-            // Calculate formatted width for string fields
+        switch (type) {
+        case Placeholder::Type::None:
+            if (!m_placeholders.empty() && m_placeholders.back().type == type) {
+                // In case of raw text, we can safely merge current chunk with the last one
+                auto& format = std::get<StringViewType>(m_placeholders.back().value);
+                format = StringViewType{format.data(), format.size() + data.size()};
+            } else {
+                // Otherwise just add new string placeholder
+                m_placeholders.emplace_back(type, data);
+            }
+            break;
+        case Placeholder::Type::Category:
+        case Placeholder::Type::Level:
+        case Placeholder::Type::File:
+        case Placeholder::Type::Function:
+        case Placeholder::Type::Message:
             m_placeholders.emplace_back(type, get_string_specs(data));
-        } else {
-            m_placeholders.emplace_back(type, data);
+            break;
+        case Placeholder::Type::Line:
+        case Placeholder::Type::Thread:
+        case Placeholder::Type::Msec:
+        case Placeholder::Type::Usec:
+        case Placeholder::Type::Nsec:
+            m_placeholders.emplace_back(type, CachedFormatter<std::size_t, Char>(data));
+            break;
+        case Placeholder::Type::Time:
+            m_placeholders.emplace_back(type, CachedFormatter<RecordTime::TimePoint, Char>(data));
+            break;
         }
     };
 
@@ -694,13 +720,13 @@ private:
      * @param value The string value of the placeholder field.
      * @return A Placeholder::StringSpecs object containing the parsed specifications.
      */
-    auto get_string_specs(StringViewType value) -> Placeholder::StringSpecs
+    static auto get_string_specs(StringViewType value) -> Placeholder::StringSpecs
     {
         typename Placeholder::StringSpecs specs = {};
-        if (value.size() > 2) {
+        if (!value.empty()) {
             const auto* begin = value.data();
             const auto* end = std::next(begin, value.size());
-            const auto* fmt = parse_align(std::next(begin, 2), end, specs);
+            const auto* fmt = parse_align(begin, end, specs);
             if (auto chr = Util::Unicode::to_ascii(*fmt); chr != '}') {
                 const int width = parse_nonnegative_int(fmt, std::prev(end), -1);
                 if (width == -1) {
@@ -736,13 +762,21 @@ private:
      * @param src Source string view to be written.
      * @param specs String specifications, including alignment and fill character.
      */
-    template<typename T>
-    constexpr void
-    write_padded(auto& dst, RecordStringView<T>& src, const Placeholder::StringSpecs& specs)
+    template<typename StringView>
+    constexpr static void
+    write_padded(auto& dst, StringView&& src, const Placeholder::StringSpecs& specs)
     {
+        constexpr auto CountCodepoints = [](StringView& src) {
+            if constexpr (std::is_same_v<StringView, StringViewType>) {
+                return Util::Unicode::count_codepoints(src.data(), src.size());
+            } else {
+                return src.codepoints();
+            }
+        };
+
         const auto spec_width
             = static_cast<std::make_unsigned_t<decltype(specs.width)>>(specs.width);
-        const auto width = src.codepoints();
+        const auto width = CountCodepoints(src);
         const auto padding = spec_width > width ? spec_width - width : 0;
 
         // Shifts are encoded as string literals because static constexpr is not
@@ -756,45 +790,52 @@ private:
         dst.reserve(dst.size() + src.size() + padding * specs.fill.size());
 
         // Lambda for filling with single character or multibyte pattern
-        auto fill_pattern = [&dst, &fill = specs.fill](std::size_t fill_len) {
-            const auto* src = fill.data();
-            auto block_size = fill.size();
-            auto* dest = std::prev(dst.end(), fill_len * block_size);
+        constexpr auto FillPattern
+            = [](auto& dst, std::basic_string_view<Char> fill, std::size_t fill_len) {
+                  const auto* src = fill.data();
+                  auto block_size = fill.size();
+                  auto* dest = std::prev(dst.end(), fill_len * block_size);
 
-            if (block_size > 1) {
-                // Copy first block
-                std::copy_n(src, block_size, dest);
+                  if (block_size > 1) {
+                      // Copy first block
+                      std::copy_n(src, block_size, dest);
 
-                // Copy other blocks recursively via O(n*log(N)) calls
-                const auto* start = dest;
-                const auto* end = std::next(start, fill_len * block_size);
-                auto* current = std::next(dest, block_size);
-                while (std::next(current, block_size) < end) {
-                    std::copy_n(start, block_size, current);
-                    std::advance(current, block_size);
-                    block_size *= 2;
-                }
+                      // Copy other blocks recursively via O(n*log(N)) calls
+                      const auto* start = dest;
+                      const auto* end = std::next(start, fill_len * block_size);
+                      auto* current = std::next(dest, block_size);
+                      while (std::next(current, block_size) < end) {
+                          std::copy_n(start, block_size, current);
+                          std::advance(current, block_size);
+                          block_size *= 2;
+                      }
 
-                // Copy the rest
-                std::copy_n(start, end - current, current);
-            } else {
-                std::fill_n(dest, fill_len, *src);
-            }
-        };
+                      // Copy the rest
+                      std::copy_n(start, end - current, current);
+                  } else {
+                      std::fill_n(dest, fill_len, *src);
+                  }
+              };
 
         // Fill left padding
         if (left_padding != 0) {
             dst.resize(dst.size() + left_padding * specs.fill.size());
-            fill_pattern(left_padding);
+            FillPattern(dst, specs.fill, left_padding);
         }
 
         // Fill data
-        dst.append(src);
+        using DataChar = typename std::remove_cvref_t<StringView>::value_type;
+        if constexpr (std::is_same_v<DataChar, char> && !std::is_same_v<Char, char>) {
+            // NOLINTNEXTLINE (cppcoreguidelines-slicing)
+            from_multibyte(dst, std::forward<StringView>(src));
+        } else {
+            dst.append(std::forward<StringView>(src));
+        }
 
         // Fill right padding
         if (right_padding != 0) {
             dst.resize(dst.size() + right_padding * specs.fill.size());
-            fill_pattern(right_padding);
+            FillPattern(dst, specs.fill, right_padding);
         }
     }
 

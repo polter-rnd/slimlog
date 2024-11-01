@@ -7,7 +7,6 @@
 
 #include "log/sink.h" // IWYU pragma: export
 
-#include <iterator>
 #include <ostream>
 #include <utility>
 
@@ -53,13 +52,12 @@ public:
     {
     }
 
-    auto message(FormatBufferType& buffer, RecordType& record) -> void override
+    auto message(RecordType& record) -> void override
     {
-        const auto orig_size = buffer.size();
-        this->format(buffer, record);
+        FormatBufferType buffer;
+        Sink<Logger>::format(buffer, record);
         buffer.push_back('\n');
-        m_ostream.write(std::next(buffer.begin(), orig_size), buffer.size() - orig_size);
-        buffer.resize(orig_size);
+        m_ostream.write(buffer.begin(), buffer.size());
     }
 
     auto flush() -> void override
