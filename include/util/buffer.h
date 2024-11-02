@@ -166,6 +166,7 @@ public:
     /**
      * @brief Appends data to the end of the buffer.
      *
+     * @tparam U Input data type.
      * @param begin Begin iterator of the source data.
      * @param end End iterator of the source data.
      */
@@ -409,19 +410,6 @@ public:
     void append(const ContiguousRange& range)
     {
         Buffer<T>::append(range.data(), range.data() + range.size());
-    }
-
-    /**
-     * @brief Appends data to the end of the buffer.
-     *
-     * @tparam U Input data type.
-     * @param begin Begin iterator of the source data.
-     * @param end End iterator of the source data.
-     */
-    template<typename U>
-    void append(const U* begin, const U* end)
-    {
-        Buffer<T>::append(begin, end);
     }
 
 protected:
