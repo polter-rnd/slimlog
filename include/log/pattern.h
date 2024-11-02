@@ -423,7 +423,7 @@ protected:
             if (pos == pattern.npos) {
                 // Append leftovers, if any
                 if (inside_placeholder) {
-                    throw FormatError("format error: unmatched '{' in format string");
+                    throw FormatError("format error: unmatched '{' in pattern string");
                 }
                 if (!pattern.empty()) {
                     m_pattern.append(pattern);
@@ -436,7 +436,7 @@ protected:
 
             // Handle escaped braces
             if (!inside_placeholder && pos < len - 1
-                && chr == static_cast<char>(pattern[pos + 1])) {
+                && chr == Util::Unicode::to_ascii(pattern[pos + 1])) {
                 m_pattern.append(pattern.substr(0, pos + 1));
                 pattern = pattern.substr(pos + 2);
                 append_placeholder(Placeholder::Type::None, pos + 1);
@@ -451,38 +451,33 @@ protected:
 
                 inside_placeholder = true;
             } else if (inside_placeholder && chr == '}') {
-                // Leave the placeholder
-                std::pair<typename Placeholder::Type, StringViewType> placeholder;
-                for (const auto& item : Placeholders::List) {
-                    if (pattern.starts_with(item.second)) {
-                        placeholder = item;
-                        break;
-                    }
+                auto placeholder = std::find_if(
+                    Placeholders::List.begin(),
+                    Placeholders::List.end(),
+                    [pattern](const auto& item) { return pattern.starts_with(item.second); });
+                if (placeholder == Placeholders::List.end()) {
+                    throw FormatError("format error: unknown pattern placeholder found");
                 }
 
-                const auto type = placeholder.first;
-                const auto delta = placeholder.second.size();
-
+                const auto delta = placeholder->second.size();
                 m_pattern.append(pattern.substr(delta, pos + 1 - delta));
                 pattern = pattern.substr(pos + 1);
-
-                // Save empty string view instead of {} to mark unformatted placeholder
-                append_placeholder(type, pos - delta);
+                append_placeholder(placeholder->first, pos - delta);
 
                 inside_placeholder = false;
             } else {
                 // Unescaped brace found
                 throw FormatError(
-                    std::string("format error: unmatched '") + chr + "' in format string");
+                    std::string("format error: unmatched '") + chr + "' in pattern string");
                 break;
             }
         }
 
         // If no placeholders found, just add message as a default
-        /*if (m_placeholders.empty()) {
+        if (m_placeholders.empty()) {
             m_placeholders.emplace_back(
                 Placeholder::Type::Message, typename Placeholder::StringSpecs{});
-        }*/
+        }
     }
 
     /**
