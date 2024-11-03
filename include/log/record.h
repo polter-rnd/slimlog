@@ -119,19 +119,6 @@ public:
     }
 
     /**
-     * @brief Update the pointer to the string data.
-     *
-     * Keeps the number of codepoints unchanged.
-     *
-     * @param data New data pointer.
-     */
-    auto update_data_ptr(const T* data) -> void
-    {
-        // Update only string view, codepoints remain the same.
-        *static_cast<std::basic_string_view<T>*>(this) = {data, this->size()};
-    }
-
-    /**
      * @brief Calculate the number of Unicode code points.
      *
      * @return Number of code points.
