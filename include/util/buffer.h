@@ -12,18 +12,21 @@
 
 #ifdef ENABLE_FMTLIB
 #include <fmt/base.h>
+#else
+#include "util/types.h"
 
+#include <iterator>
+#endif
+
+namespace PlainCloud::Util {
+
+#ifdef ENABLE_FMTLIB
 /**
  * @brief Defines an alias for `fmt::detail::buffer<T>`.
  */
 template<typename T>
 using Buffer = fmt::detail::buffer<T>;
 #else
-
-#include "util/types.h"
-
-#include <iterator>
-
 /**
  * @brief Represents a contiguous memory buffer with an optional growing ability.
  */
@@ -496,3 +499,5 @@ private:
     T m_store[Size]; // NOLINT(*-avoid-c-arrays)
     Allocator m_allocator;
 };
+
+} // namespace PlainCloud::Util

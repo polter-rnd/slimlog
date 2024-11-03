@@ -264,9 +264,9 @@ private:
  * @tparam Allocator Allocator for the buffer data.
  */
 template<typename Char, std::size_t BufferSize, typename Allocator = std::allocator<Char>>
-class FormatBuffer final : public MemoryBuffer<Char, BufferSize, Allocator> {
+class FormatBuffer final : public Util::MemoryBuffer<Char, BufferSize, Allocator> {
 public:
-    using MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;
+    using Util::MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;
 
     /**
      * @brief Appends data to the end of the buffer.
