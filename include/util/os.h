@@ -115,7 +115,7 @@ inline auto thread_id() noexcept -> std::size_t
  * @return Pair of local time in seconds and additional nanoseconds.
  */
 template<typename TimePoint>
-inline auto local_time() noexcept -> std::pair<TimePoint, std::time_t>
+inline auto local_time() noexcept -> std::pair<TimePoint, std::size_t>
 {
     static thread_local TimePoint cached_local;
     static thread_local std::time_t cached_time;
