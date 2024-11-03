@@ -22,7 +22,7 @@
 namespace PlainCloud::Log {
 
 /** @brief Default buffer size for log messages. */
-static constexpr auto DefaultBufferSize = 1024U;
+static constexpr auto DefaultBufferSize = 256U;
 
 /**
  * @brief A logger front-end class.
