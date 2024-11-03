@@ -80,4 +80,17 @@ struct UnderlyingChar<T> {
 template<typename T>
 using UnderlyingCharType = typename UnderlyingChar<T>::Type;
 
+/**
+ * @brief Casts a nonnegative integer to unsigned.
+ *
+ * @trapam Int Integer type.
+ *
+ * @param value Non-negative integer value.
+ */
+template<typename Int>
+constexpr auto to_unsigned(Int value) -> std::make_unsigned_t<Int>
+{
+    return static_cast<std::make_unsigned_t<Int>>(value);
+}
+
 } // namespace PlainCloud::Util::Types

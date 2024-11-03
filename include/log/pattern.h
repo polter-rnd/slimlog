@@ -644,8 +644,7 @@ private:
                         throw FormatError("format: invalid fill character '{'\n");
                     }
                     specs.fill = std::basic_string_view<Char>(
-                        begin,
-                        static_cast<std::make_unsigned_t<decltype(ptr - begin)>>(ptr - begin));
+                        begin, Util::Types::to_unsigned(ptr - begin));
                     begin = std::next(ptr);
                 } else {
                     std::advance(begin, 1);
@@ -769,8 +768,7 @@ private:
             }
         };
 
-        const auto spec_width
-            = static_cast<std::make_unsigned_t<decltype(specs.width)>>(specs.width);
+        const auto spec_width = Util::Types::to_unsigned(specs.width);
         const auto width = CountCodepoints(src);
         const auto padding = spec_width > width ? spec_width - width : 0;
 

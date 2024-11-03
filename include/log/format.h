@@ -21,6 +21,7 @@
 
 #include "location.h"
 #include "util/buffer.h"
+#include "util/types.h"
 
 #include <concepts>
 #include <cstddef>
@@ -291,7 +292,7 @@ public:
     void append(const U* begin, const U* end) // cppcheck-suppress duplInheritedMember
     {
         const auto buf_size = this->size();
-        const auto count = static_cast<std::make_unsigned_t<decltype(end - begin)>>(end - begin);
+        const auto count = Util::Types::to_unsigned(end - begin);
         this->resize(buf_size + count);
         std::uninitialized_copy_n(begin, count, std::next(this->begin(), buf_size));
     }

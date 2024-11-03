@@ -19,6 +19,9 @@
 template<typename T>
 using Buffer = fmt::detail::buffer<T>;
 #else
+
+#include "util/types.h"
+
 #include <iterator>
 
 /**
@@ -174,7 +177,7 @@ public:
     void append(const U* begin, const U* end)
     {
         while (begin != end) {
-            auto count = static_cast<std::make_unsigned_t<decltype(end - begin)>>(end - begin);
+            auto count = Util::Types::to_unsigned(end - begin);
             try_reserve(m_size + count);
 
             const auto free_cap = m_capacity - m_size;
