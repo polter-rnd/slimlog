@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <type_traits>
 
 namespace PlainCloud::Util::Types {
@@ -90,6 +91,7 @@ using UnderlyingCharType = typename UnderlyingChar<T>::Type;
 template<typename Int>
 constexpr auto to_unsigned(Int value) -> std::make_unsigned_t<Int>
 {
+    assert(std::is_unsigned_v<Int> || value >= 0);
     return static_cast<std::make_unsigned_t<Int>>(value);
 }
 

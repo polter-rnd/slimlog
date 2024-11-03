@@ -6,6 +6,7 @@
 #pragma once
 
 #include <algorithm> // IWYU pragma: keep
+#include <cassert>
 #include <cstddef>
 #include <memory>
 #include <type_traits>
@@ -365,6 +366,7 @@ public:
      */
     auto operator=(MemoryBuffer&& other) noexcept -> MemoryBuffer&
     {
+        assert(this != &other);
         deallocate();
         move_from(other);
         return *this;
