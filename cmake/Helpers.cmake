@@ -245,7 +245,7 @@ endfunction()
 #
 # ~~~
 # check_compiler_flags("-fsanitize=address" CXX supported_flag)
-# message("Is address sanitizer supported for C++: ${supported_flag}")
+# message("Is address sanitizer supported for C++: \${supported_flag}")
 # ~~~
 # [/cmake_documentation]
 function(check_compiler_flags flag lang variable)
@@ -273,7 +273,7 @@ endfunction()
 #
 # ~~~
 # get_lang_of_source("main.cpp", main_cpp_lang)
-# message("Language of main.cpp: ${main_cpp_lang}")
+# message("Language of main.cpp: \${main_cpp_lang}")
 # ~~~
 #
 # Required arguments:
@@ -321,8 +321,8 @@ endfunction()
 #
 # ~~~
 # get_target_compilers("myprogram", compilers_list, langs_list)
-# message("Compilers used in myprogram: ${compilers_list}")
-# message("Languages used in myprogram: ${langs_list}")
+# message("Compilers used in myprogram: \${compilers_list}")
+# message("Languages used in myprogram: \${langs_list}")
 # ~~~
 #
 # Required arguments:
@@ -380,9 +380,9 @@ endfunction()
 #     # MSVC uses
 #     "/fsanitize=address"
 # )
-# check_compiler_flags_list(${candidates}, Sanitizer, ASan)
-# message("Flags for Clang compiler (if supported): ${ASan_Clang_FLAGS}")
-# message("Flags for GNU compiler (if supported): ${ASan_GNU_FLAGS}")
+# check_compiler_flags_list(\${candidates}, Sanitizer, ASan)
+# message("Flags for Clang compiler (if supported): \${ASan_Clang_FLAGS}")
+# message("Flags for GNU compiler (if supported): \${ASan_GNU_FLAGS}")
 # ~~~
 #
 # Required arguments:
