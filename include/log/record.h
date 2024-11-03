@@ -163,14 +163,22 @@ RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
  */
 struct RecordTime {
 #ifdef ENABLE_FMTLIB
-    /** @brief Alias for \a std::tm. */
+    /**
+     * @brief Alias for \a std::tm.
+     *
+     * Time format with `fmt::format()` is much faster for std::tm.
+     */
     using TimePoint = std::tm;
 #else
-    /** @brief Alias for \a std::chrono::sys_seconds. */
+    /**
+     * @brief Alias for \a std::chrono::sys_seconds.
+     *
+     * Time format with `std::format()` supports only `std::chrono` types.
+     */
     using TimePoint = std::chrono::sys_seconds;
 #endif
     TimePoint local; ///< Local time (seconds precision).
-    std::size_t nsec = {}; ///< Event time (nsec part).
+    std::size_t nsec; ///< Event time (nanoseconds part).
 };
 
 /**
