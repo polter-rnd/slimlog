@@ -15,11 +15,10 @@
 #include <climits>
 #include <concepts>
 #include <cstdint>
-#include <cuchar>
-#include <cwchar>
+#include <cuchar> // IWYU pragma: keep
+#include <cwchar> // IWYU pragma: keep
 #include <functional>
 #include <initializer_list>
-#include <iosfwd>
 #include <iterator>
 #include <limits>
 #include <string>
@@ -33,26 +32,69 @@ namespace PlainCloud::Log {
 
 /** @cond */
 namespace Detail {
-#ifdef __cpp_lib_char8_t
 
-namespace Char8Fallback {
+// Fallback functions to detect missing ones from stdlib
+namespace Fallback {
+#ifdef __cpp_char8_t
 template<typename T = char8_t>
-auto mbrtoc8(T* /*unused*/, const char* /*unused*/, std::size_t /*unused*/, mbstate_t* /*unused*/)
-    -> std::size_t
+inline auto
+mbrtoc8(T* /*unused*/, const char* /*unused*/, std::size_t /*unused*/, mbstate_t* /*unused*/)
 {
-    static_assert(
-        Util::Types::AlwaysFalse<T>{},
-        "C++ compiler does not support std::mbrtoc8(char8_t*, const char*, size_t, mbstate_t*)");
-    return -1;
+    return std::monostate{};
 };
-} // namespace Char8Fallback
-
-namespace Char8 {
-using namespace Char8Fallback;
-using namespace std;
-} // namespace Char8
-
 #endif
+#ifdef __cpp_unicode_characters
+template<typename T = char16_t>
+inline auto
+mbrtoc16(T* /*unused*/, const char* /*unused*/, std::size_t /*unused*/, mbstate_t* /*unused*/)
+{
+    return std::monostate{};
+};
+template<typename T = char32_t>
+inline auto
+mbrtoc32(T* /*unused*/, const char* /*unused*/, std::size_t /*unused*/, mbstate_t* /*unused*/)
+{
+    return std::monostate{};
+};
+#endif
+} // namespace Fallback
+
+template<typename Char>
+struct FromMultibyte {
+    inline auto run(Char* chr, const char* str, std::size_t len, mbstate_t* state) -> int
+    {
+        using namespace Fallback;
+        if constexpr (std::is_same_v<Char, wchar_t>) {
+            return handle(mbrtowc(chr, str, len, state)); // NOLINT (concurrency-mt-unsafe)
+#ifdef __cpp_char8_t
+        } else if constexpr (std::is_same_v<Char, char8_t>) {
+            return handle(mbrtoc8(chr, str, len, state)); // NOLINT (concurrency-mt-unsafe)
+#endif
+#ifdef __cpp_unicode_characters
+        } else if constexpr (std::is_same_v<Char, char16_t>) {
+            return handle(mbrtoc16(chr, str, len, state)); // NOLINT (concurrency-mt-unsafe)
+        } else if constexpr (std::is_same_v<Char, char32_t>) {
+            return handle(mbrtoc32(chr, str, len, state)); // NOLINT (concurrency-mt-unsafe)
+#endif
+        } else {
+            static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
+            return -1;
+        }
+    }
+
+    inline auto handle(std::size_t res) -> int
+    {
+        return static_cast<int>(res);
+    }
+
+    inline auto handle(std::monostate /*unused*/) -> int
+    {
+        static_assert(
+            Util::Types::AlwaysFalse<Char>{},
+            "C++ stdlib does not support conversion to given character type");
+        return -1;
+    }
+};
 } // namespace Detail
 /** @endcond */
 
@@ -489,29 +531,12 @@ protected:
      * @param out Destination stream buffer where the converted string will be appended.
      * @param data Source multi-byte string to be converted.
      */
-    template<typename T>
-    static void from_multibyte(auto& out, std::basic_string_view<T> data)
+    static void from_multibyte(auto& out, std::string_view data)
     {
         Char wchr;
         auto state = std::mbstate_t{};
-        std::size_t (*towc_func)(Char*, const T*, std::size_t, mbstate_t*) = nullptr;
-
-        if constexpr (std::is_same_v<Char, wchar_t>) {
-            towc_func = std::mbrtowc;
-#ifdef __cpp_char8_t
-        } else if constexpr (std::is_same_v<Char, char8_t>) {
-            towc_func = Detail::Char8::mbrtoc8;
-#endif
-#ifdef __cpp_unicode_characters
-        } else if constexpr (std::is_same_v<Char, char16_t>) {
-            towc_func = std::mbrtoc16;
-        } else if constexpr (std::is_same_v<Char, char32_t>) {
-            towc_func = std::mbrtoc32;
-#endif
-        }
-
-        for (int ret{};
-             (ret = static_cast<int>(towc_func(&wchr, data.data(), data.size(), &state))) > 0;
+        Detail::FromMultibyte<Char> dispatcher;
+        for (int ret{}; (ret = dispatcher.run(&wchr, data.data(), data.size(), &state)) > 0;
              data = data.substr(ret)) {
             out.push_back(wchr);
         }

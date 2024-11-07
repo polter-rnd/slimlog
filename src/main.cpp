@@ -1,10 +1,15 @@
 // NOLINTBEGIN
 
+#define ENABLE_MYSTRING 0
+
 #include "log/format.h"
 #include "log/level.h"
 #include "log/logger.h"
 #include "log/sinks/dummy_sink.h"
 #include "log/sinks/ostream_sink.h"
+#if ENABLE_MYSTRING
+#include "mystring.h"
+#endif
 #include "util/locale.h"
 
 #ifndef _MSC_VER
@@ -18,32 +23,54 @@
 #include <exception>
 #include <iostream>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
-class null_out_buf : public std::basic_streambuf<wchar_t> {
+static constexpr wchar_t alphanum_wchar[] = L"0123456789"
+                                            L"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                            L"abcdefghijklmnopqrstuvwxyz"
+                                            L"АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
+                                            L"абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
+                                            L"!@#$%^&*()-=,./?`~\"' ";
+
+static constexpr char alphanum_char[] = "0123456789"
+                                        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                        "abcdefghijklmnopqrstuvwxyz"
+                                        "!@#$%^&*()-=,./?`~\"' ";
+
+template<typename T>
+class null_out_buf : public std::basic_streambuf<T> {
 public:
-    virtual std::streamsize xsputn(const wchar_t*, std::streamsize n)
+#if defined(__APPLE__)
+    using my_int = int;
+#else
+    using my_int = std::conditional_t<std::is_same_v<T, wchar_t>, unsigned int, int>;
+#endif
+
+    virtual std::streamsize xsputn(const T*, std::streamsize n)
     {
         return n;
     }
-    virtual unsigned int overflow(unsigned int)
+    virtual my_int overflow(my_int)
     {
         return 1;
     }
 };
 
-class null_out_stream : public std::basic_ostream<wchar_t> {
+template<typename T>
+class null_out_stream : public std::basic_ostream<T> {
 public:
     null_out_stream()
-        : std::basic_ostream<wchar_t>(&buf)
+        : std::basic_ostream<T>(&buf)
     {
     }
 
 private:
-    null_out_buf buf;
+    null_out_buf<T> buf;
 };
 
 template<typename Func>
@@ -59,12 +86,6 @@ auto benchmark(Func test_func)
 template<typename T>
 std::basic_string_view<T> gen_random(const int len)
 {
-    static const T alphanum[] = L"0123456789"
-                                L"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-                                L"abcdefghijklmnopqrstuvwxyz"
-                                L"АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ"
-                                L"абвгдеёжзийклмнопрстуфхцчшщъыьэюя"
-                                L" \t";
     static std::basic_string<T> tmp_s;
 #ifndef _MSC_VER
     static auto seed = (unsigned)time(NULL) * getpid();
@@ -76,7 +97,11 @@ std::basic_string_view<T> gen_random(const int len)
 
     srand(seed++);
     for (int i = 0; i < len; ++i) {
-        tmp_s += alphanum[rand() % (sizeof(alphanum) / sizeof(wchar_t)) - 1];
+        if constexpr (std::is_same_v<T, wchar_t>) {
+            tmp_s += alphanum_wchar[rand() % (sizeof(alphanum_wchar) / sizeof(wchar_t) - 1)];
+        } else {
+            tmp_s += alphanum_char[rand() % (sizeof(alphanum_char) / sizeof(char) - 1)];
+        }
     }
 
     return std::basic_string_view<T>{tmp_s};
@@ -94,14 +119,14 @@ void do_test()
     namespace Log = PlainCloud::Log;
 
     // auto& devnull = std::wcout;
-    null_out_stream devnull;
+    null_out_stream<wchar_t> devnull;
 
     auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
 
     for (int i = 0; i < 50; i++) {
         log_root->add_sink<Log::OStreamSink>(
             devnull,
-            L"({category}) [{level}] {file}|{line:X}: {message:*^100}",
+            L"({category}) [{level}] <{time:%Y-%m-%d %T}> {file}|{line:X}: {message}",
             std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
             std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
             std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
@@ -119,7 +144,8 @@ void do_test()
             child->add_sink<Log::OStreamSink>(
                 devnull,
                 L">sink_" + std::to_wstring(j)
-                    + L"< ({category}) [{level}] {file}|{line:X}: {message:*^100}");
+                    + L"< ({category}) [{level}] <{time:%Y-%m-%d %T}> {file}|{line:X}: "
+                      L"{message}");
         }
     }
 
@@ -138,7 +164,8 @@ void do_test()
                 child2->add_sink<Log::OStreamSink>(
                     devnull,
                     L">new_sink_" + std::to_wstring(i) + L":" + std::to_wstring(j)
-                        + L"< [{level}] {file}|{line:X}: {message:*^100} ({category})");
+                        + L"< [{level}] <{time:%Y-%m-%d %T}> {file}|{line:X}: {message} "
+                          L"({category})");
             }
         }
         auto res = benchmark([&child2]() {
@@ -153,6 +180,60 @@ void do_test()
     std::cout << "90 perc: " << percentile(results, 90) << "\n";
     std::cout << "median: " << percentile(results, 50) << "\n";
 }
+
+void do_test2()
+{
+    namespace Log = PlainCloud::Log;
+
+    // auto& devnull = std::cout;
+    null_out_stream<char> devnull;
+
+    auto log_root = std::make_shared<Log::Logger<std::string_view>>("main");
+
+    for (int i = 0; i < 10; i++) {
+        auto child = log_root->add_sink<Log::OStreamSink>(
+            devnull,
+            "({category}) [{level}] <{time:%Y-%m-%d %T}.{msec}> {file}|{line:X}: "
+            "{message}");
+    }
+
+    std::vector<double> results;
+
+    for (int k = 0; k < 10; k++) {
+        auto res = benchmark([&log_root]() {
+            for (int j = 0; j < 10240; j++) {
+                int intvar = 123;
+                long longvar = 12345678;
+                log_root->info(
+                    "This is random message {} [{} -> {}]: {}",
+                    j,
+                    intvar,
+                    longvar,
+                    gen_random<char>(50));
+            }
+        });
+        std::cout << "[" << k << "] simple message emitting: " << res << "\n";
+        results.push_back(res);
+    }
+
+    std::cout << "90 perc: " << percentile(results, 90) << "\n";
+    std::cout << "median: " << percentile(results, 50) << "\n";
+}
+
+namespace PlainCloud::Log {
+#if ENABLE_MYSTRING
+template<typename Char, typename String>
+struct ConvertString;
+
+template<typename Char>
+struct ConvertString<Char, mystr> {
+    std::basic_string_view<Char> operator()(const mystr& str) const
+    {
+        return std::basic_string_view<char>(str.c_str());
+    }
+};
+#endif
+} // namespace PlainCloud::Log
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int
 {
@@ -171,7 +252,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         const std::basic_stringstream<char8_t> mystream;
         Log::Logger log19{u8"uchar8 log"};
         log19.add_sink<Log::OStreamSink>(
-            mystream, u8"({category}) [{level}] {file}|{line}: {message}");
+            mystream, u8"({category}) [{level}] <{time:%Y-%m-%d %T}> {file}|{line}: {message}");
         log19.info(u8"hello from u8!");
         std::cout << std::string_view(
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
@@ -179,12 +260,23 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
             mystream.view().size());
 #endif
 
+        const std::basic_stringstream<char32_t> mystream2;
+        Log::Logger log21{U"uchar32 log"};
+        log21.add_sink<Log::OStreamSink>(
+            mystream2, U"({category}) [{level}] {file}|{line}: {message}");
+        log21.info(U"hello from u32!");
+        std::wcout << std::wstring_view(
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+            reinterpret_cast<const wchar_t*>(mystream2.view().data()),
+            mystream2.view().size());
+
         auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
 
         auto sink1 = log_root->add_sink<Log::OStreamSink>(
             std::wcout,
-            L"!!!!! ({{ sdfsdf {{ ee {category:=^20}) erwwer }} ee [{level}] {file}|{line:X}: "
-            "{message:*^100} "
+            L"!!!!! ({{ sdfsdf {{ ee {category}) erwwer }} ee [{level}] <{time:%Y-%m-%d %T}> "
+            L"{function}|{file:*^100}|{line:X}: "
+            "{message} "
             "sdf}}{{",
             std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
             std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
@@ -193,7 +285,9 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
             std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
 
         auto sink2 = log_root->add_sink<Log::OStreamSink>(
-            std::wcout, L"????? [{level}] {file}|{line:X}: {message:👆^100} ({category})");
+            std::wcout,
+            L"????? [{level}] <{time:%Y-%m-%d %T}> {function}|{file:*^100}|{line:X}: {message} "
+            L"({category})");
 
         log_root->info(L"Hello {}!", L"World");
         log_root->info(L"Hello {}! ({})", L"World", 2);
@@ -222,31 +316,31 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         log_root->message(Log::Level::Info, []() { std::wcout << L"Void lambda\n"; });
 
         std::cout << "==========================\n";
-        const double t1 = benchmark(do_test);
+        const double t1 = benchmark(do_test2);
         std::cout << "Total elapsed: " << t1 << '\n';
     } catch (const std::exception& e) {
         std::cerr << "Exception: " << e.what() << '\n';
         return 1;
     }
 #else
-    auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
+    /*auto log_root = std::make_shared<Log::Logger<std::wstring_view>>(L"main");
     auto sink1 = log_root->add_sink<Log::OStreamSink>(
         std::wcout,
-        L"!!!!! {category} [{level}] <{time:%Y-%m-%d %X}> {thread} "
+        L"!!!!! {category} [{level}] <{time:%Y-%m-%d %T}> {thread} "
         L"{file}|{line}|{function}: {message}",
         std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Error, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Fatal, gen_random<wchar_t>(5)));
-    log_root->info(L"Test from root !好!");
+    log_root->info(L"Test from root !{}!", L"好");
 
     std::wcout << L"====================\n";
 
     auto log_child = std::make_shared<Log::Logger<std::wstring_view>>(L"slave", *log_root);
     auto sink2 = log_child->add_sink<Log::OStreamSink>(
         std::wcout,
-        L"????? {category} [{level}] {file}|{line}: {message}",
+        L"????? {category} [{level}] <{time:%Y-%m-%d %T}> {file}|{line}: {message}",
         std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
@@ -260,7 +354,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         = std::make_shared<Log::Logger<std::wstring_view>>(L"super_slave", *log_child);
     auto sink3 = log_superchild->add_sink<Log::OStreamSink>(
         std::wcout,
-        L"----- {category} [{level}] {file}|{line}: {message}",
+        L"----- {category} [{level}] <{time:%Y-%m-%d %T}> {file}|{line}: {message}",
         std::make_pair(Log::Level::Trace, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Debug, gen_random<wchar_t>(5)),
         std::make_pair(Log::Level::Warning, gen_random<wchar_t>(5)),
@@ -272,7 +366,23 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
 
     log_child.reset();
 
-    log_superchild->info(L"Test 2 from super slave !好!");
+    log_superchild->info(L"Test 2 from super slave !好!");*/
+
+#endif
+
+#if ENABLE_MYSTRING
+    Log::Logger<mystr, char> mylog("mylog");
+    mylog.add_sink<Log::OStreamSink>(
+        std::cout, "{level}|{time:%Y-%m-%d %X}|{file}:{line}|{function}|{thread} - {message}");
+    mystr lal_orig{"kek lal 1"};
+    auto lal = std::move(lal_orig);
+    mylog.info(lal);
+    mylog.info(mystr{"kek lal 2"});
+    mylog.info("just string");
+    mylog.info([]() { return mystr{"lambda 3"}; });
+    mylog.info([]() { return "lambda"; });
+    mylog.info([]() { std::cout << "JUST LOG!\n"; });
+    mylog.info([](auto& buf) { buf.format("{} {}", "hello", 42); });
 #endif
     return 0;
 }

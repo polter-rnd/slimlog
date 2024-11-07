@@ -48,13 +48,13 @@ namespace Detail {
 
 namespace TimeZoneFallback {
 // Dummy declaration expanding to no-op, just to make the compiler happy.
-struct time_zone {
+struct TimeZone {
     template<class Duration>
     auto to_local(const Duration&) const -> Duration;
 };
 
 // Dummy class to detect missing time zone support in std::chrono.
-template<typename T = time_zone>
+template<typename T = TimeZone>
 auto current_zone() -> const T*
 {
     static_assert(Util::Types::AlwaysFalse<T>{}, "C++20 time zone support is required");
