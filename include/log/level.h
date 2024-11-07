@@ -16,29 +16,23 @@ struct SingleThreadedPolicy;
 /**
  * @brief Logging level enumeration.
  *
- * Specifies log event severity (e.g., `Debug`, `Info`, `Warning`).
+ * Specifies the severity of log events.
  */
 enum class Level : std::uint8_t {
-    Fatal, ///< Very severe error events that will presumably lead the application to abort.
-    Error, ///< Error events that might still allow the application to continue running.
+    Fatal, ///< Very severe error events leading to application abort.
+    Error, ///< Error events that might still allow continuation.
     Warning, ///< Potentially harmful situations.
-    Info, ///< Messages that highlight the progress of the application at a coarse-grained level.
-    Debug, ///< Fine-grained informational events that are most useful to debug an application.
-    Trace ///< Used to "trace" entry and exiting of methods.
+    Info, ///< Informational messages about application progress.
+    Debug, ///< Detailed debug information.
+    Trace ///< Trace messages for method entry and exit.
 };
 
 /**
  * @brief Basic log level driver class.
  *
- * Used to handle thread-safe manipulation of the logging level field.
+ * Handles thread-safe manipulation of the logging level field.
  *
- * @tparam ThreadingPolicy Threading policy used for operating over the log level
- *                         (e.g., SingleThreadedPolicy or MultiThreadedPolicy).
- *
- * @note This class doesn't have a virtual destructor
- *       as the intended usage scenario is to
- *       use it as a private base class, explicitly
- *       moving access functions to the public part of a base class.
+ * @tparam ThreadingPolicy Threading policy (e.g., SingleThreadedPolicy).
  */
 template<typename ThreadingPolicy>
 class LevelDriver final { };

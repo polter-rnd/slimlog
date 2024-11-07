@@ -12,11 +12,11 @@
 namespace PlainCloud::Log {
 
 /**
- * @brief Dummy logger sink
+ * @brief Dummy sink for testing and benchmarking.
  *
- * Intented to be used for benchmark and testing.
+ * This sink performs no action and is intended for use in performance tests.
  *
- * @tparam Logger %Logger class type intended for the sink to be used with.
+ * @tparam Logger The logger class type intended for use with this sink.
  */
 template<typename Logger>
 class DummySink : public Sink<Logger> {
@@ -25,7 +25,7 @@ public:
     using typename Sink<Logger>::FormatBufferType;
 
     /**
-     * @brief Construct a new Dummy Sink object
+     * @brief Constructs a new DummySink object.
      *
      * @tparam Args Argument types for the pattern and log levels.
      * @param args Optional pattern and list of log levels.
@@ -36,6 +36,13 @@ public:
     {
     }
 
+    /**
+     * @brief Processes a log record.
+     *
+     * Formats the log record but does not output it.
+     *
+     * @param record The log record to process.
+     */
     auto message(RecordType& record) -> void override
     {
         FormatBufferType buffer;
@@ -43,8 +50,12 @@ public:
         buffer.push_back('\n');
     }
 
+    /**
+     * @brief Flush operation (no-op for DummySink).
+     */
     auto flush() -> void override
     {
     }
 };
+
 } // namespace PlainCloud::Log

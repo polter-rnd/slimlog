@@ -178,10 +178,10 @@ struct RecordLocation {
 };
 
 /**
- * @brief Log record.
+ * @brief Represents a log record containing message details.
  *
- * @tparam Char Character type.
- * @tparam String String type.
+ * @tparam Char Character type for the message.
+ * @tparam String String type for storing the message.
  */
 template<typename Char, typename String>
 struct Record {

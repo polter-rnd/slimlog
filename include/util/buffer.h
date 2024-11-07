@@ -29,7 +29,12 @@ template<typename T>
 using Buffer = fmt::detail::buffer<T>;
 #else
 /**
- * @brief Represents a contiguous memory buffer with an optional growing ability.
+ * @brief A contiguous memory buffer with optional growth capabilities.
+ *
+ * Provides a base class for buffers that manage a contiguous block of memory.
+ * Derived classes can implement growth strategies if dynamic resizing is needed.
+ *
+ * @tparam T The type of elements stored in the buffer.
  */
 template<typename T>
 class Buffer {
@@ -160,9 +165,11 @@ public:
     }
 
     /**
-     * @brief Adds one element to the buffer.
+     * @brief Adds an element to the end of the buffer.
      *
-     * @param value Element value.
+     * Resizes the buffer if necessary to accommodate the new element.
+     *
+     * @param value The value to be added.
      */
     constexpr void push_back(const T& value)
     {
@@ -171,11 +178,13 @@ public:
     }
 
     /**
-     * @brief Appends data to the end of the buffer.
+     * @brief Appends a range of elements to the buffer.
      *
-     * @tparam U Input data type.
-     * @param begin Begin iterator of the source data.
-     * @param end End iterator of the source data.
+     * Copies elements from the given range [begin, end) into the buffer.
+     *
+     * @tparam U The type of the input elements.
+     * @param begin Pointer to the beginning of the range.
+     * @param end Pointer to the end of the range.
      */
     template<typename U>
     void append(const U* begin, const U* end)
@@ -302,20 +311,21 @@ private:
 #endif
 
 /**
- * @brief Represents a dynamically growing memory buffer for trivially copyable/constructible types.
+ * @brief A memory buffer with a fixed initial capacity and dynamic growth.
  *
- * Stores the first `Size` elements in the object itself. Allocates a new buffer on the heap in case
- *of overflow.
+ * Stores elements in a stack-allocated array of size `Size`. If more space is needed,
+ * it allocates additional memory on the heap using the specified allocator.
  *
- * **Example**:
+ * Usage example:
  *```cpp
- * auto str = std::string_view{"test string view"};
+ * auto str = std::string_view{"test string"};
  * auto out = MemoryBuffer<char, 1024>();
  * out.append(str);
  *```
  *
- * Appends the string to the stack-allocated buffer. If the buffer does not have enough space, it
- *reallocates on the heap using the specified allocator.
+ * @tparam T The type of elements stored in the buffer.
+ * @tparam Size The initial capacity of the buffer.
+ * @tparam Allocator The allocator used for dynamic memory allocation.
  */
 template<typename T, std::size_t Size, typename Allocator = std::allocator<T>>
 class MemoryBuffer : public Buffer<T> {
@@ -408,11 +418,12 @@ public:
     }
 
     /**
-     * @brief Appends data to the end of the buffer.
+     * @brief Appends a contiguous range of elements to the buffer.
      *
-     * @tparam ContiguousRange Type of the source object.
+     * Copies the elements from the provided range into the buffer.
      *
-     * @param range Source object containing data to be added to the buffer.
+     * @tparam ContiguousRange A type representing a contiguous range (e.g., `std::string_view`).
+     * @param range The range of elements to append.
      */
     template<typename ContiguousRange>
     void append(const ContiguousRange& range)
@@ -432,10 +443,13 @@ protected:
         auto& self = *this;
 #else
     /**
-     * @brief Grows the buffer to the desired size.
+     * @brief Grows the buffer to accommodate additional elements.
      *
-     * @param buf Reference to the buffer.
-     * @param size Desired buffer size.
+     * Allocates new memory with increased capacity and moves existing elements
+     * to the new storage. Deallocates old memory if it was dynamically allocated.
+     *
+     * @param buf Reference to the buffer that needs to grow.
+     * @param size The desired minimum capacity.
      */
     static constexpr void grow(Buffer<T>& buf, std::size_t size)
     {

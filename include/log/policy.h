@@ -16,7 +16,7 @@ namespace PlainCloud::Log {
  * This policy handles data manipulation without using any locks or atomic operations.
  */
 struct SingleThreadedPolicy final {
-    /** @brief Dummy mutex. */
+    /** @brief Dummy mutex (expands to nothing). */
     struct Mutex {
         /** @brief Lock method that does nothing. */
         static void lock()
@@ -29,8 +29,10 @@ struct SingleThreadedPolicy final {
         }
     };
 
-    using ReadLock = std::lock_guard<Mutex>; ///< Dummy read lock.
-    using WriteLock = std::lock_guard<Mutex>; ///< Dummy write lock.
+    /** @brief Dummy read lock. */
+    using ReadLock = std::lock_guard<Mutex>;
+    /** @brief Dummy write lock. */
+    using WriteLock = std::lock_guard<Mutex>;
 };
 
 /**
@@ -39,9 +41,12 @@ struct SingleThreadedPolicy final {
  * This policy ensures thread-safe data manipulation involving locking mechanisms.
  */
 struct MultiThreadedPolicy final {
-    using Mutex = std::shared_mutex; ///< Type of mutex used for locking.
-    using ReadLock = std::shared_lock<Mutex>; ///< Type of lock used for read-only access.
-    using WriteLock = std::unique_lock<Mutex>; ///< Type of lock used for write access.
+    /** @brief Mutex type for synchronization. */
+    using Mutex = std::shared_mutex;
+    /** @brief Read lock type for shared access. */
+    using ReadLock = std::shared_lock<Mutex>;
+    /** @brief Write lock type for exclusive access. */
+    using WriteLock = std::unique_lock<Mutex>;
 };
 
 } // namespace PlainCloud::Log

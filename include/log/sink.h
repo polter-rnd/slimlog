@@ -32,21 +32,20 @@ enum class Level : std::uint8_t;
 /**
  * @brief Base abstract sink class.
  *
- * Sink represents a logger back-end.
- * It processes messages and forwards them to the final destination.
+ * A sink represents a logging backend that processes and outputs log messages.
  *
- * @tparam Logger Logger class type intended for the sink to be used with.
+ * @tparam Logger The logger class type intended for use with this sink.
  */
 template<typename Logger>
 class Sink : public std::enable_shared_from_this<Sink<Logger>> {
 public:
     /** @brief String type for log messages. */
     using StringType = typename Logger::StringType;
-    /** @brief String view type for log category. */
+    /** @brief String view type for log categories. */
     using StringViewType = typename Logger::StringViewType;
-    /** @brief Char type for log messages. */
+    /** @brief Character type for log messages. */
     using CharType = typename Logger::CharType;
-    /** @brief Buffer used for log message formatting. */
+    /** @brief Buffer type used for formatting log messages. */
     using FormatBufferType = FormatBuffer<CharType, Logger::BufferSize, std::allocator<CharType>>;
     /** @brief Log record type. */
     using RecordType = Record<CharType, StringType>;
@@ -54,12 +53,14 @@ public:
     /**
      * @brief Constructs a new Sink object.
      *
+     * Accepts optional pattern and log level arguments to customize message formatting.
+     *
      * Usage example:
      * ```cpp
-     * Log::Logger log("test", Log::Level::Info);
+     * Log::Logger log("main", Log::Level::Info);
      * log.add_sink<Log::OStreamSink>(
             std::cout,
-            "(%t) [%l] %F|%L: %m",
+            "({category}) [{level}] {file}|{line}: {message}",
             std::make_pair(Log::Level::Trace, "Trace"),
             std::make_pair(Log::Level::Debug, "Debug"),
             std::make_pair(Log::Level::Info, "Info"),
@@ -129,30 +130,25 @@ public:
     }
 
     /**
-     * @brief Emits a log record.
+     * @brief Processes a log record.
      *
-     * Message is stored in `std::variant<StringType, RecordStringView<Char>>`.
-     * The former type is used for direct passing custom string type, while latter is for
-     * types convertible to `std::basic_string_view<Char>`.
+     * Formats and outputs the log record.
      *
-     * @param record Log record (message, category, etc.).
+     * @param record The log record to process.
      */
     virtual auto message(RecordType& record) -> void = 0;
 
     /**
-     * @brief Flush message cache, if any.
+     * @brief Flushes any buffered log messages.
      */
     virtual auto flush() -> void = 0;
 
 protected:
     /**
-     * @brief Formats record according to the pattern.
+     * @brief Formats a log record according to the pattern.
      *
-     * Raw message is stored in \a result argument,
-     * and it should be overwritten with the formatted result.
-     *
-     * @param result Buffer containing raw message and to be overwritten with the formatted result.
-     * @param record Log record.
+     * @param result Buffer to store the formatted message.
+     * @param record The log record to format.
      */
     auto format(FormatBufferType& result, RecordType& record) -> void
     {

@@ -21,29 +21,20 @@
 
 namespace PlainCloud::Log {
 
-/** @brief Default buffer size for log messages. */
+/**
+ * @brief Default buffer size for log messages.
+ */
 static constexpr auto DefaultBufferSize = 256U;
 
 /**
- * @brief A logger front-end class.
+ * @brief Logger front-end class.
  *
- * Performs log message filtering and emitting through specified sinks.
- * Sink objects represent back-ends used for emitting the message.
+ * The Logger class performs log message filtering and emits messages through specified sinks.
  *
- * Usage example:
- * ```cpp
- * Log::Logger log("main");
- * log.add_sink<Log::OStreamSink>(std::cerr, "(%t) [%l] %F|%L: %m");
- * log.info("Hello {}!", "World");
- * ```
- *
- * @tparam String String type for logging messages (e.g., `std::string`).
- *                Can be deduced from logger name.
- * @tparam Char Underlying char type for the string.
- *              Deduced automatically for standard C++ string types and for plain C strings.
- * @tparam ThreadingPolicy Threading policy used for operating over sinks and log level
- *                         (e.g., SingleThreadedPolicy or MultiThreadedPolicy).
- * @tparam StaticBufferSize Size of internal pre-allocated buffer. Defaults to 4096 bytes.
+ * @tparam String Type used for logging messages (e.g., `std::string`).
+ * @tparam Char Underlying character type for the string.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam StaticBufferSize Size of the internal pre-allocated buffer.
  */
 template<
     typename String,
@@ -54,11 +45,11 @@ class Logger {
 public:
     /** @brief String type for log messages. */
     using StringType = String;
-    /** @brief Char type for log messages. */
+    /** @brief Character type for log messages. */
     using CharType = Char;
-    /** @brief String view type for log category. */
+    /** @brief String view type for log categories. */
     using StringViewType = std::basic_string_view<CharType>;
-    /** @brief Size of internal pre-allocated buffer. */
+    /** @brief Size of the internal buffer. */
     static constexpr auto BufferSize = StaticBufferSize;
 
     Logger(Logger const&) = delete;
@@ -70,7 +61,7 @@ public:
     /**
      * @brief Constructs a new Logger object with the specified logging level.
      *
-     * @param category Logger category name. Can be used in logger messages.
+     * @param category Logger category name.
      * @param level Logging level.
      */
     explicit Logger(StringViewType category, Level level = Level::Info)
@@ -120,9 +111,8 @@ public:
     /**
      * @brief Adds an existing sink to this logger.
      *
-     * @param sink Pointer to the sink.
-     * @return \b true if the sink was actually inserted.
-     * @return \b false if the sink is already present in this logger.
+     * @param sink Shared pointer to the sink.
+     * @return true if the sink was added, false if it already exists.
      */
     auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
     {
@@ -130,12 +120,12 @@ public:
     }
 
     /**
-     * @brief Creates and emplaces a new sink for this logger.
+     * @brief Creates and adds a new sink to this logger.
      *
-     * @tparam T Sink type (e.g., ConsoleSink).
-     * @tparam Args Sink constructor argument types (deduced from arguments).
-     * @param args Any arguments accepted by the specified sink constructor.
-     * @return Pointer to the created sink.
+     * @tparam T Sink type template (e.g., OStreamSink).
+     * @tparam Args Constructor argument types for the sink.
+     * @param args Arguments forwarded to the sink constructor.
+     * @return Shared pointer to the created sink.
      */
     template<template<typename> class T, typename... Args>
     auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Logger>>

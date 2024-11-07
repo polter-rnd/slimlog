@@ -12,11 +12,15 @@
 namespace PlainCloud::Util::Unicode {
 
 /**
- * @brief Calculates the length of a Unicode code point.
+ * @brief Calculates the length of a Unicode code point starting from the given pointer.
  *
- * @tparam Char Character type.
+ * Determines the number of code units that represent a Unicode code point
+ * at the specified position in a string. For UTF-8, this means calculating
+ * how many bytes are used for the current character.
+ *
+ * @tparam Char The character type, must be an integral type.
  * @param begin Pointer to the start of the Unicode sequence.
- * @return Length of the code point.
+ * @return The length of the code point in code units.
  */
 template<typename Char>
     requires std::is_integral_v<Char>
@@ -53,11 +57,15 @@ constexpr auto code_point_length(const Char* begin) -> int
 }
 
 /**
- * @brief Calculates number of Unicode code points in a source data.
+ * @brief Counts the number of Unicode code points in a sequence.
  *
- * @tparam Char Character type.
+ * Iterates over a Unicode sequence and counts how many code points it contains.
+ * This is useful for determining the length of a string in characters, rather than bytes.
+ *
+ * @tparam Char The character type.
  * @param begin Pointer to the start of the Unicode sequence.
- * @param len Number of bytes in a source data.
+ * @param len Number of code units in the sequence.
+ * @return The number of Unicode code points in the sequence.
  */
 template<typename Char>
 constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size_t
@@ -74,11 +82,14 @@ constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size
 }
 
 /**
- * @brief Converts a character code to ASCII.
+ * @brief Converts a character code to its ASCII equivalent.
  *
- * @tparam Char Character type.
- * @param chr Character code.
- * @return \b 0 if the code is greater than 0xFF, otherwise returns the same character code.
+ * If the character code is within the ASCII range (0 to 0xFF), it returns
+ * the corresponding character. Otherwise, it returns the null character `'\0'`.
+ *
+ * @tparam Char The character type, must be an integral type.
+ * @param chr The character code to convert.
+ * @return The ASCII character, or `'\0'` if the code is out of range.
  */
 template<typename Char>
     requires std::is_integral_v<Char>

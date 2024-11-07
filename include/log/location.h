@@ -10,20 +10,16 @@ namespace PlainCloud::Log {
 /**
  * @brief Represents a specific location in the source code.
  *
- * The Location class provides information about the source file name, function name, and line
- * number. It is compatible with `std::source_location` and can be used similarly.
+ * Provides information about the source file, function, and line number.
  */
 class Location {
 public:
     /**
-     * @brief Gets the current source location.
+     * @brief Captures the current source location.
      *
-     * This function captures the current source location, including the file name, function name,
-     * and line number.
-     *
-     * @param file The name of the source file. Defaults to the current file.
-     * @param function The name of the function. Defaults to the current function.
-     * @param line The line number in the source file. Defaults to the current line.
+     * @param file The name of the source file.
+     * @param function The name of the function.
+     * @param line The line number in the source file.
      * @return A Location object representing the current source location.
      */
     [[nodiscard]] static constexpr auto current(

@@ -11,7 +11,10 @@
 namespace PlainCloud::Util::Types {
 
 /**
- * @brief Defines a helper type for the `std::visit` function.
+ * @brief Helper type to create an overloaded function object.
+ *
+ * Combines multiple lambdas or function objects into a single callable entity.
+ * Useful with `std::visit` when working with `std::variant`.
  *
  * Example usage:
  * ```cpp

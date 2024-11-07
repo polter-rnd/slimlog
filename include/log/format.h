@@ -72,16 +72,10 @@ using FormatParseContext = std::basic_format_parse_context<Char>;
 /**
  * @brief Wrapper class consisting of a format string and location.
  *
- * This class allows passing location as a default constructor argument
- * in a template parameter pack (see Logger::emit).
+ * Allows passing a format string along with the source location information.
  *
- * @tparam Char Character type of the format string (`char` or `wchar_t`).
- * @tparam Args Format argument types. Should be specified explicitly.
- *
- * @note This class doesn't have a virtual destructor
- *       as the intended usage scenario is to
- *       use it as a private base class, explicitly
- *       moving access functions to the public part of a base class.
+ * @tparam Char Character type of the format string.
+ * @tparam Args Format argument types.
  */
 template<typename Char, typename... Args>
 class Format final {
@@ -89,7 +83,7 @@ public:
     /**
      * @brief Constructs a new Format object from a format string and location.
      *
-     * @tparam T Format string type. Deduced from the argument.
+     * @tparam T Format string type.
      * @param fmt Format string.
      * @param loc Source code location.
      */
@@ -127,9 +121,9 @@ public:
     }
 
     /**
-     * @brief Gets the location.
+     * @brief Gets the source location.
      *
-     * @return The location.
+     * @return The source location.
      */
     [[nodiscard]] constexpr auto loc() const -> const auto&
     {

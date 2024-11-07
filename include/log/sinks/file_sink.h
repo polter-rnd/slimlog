@@ -17,9 +17,11 @@
 namespace PlainCloud::Log {
 
 /**
- * @brief File-based sink
+ * @brief Output file-based sink.
  *
- * @tparam Logger %Logger class type intended for the sink to be used with.
+ * This sink writes formatted log messages directly to a file.
+ *
+ * @tparam Logger The logger class type intended for use with this sink.
  */
 template<typename Logger>
 class FileSink : public Sink<Logger> {
@@ -29,10 +31,10 @@ public:
     using typename Sink<Logger>::RecordType;
 
     /**
-     * @brief Construct a new FileSink object
+     * @brief Constructs a new FileSink object.
      *
      * @tparam Args Argument types for the pattern and log levels.
-     * @param filename Output file name.
+     * @param ostream Reference to the output stream to be used by the sink.
      * @param args Optional pattern and list of log levels.
      */
     template<typename... Args>
@@ -50,17 +52,24 @@ public:
         std::fclose(fp);
     }
 
+    /**
+     * @brief Processes a log record.
+     *
+     * Formats the log record and writes it to the output stream.
+     *
+     * @param record The log record to process.
+     */
     auto message(RecordType& record) -> void override
     {
-        // const auto orig_size = buffer.size();
         FormatBufferType buffer;
         Sink<Logger>::format(buffer, record);
         buffer.push_back('\n');
-        // std::fwrite(std::next(buffer.begin(), orig_size), buffer.size() - orig_size, 1, fp);
         std::fwrite(buffer.data(), buffer.size(), 1, fp);
-        // buffer.resize(orig_size);
     }
 
+    /**
+     * @brief Flushes the output stream.
+     */
     auto flush() -> void override
     {
         std::fflush(fp);

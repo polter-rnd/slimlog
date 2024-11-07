@@ -11,10 +11,10 @@
 namespace PlainCloud::Util::Locale {
 
 /**
- * @brief RAII wrapper for `std::locale::global`.
+ * @brief RAII class to temporarily set the global locale.
  *
- * This class sets the global locale upon creation
- * and restores the previous locale upon destruction.
+ * On construction, sets the global locale to the specified locale.
+ * On destruction, restores the previous global locale.
  */
 class ScopedGlobalLocale {
 public:
@@ -25,12 +25,13 @@ public:
     auto operator=(ScopedGlobalLocale&&) -> ScopedGlobalLocale& = delete;
 
     /**
-     * @brief Constructs a new ScopedGlobalLocale object.
+     * @brief Constructs a new `ScopedGlobalLocale` object.
      *
-     * Sets the global locale to the specified locale and stores the previous locale.
+     * Sets the global locale to a newly constructed locale using the provided arguments.
+     * Stores the previous global locale to restore it later.
      *
-     * @tparam Args Types for `std::locale` constructor arguments.
-     * @param args Arguments for `std::locale` constructor.
+     * @tparam Args Types of arguments used to construct a `std::locale`.
+     * @param args Arguments forwarded to the `std::locale` constructor.
      */
     template<typename... Args>
     explicit ScopedGlobalLocale(Args&&... args)

@@ -38,13 +38,13 @@
 namespace PlainCloud::Util::OS {
 
 /**
- * @brief Retrieves current thread ID in a cross-platform way.
+ * @brief Retrieves the current thread ID across different platforms.
  *
- * Uses `GetCurrentThreadId()()` on Windows, `gettid` syscall on Linux,
- * `pthread` on other UNIX-based systems.
- * Falls back to `std::this_thread::get_id()` in other cases.
+ * Utilizes platform-specific APIs to obtain a unique identifier for the current thread.
+ * If no platform-specific method is available, it falls back to hashing
+ * `std::this_thread::get_id()`.
  *
- * @return Current thread ID.
+ * @return The current thread ID as a `std::size_t`.
  */
 inline auto thread_id() noexcept -> std::size_t
 {
@@ -107,12 +107,13 @@ inline auto thread_id() noexcept -> std::size_t
 }
 
 /**
- * @brief Retrieves local time in a cross-platform way.
+ * @brief Gets the local time and nanoseconds component.
  *
- * Uses `localtime_s` on Windows and `localtime_r` on other systems.
+ * Fetches the current local time, along with the additional nanoseconds,
+ * providing higher resolution time data.
  *
- * @tparam TimePoint type of resulting time point. Can be `std::chrono::time_point<>` or `std::tm`.
- * @return Pair of local time in seconds and additional nanoseconds.
+ * @tparam TimePoint The type used to represent the time point (e.g., `std::tm`).
+ * @return A pair consisting of the local time and the nanoseconds part.
  */
 template<typename TimePoint>
 inline auto local_time() noexcept -> std::pair<TimePoint, std::size_t>

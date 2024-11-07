@@ -82,18 +82,18 @@ concept HasConvertString = requires(StringType value) {
 /**
  * @brief Represents a log message pattern specifying the message format.
  *
- * This class defines the pattern used for formatting log messages.
+ * This class defines how log messages are formatted using placeholders.
  *
  * @tparam Char The character type for the pattern string.
  */
 template<typename Char>
 class Pattern {
 public:
-    /** @brief String type for pattern (`std::basic_string_view<Char>`). */
-    using StringViewType = typename std::basic_string_view<Char>;
+    /** @brief String view type for pattern strings. */
+    using StringViewType = std::basic_string_view<Char>;
 
     /**
-     * @brief Struct for managing log level names.
+     * @brief Structure for managing log level names.
      */
     struct Levels {
         /**
@@ -169,9 +169,9 @@ public:
     };
 
     /**
-     * @brief %Placeholder for message pattern.
+     * @brief Placeholder for message pattern components.
      *
-     * Specifies available fields for message pattern.
+     * Specifies available fields and their formatting options.
      */
     struct Placeholder {
         /** @brief Log pattern field types. */
@@ -213,7 +213,7 @@ public:
     };
 
     /**
-     * @brief %Placeholder field names.
+     * @brief Placeholder field names.
      */
     struct Placeholders {
     private:
@@ -248,13 +248,12 @@ public:
     /**
      * @brief Constructs a new Pattern object.
      *
-     * This constructor initializes a Pattern object with a specified pattern string
-     * and optional log level pairs.
+     * Initializes with a pattern string and optional log level pairs.
      *
      * Usage example:
      * ```cpp
      * Log::Pattern<char> pattern(
-     *       "(%t) [%l] %F|%L: %m",
+     *       "({category}) [{level}] {file}|{line}: {message}",
      *       std::make_pair(Log::Level::Trace, "Trace"),
      *       std::make_pair(Log::Level::Debug, "Debug"),
      *       std::make_pair(Log::Level::Info, "Info"),
@@ -265,7 +264,7 @@ public:
      *
      * @tparam Args Argument types for log level pairs.
      * @param pattern Pattern string.
-     * @param args Log level pairs.
+     * @param args Log level and name pairs.
      */
     template<typename... Args>
     explicit Pattern(StringViewType pattern = {}, Args&&... args)
