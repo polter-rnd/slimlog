@@ -5,11 +5,10 @@
 
 #pragma once
 
-// Need this for static_asserts
-#include "util/types.h" // IWYU pragma: keep
+#include "util/types.h"
 
 #ifdef ENABLE_FMTLIB
-#include <fmt/chrono.h> // IWYU pragma: keep
+#include <fmt/chrono.h>
 #endif
 
 #include <chrono>
@@ -43,6 +42,32 @@
 #endif
 
 namespace PlainCloud::Util::OS {
+
+/** @cond */
+namespace Detail {
+
+namespace TimeZoneFallback {
+// Dummy declaration expanding to no-op, just to make the compiler happy.
+struct time_zone {
+    template<class Duration>
+    auto to_local(const Duration&) const -> Duration;
+};
+
+// Dummy class to detect missing time zone support in std::chrono.
+template<typename T = time_zone>
+auto current_zone() -> const T*
+{
+    static_assert(Util::Types::AlwaysFalse<T>{}, "C++20 time zone support is required");
+}
+} // namespace TimeZoneFallback
+
+namespace TimeZone {
+using namespace TimeZoneFallback;
+using namespace std::chrono;
+} // namespace TimeZone
+
+} // namespace Detail
+/** @endcond */
 
 /**
  * @brief Retrieves the current thread ID across different platforms.
@@ -145,16 +170,10 @@ inline auto local_time() -> std::pair<TimePoint, std::size_t>
                 Util::Types::AlwaysFalse<TimePoint>{}, "fmtlib is required for fmt::localtime()");
 #endif
         } else {
-#if defined(__cpp_lib_chrono) and __cpp_lib_chrono >= 201907L
             cached_local = TimePoint(std::chrono::duration_cast<typename TimePoint::duration>(
-                std::chrono::current_zone()
+                Detail::TimeZone::current_zone()
                     ->to_local(std::chrono::sys_seconds(std::chrono::seconds(cached_time)))
                     .time_since_epoch()));
-#else
-            static_assert(
-                Util::Types::AlwaysFalse<TimePoint>{},
-                "C++20 calendar and time zone support is required");
-#endif
         }
     }
 
