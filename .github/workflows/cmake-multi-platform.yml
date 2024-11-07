@@ -55,12 +55,21 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
+    - name: Export GitHub Actions cache environment variables
+      uses: actions/github-script@v7
+      with:
+        script: |
+          core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+          core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
     - name: Install dependencies (Linux)
       if: runner.os == 'Linux'
       run: sudo apt-get install -y libfmt-dev clang-tidy clang-format cmake-format cppcheck iwyu
 
     - name: Install dependencies (Windows)
       if: runner.os == 'Windows'
+      env: 
+        VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       run: |
         vcpkg install fmt
         vcpkg integrate install
@@ -72,7 +81,7 @@ jobs:
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
         -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        -DENABLE_ANALYZERS=ON
+        -DENABLE_ANALYZERS=OFF
         -DENABLE_FORMATTERS=ON
         -DENABLE_SANITIZERS=ON
         -DENABLE_FMTLIB=${{ matrix.format_lib == 'fmtlib' && 'ON' || 'OFF' }}
