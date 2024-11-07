@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include "util/types.h"
+
 #include <chrono>
 #include <ctime> // IWYU pragma: no_forward_declare tm
 #include <utility>
@@ -131,16 +133,23 @@ inline auto local_time() noexcept -> std::pair<TimePoint, std::size_t>
     if (curtime.tv_sec != cached_time) {
         cached_time = curtime.tv_sec;
         if constexpr (std::is_same_v<TimePoint, std::tm>) {
-#ifdef _WIN32
-            ::localtime_s(&cached_local, &curtime.tv_sec);
+#ifdef ENABLE_FMTLIB
+            cached_local = fmt::localtime(cached_time);
 #else
-            ::localtime_r(&curtime.tv_sec, &cached_local);
+            static_assert(
+                Util::Types::AlwaysFalse<TimePoint>{}, "fmtlib is required for fmt::localtime()");
 #endif
         } else {
+#if defined(__cpp_lib_chrono) and __cpp_lib_chrono >= 201907L
             cached_local = TimePoint(std::chrono::duration_cast<typename TimePoint::duration>(
                 std::chrono::current_zone()
-                    ->to_local(std::chrono::sys_seconds(std::chrono::seconds(curtime.tv_sec)))
+                    ->to_local(std::chrono::sys_seconds(std::chrono::seconds(cached_time)))
                     .time_since_epoch()));
+#else
+            static_assert(
+                Util::Types::AlwaysFalse<TimePoint>{},
+                "C++20 calendar and time zone support is required");
+#endif
         }
     }
 
