@@ -361,7 +361,7 @@ public:
     /**
      * @brief Destroys the MemoryBuffer object.
      */
-    constexpr ~MemoryBuffer()
+    virtual constexpr ~MemoryBuffer()
     {
         deallocate();
     }
@@ -442,7 +442,7 @@ protected:
      *
      * @param size Desired buffer size.
      */
-    constexpr void grow(std::size_t size) override final
+    constexpr void grow(std::size_t size) final
     {
         auto& self = *this;
 #else

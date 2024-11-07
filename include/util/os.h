@@ -123,7 +123,7 @@ inline auto thread_id() noexcept -> std::size_t
  * @return A pair consisting of the local time and the nanoseconds part.
  */
 template<typename TimePoint>
-inline auto local_time() noexcept -> std::pair<TimePoint, std::size_t>
+inline auto local_time() -> std::pair<TimePoint, std::size_t>
 {
     static thread_local TimePoint cached_local;
     static thread_local std::time_t cached_time;
@@ -145,7 +145,7 @@ inline auto local_time() noexcept -> std::pair<TimePoint, std::size_t>
                 Util::Types::AlwaysFalse<TimePoint>{}, "fmtlib is required for fmt::localtime()");
 #endif
         } else {
-#if defined(__cpp_lib_chrono)
+#if defined(__cpp_lib_chrono) and __cpp_lib_chrono >= 201907L
             cached_local = TimePoint(std::chrono::duration_cast<typename TimePoint::duration>(
                 std::chrono::current_zone()
                     ->to_local(std::chrono::sys_seconds(std::chrono::seconds(cached_time)))
