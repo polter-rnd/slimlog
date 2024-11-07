@@ -55,9 +55,15 @@ jobs:
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
 
-    - name: Install dependencies
+    - name: Install dependencies (Linux)
       if: runner.os == 'Linux'
       run: sudo apt-get install -y libfmt-dev clang-tidy clang-format cmake-format cppcheck iwyu
+
+    - name: Install dependencies (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        vcpkg install fmt
+        vcpkg integrate install
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
