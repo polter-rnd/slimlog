@@ -502,10 +502,12 @@ protected:
         } else if constexpr (std::is_same_v<Char, char8_t>) {
             towc_func = Detail::Char8::mbrtoc8;
 #endif
+#ifdef __cpp_unicode_characters
         } else if constexpr (std::is_same_v<Char, char16_t>) {
             towc_func = std::mbrtoc16;
         } else if constexpr (std::is_same_v<Char, char32_t>) {
             towc_func = std::mbrtoc32;
+#endif
         }
 
         for (int ret{};
