@@ -12,7 +12,11 @@
 #include <type_traits>
 
 #ifdef ENABLE_FMTLIB
+#if __has_include(<fmt/base.h>)
 #include <fmt/base.h>
+#else
+#include <fmt/core.h>
+#endif
 #else
 #include "util/types.h"
 

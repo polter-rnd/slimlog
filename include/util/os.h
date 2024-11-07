@@ -5,7 +5,12 @@
 
 #pragma once
 
-#include "util/types.h"
+// Need this for static_asserts
+#include "util/types.h" // IWYU pragma: keep
+
+#ifdef ENABLE_FMTLIB
+#include <fmt/chrono.h> // IWYU pragma: keep
+#endif
 
 #include <chrono>
 #include <ctime> // IWYU pragma: no_forward_declare tm
