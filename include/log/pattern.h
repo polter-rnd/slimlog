@@ -498,7 +498,7 @@ protected:
 
         if constexpr (std::is_same_v<Char, wchar_t>) {
             towc_func = std::mbrtowc;
-#ifdef __cpp_lib_char8_t
+#ifdef __cpp_char8_t
         } else if constexpr (std::is_same_v<Char, char8_t>) {
             towc_func = Detail::Char8::mbrtoc8;
 #endif

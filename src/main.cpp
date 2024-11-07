@@ -167,7 +167,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         std::cout << "*** This is simple test for the logger ***\n";
         std::cout << "==========================================\n";
 
-#if ENABLE_FMTLIB && __GNUC__
+#if ENABLE_FMTLIB && defined(__GNUC__) && !defined(__llvm__) && !defined(__INTEL_COMPILER)
         const std::basic_stringstream<char8_t> mystream;
         Log::Logger log19{u8"uchar8 log"};
         log19.add_sink<Log::OStreamSink>(
