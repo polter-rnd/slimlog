@@ -67,7 +67,7 @@ jobs:
       run: sudo apt-get install -y libfmt-dev clang-tidy clang-format cmake-format cppcheck iwyu
 
     - name: Install dependencies (Windows)
-      if: runner.os == 'Windows'
+      if: runner.os == 'Windows' && matrix.format_lib == 'fmtlib'
       env: 
         VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       run: |
