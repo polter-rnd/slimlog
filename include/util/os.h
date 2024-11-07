@@ -140,7 +140,7 @@ inline auto local_time() noexcept -> std::pair<TimePoint, std::size_t>
                 Util::Types::AlwaysFalse<TimePoint>{}, "fmtlib is required for fmt::localtime()");
 #endif
         } else {
-#if defined(__cpp_lib_chrono) and __cpp_lib_chrono >= 201907L
+#if defined(__cpp_lib_chrono)
             cached_local = TimePoint(std::chrono::duration_cast<typename TimePoint::duration>(
                 std::chrono::current_zone()
                     ->to_local(std::chrono::sys_seconds(std::chrono::seconds(cached_time)))
