@@ -135,7 +135,22 @@ private:
     Location m_loc;
 };
 
-template<typename T, typename Char>
+/**
+ * @brief Require that formatting supports particular character and argument types.
+ *
+ * @tparam Char Character type of the format string.
+ * @tparam Args Format argument types.
+ */
+template<typename Char, typename... Args>
+concept Formattable = requires(const Char* fmt, Args... args) {
+#ifdef ENABLE_FMTLIB
+    fmt::format(fmt, args...);
+#else
+    std::format(fmt, args...);
+#endif
+};
+
+template<typename T, Formattable<T> Char>
 class CachedFormatter;
 
 /**
@@ -147,7 +162,7 @@ class CachedFormatter;
  * @tparam T Value type.
  * @tparam Char Output character type.
  */
-template<typename T, typename Char>
+template<typename T, Formattable<T> Char>
 class FormatValue final {
 public:
     /**
@@ -195,7 +210,7 @@ private:
  * @tparam T Value type.
  * @tparam Char Output character type.
  */
-template<typename T, typename Char>
+template<typename T, Formattable<T> Char>
 class CachedFormatter final : Formatter<T, Char> {
 public:
     using Formatter<T, Char>::format;
@@ -257,7 +272,7 @@ private:
  * @tparam BufferSize Size of the buffer.
  * @tparam Allocator Allocator for the buffer data.
  */
-template<typename Char, std::size_t BufferSize, typename Allocator = std::allocator<Char>>
+template<Formattable Char, std::size_t BufferSize, typename Allocator = std::allocator<Char>>
 class FormatBuffer final : public Util::MemoryBuffer<Char, BufferSize, Allocator> {
 public:
     using Util::MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;
@@ -294,11 +309,12 @@ public:
     /**
      * @brief Formats a log message with compile-time argument checks.
      *
-     * @tparam Args Format argument types. Deduced from arguments.
+     * @tparam Args Format argument types.
      * @param fmt Format string.
      * @param args Format arguments.
      */
     template<typename... Args>
+        requires Formattable<Char, Args...>
     auto format(FormatString<Char, std::type_identity_t<Args>...> fmt, Args&&... args) -> void
     {
 #ifdef ENABLE_FMTLIB
@@ -324,7 +340,7 @@ public:
 
 #ifndef ENABLE_FMTLIB
 /** @cond */
-template<typename T, typename Char>
+template<typename T, PlainCloud::Log::Formattable<T> Char>
 struct std::formatter<PlainCloud::Log::FormatValue<T, Char>, Char> { // NOLINT (cert-dcl58-cpp)
     constexpr auto parse(PlainCloud::Log::FormatParseContext<Char>& context)
     {
