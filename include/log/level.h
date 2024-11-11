@@ -8,7 +8,7 @@
 #include <atomic>
 #include <cstdint>
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 struct MultiThreadedPolicy;
 struct SingleThreadedPolicy;
@@ -125,4 +125,4 @@ private:
     std::atomic<Level> m_level;
 };
 
-} // namespace PlainCloud::Log
+} // namespace SlimLog

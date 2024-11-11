@@ -8,7 +8,7 @@
 #include <locale>
 #include <utility>
 
-namespace PlainCloud::Util::Locale {
+namespace SlimLog::Util::Locale {
 
 /**
  * @brief RAII class to temporarily set the global locale.
@@ -49,4 +49,4 @@ private:
     std::locale m_old_locale;
 };
 
-} // namespace PlainCloud::Util::Locale
+} // namespace SlimLog::Util::Locale

@@ -25,7 +25,7 @@
 // Suppress include for std::equal_to() which is not used directly
 // IWYU pragma: no_include <functional>
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 enum class Level : std::uint8_t;
 
@@ -470,6 +470,6 @@ private:
     std::unordered_map<Sink<Logger>*, const Logger*> m_effective_sinks;
     std::unordered_map<std::shared_ptr<Sink<Logger>>, bool> m_sinks;
     mutable ThreadingPolicy::Mutex m_mutex;
-}; // namespace PlainCloud::Log
+}; // namespace SlimLog
 
-} // namespace PlainCloud::Log
+} // namespace SlimLog

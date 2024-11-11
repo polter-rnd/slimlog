@@ -9,7 +9,7 @@ if(DEFINED ENV{VCPKG_INSTALLATION_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 endif()
 
 project(
-    "plaincloud"
+    "slimlog"
     VERSION 0.1.0
     LANGUAGES CXX
 )
@@ -119,7 +119,7 @@ if(BUILD_DOCS)
 
     # Create docs target
     set(DOXYGEN_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/docs)
-    set(DOXYGEN_PROJECT_NAME "PlainCloud")
+    set(DOXYGEN_PROJECT_NAME "SlimLog")
     doxygen_add_docs(docs ${PROJECT_SOURCE_DIR} COMMENT "Generating API documentation with Doxygen")
 endif()
 

@@ -23,7 +23,7 @@
 #include <iterator>
 #endif
 
-namespace PlainCloud::Util {
+namespace SlimLog::Util {
 
 #ifdef ENABLE_FMTLIB
 /**
@@ -520,4 +520,4 @@ private:
     Allocator m_allocator;
 };
 
-} // namespace PlainCloud::Util
+} // namespace SlimLog::Util

@@ -28,7 +28,7 @@
 #include <variant>
 #include <vector>
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 /** @cond */
 namespace Detail {
@@ -863,4 +863,4 @@ private:
     Levels m_levels;
 };
 
-} // namespace PlainCloud::Log
+} // namespace SlimLog

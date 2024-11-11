@@ -31,7 +31,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 #ifdef ENABLE_FMTLIB
 /**
@@ -336,19 +336,19 @@ public:
     }
 };
 
-} // namespace PlainCloud::Log
+} // namespace SlimLog
 
 #ifndef ENABLE_FMTLIB
 /** @cond */
-template<typename T, PlainCloud::Log::Formattable<T> Char>
-struct std::formatter<PlainCloud::Log::FormatValue<T, Char>, Char> { // NOLINT (cert-dcl58-cpp)
-    constexpr auto parse(PlainCloud::Log::FormatParseContext<Char>& context)
+template<typename T, SlimLog::Formattable<T> Char>
+struct std::formatter<SlimLog::FormatValue<T, Char>, Char> { // NOLINT (cert-dcl58-cpp)
+    constexpr auto parse(SlimLog::FormatParseContext<Char>& context)
     {
         return context.end();
     }
 
     template<typename Context>
-    auto format(const PlainCloud::Log::FormatValue<T, Char>& wrapper, Context& context) const
+    auto format(const SlimLog::FormatValue<T, Char>& wrapper, Context& context) const
     {
         return wrapper.format(context);
     }

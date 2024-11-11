@@ -14,7 +14,7 @@
 #include <iterator>
 #include <utility>
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 /**
  * @brief Output file-based sink.
@@ -78,4 +78,4 @@ public:
 private:
     FILE* fp = nullptr;
 };
-} // namespace PlainCloud::Log
+} // namespace SlimLog

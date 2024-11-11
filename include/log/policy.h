@@ -8,7 +8,7 @@
 #include <mutex>
 #include <shared_mutex>
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 /**
  * @brief Policy for single-threaded data manipulation.
@@ -49,4 +49,4 @@ struct MultiThreadedPolicy final {
     using WriteLock = std::unique_lock<Mutex>;
 };
 
-} // namespace PlainCloud::Log
+} // namespace SlimLog

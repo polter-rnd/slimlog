@@ -19,7 +19,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 /**
  * @brief Default buffer size for log messages.
@@ -299,4 +299,4 @@ Logger(
     const Char (&)[N], // NOLINT(*-avoid-c-arrays)
     Level = Level::Info) -> Logger<std::basic_string_view<Char>>;
 
-} // namespace PlainCloud::Log
+} // namespace SlimLog

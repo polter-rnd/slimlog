@@ -10,7 +10,7 @@
 #include <ostream>
 #include <utility>
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 /**
  * @brief Output stream-based sink.
@@ -81,4 +81,4 @@ private:
     std::basic_ostream<CharType> m_ostream;
 };
 
-} // namespace PlainCloud::Log
+} // namespace SlimLog

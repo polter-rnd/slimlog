@@ -20,7 +20,7 @@
 #include <cstddef>
 #endif
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 enum class Level : std::uint8_t;
 
@@ -194,4 +194,4 @@ struct Record {
         = RecordStringView<Char>{}; ///< Log message.
 };
 
-} // namespace PlainCloud::Log
+} // namespace SlimLog

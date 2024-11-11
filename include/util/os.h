@@ -41,7 +41,7 @@
 #endif
 #endif
 
-namespace PlainCloud::Util::OS {
+namespace SlimLog::Util::OS {
 
 /** @cond */
 namespace Detail {
@@ -180,4 +180,4 @@ inline auto local_time() -> std::pair<TimePoint, std::size_t>
     return std::make_pair(cached_local, static_cast<std::size_t>(curtime.tv_nsec));
 }
 
-} // namespace PlainCloud::Util::OS
+} // namespace SlimLog::Util::OS

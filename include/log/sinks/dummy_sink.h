@@ -9,7 +9,7 @@
 
 #include <utility>
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 /**
  * @brief Dummy sink for testing and benchmarking.
@@ -58,4 +58,4 @@ public:
     }
 };
 
-} // namespace PlainCloud::Log
+} // namespace SlimLog

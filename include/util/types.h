@@ -8,7 +8,7 @@
 #include <cassert>
 #include <type_traits>
 
-namespace PlainCloud::Util::Types {
+namespace SlimLog::Util::Types {
 
 /**
  * @brief Helper type to create an overloaded function object.
@@ -98,4 +98,4 @@ constexpr auto to_unsigned(Int value) -> std::make_unsigned_t<Int>
     return static_cast<std::make_unsigned_t<Int>>(value);
 }
 
-} // namespace PlainCloud::Util::Types
+} // namespace SlimLog::Util::Types

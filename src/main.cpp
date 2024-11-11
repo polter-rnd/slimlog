@@ -116,7 +116,7 @@ double percentile(std::vector<double>& vectorIn, int percent)
 
 void do_test()
 {
-    namespace Log = PlainCloud::Log;
+    namespace Log = SlimLog;
 
     // auto& devnull = std::wcout;
     null_out_stream<wchar_t> devnull;
@@ -183,7 +183,7 @@ void do_test()
 
 void do_test2()
 {
-    namespace Log = PlainCloud::Log;
+    namespace Log = SlimLog;
 
     // auto& devnull = std::cout;
     null_out_stream<char> devnull;
@@ -220,7 +220,7 @@ void do_test2()
     std::cout << "median: " << percentile(results, 50) << "\n";
 }
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 #if ENABLE_MYSTRING
 template<typename Char, typename String>
 struct ConvertString;
@@ -233,12 +233,12 @@ struct ConvertString<Char, mystr> {
     }
 };
 #endif
-} // namespace PlainCloud::Log
+} // namespace SlimLog
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int
 {
-    namespace Util = PlainCloud::Util;
-    namespace Log = PlainCloud::Log;
+    namespace Util = SlimLog::Util;
+    namespace Log = SlimLog;
 
 #if 1
     try {

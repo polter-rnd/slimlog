@@ -9,7 +9,7 @@
 #include <iterator>
 #include <limits>
 
-namespace PlainCloud::Util::Unicode {
+namespace SlimLog::Util::Unicode {
 
 /**
  * @brief Calculates the length of a Unicode code point starting from the given pointer.
@@ -98,4 +98,4 @@ constexpr auto to_ascii(Char chr) -> char
     return chr <= std::numeric_limits<unsigned char>::max() ? static_cast<char>(chr) : '\0';
 }
 
-} // namespace PlainCloud::Util::Unicode
+} // namespace SlimLog::Util::Unicode

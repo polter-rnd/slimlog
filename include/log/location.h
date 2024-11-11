@@ -5,7 +5,7 @@
 
 #pragma once
 
-namespace PlainCloud::Log {
+namespace SlimLog {
 
 /** @cond */
 namespace Detail {
@@ -104,4 +104,4 @@ private:
     int m_line{};
 };
 
-} // namespace PlainCloud::Log
+} // namespace SlimLog
