@@ -50,7 +50,7 @@ namespace TimeZoneFallback {
 // Dummy declaration expanding to no-op, just to make the compiler happy.
 struct TimeZone {
     template<class Duration>
-    auto to_local(const Duration&) const -> Duration;
+    [[nodiscard]] auto to_local(const Duration&) const -> Duration;
 };
 
 // Dummy class to detect missing time zone support in std::chrono.
@@ -78,7 +78,7 @@ using namespace std::chrono;
  *
  * @return The current thread ID as a `std::size_t`.
  */
-inline auto thread_id() noexcept -> std::size_t
+[[nodiscard]] inline auto thread_id() noexcept -> std::size_t
 {
     static thread_local std::size_t cached_tid;
 
@@ -148,7 +148,7 @@ inline auto thread_id() noexcept -> std::size_t
  * @return A pair consisting of the local time and the nanoseconds part.
  */
 template<typename TimePoint>
-inline auto local_time() -> std::pair<TimePoint, std::size_t>
+[[nodiscard]] inline auto local_time() -> std::pair<TimePoint, std::size_t>
 {
     static thread_local TimePoint cached_local;
     static thread_local std::time_t cached_time;

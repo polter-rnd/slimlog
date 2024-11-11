@@ -15,8 +15,10 @@
 #include <climits>
 #include <concepts>
 #include <cstdint>
-#include <cuchar> // IWYU pragma: keep
-#include <cwchar> // IWYU pragma: keep
+#if defined(__cpp_unicode_characters) or defined(__cpp_char8_t)
+#include <cuchar>
+#endif
+#include <cwchar>
 #include <functional>
 #include <initializer_list>
 #include <iterator>
