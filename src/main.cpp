@@ -2,11 +2,11 @@
 
 #define ENABLE_MYSTRING 0
 
-#include "log/format.h"
-#include "log/level.h"
-#include "log/logger.h"
-#include "log/sinks/dummy_sink.h"
-#include "log/sinks/ostream_sink.h"
+#include "format.h"
+#include "level.h"
+#include "logger.h"
+#include "sinks/dummy_sink.h"
+#include "sinks/ostream_sink.h"
 #if ENABLE_MYSTRING
 #include "mystring.h"
 #endif

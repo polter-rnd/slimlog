@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "log/sink.h" // IWYU pragma: export
+#include "sink.h" // IWYU pragma: export
 
 #include <utility>
 

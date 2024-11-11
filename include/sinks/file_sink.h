@@ -1,57 +1,55 @@
 /**
  * @file ostream_sink.h
- * @brief Contains definition of OStreamSink class.
+ * @brief Contains definition of FileSink class.
  */
 
 #pragma once
 
-#include "log/sink.h" // IWYU pragma: export
+#include "sink.h" // IWYU pragma: export
 
-#include <ostream>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <iterator>
 #include <utility>
 
 namespace SlimLog {
 
 /**
- * @brief Output stream-based sink.
+ * @brief Output file-based sink.
  *
- * This sink writes formatted log messages to an output stream.
+ * This sink writes formatted log messages directly to a file.
  *
  * @tparam Logger The logger class type intended for use with this sink.
  */
 template<typename Logger>
-class OStreamSink : public Sink<Logger> {
+class FileSink : public Sink<Logger> {
 public:
     using typename Sink<Logger>::CharType;
     using typename Sink<Logger>::FormatBufferType;
     using typename Sink<Logger>::RecordType;
 
     /**
-     * @brief Constructs a new OStreamSink object.
+     * @brief Constructs a new FileSink object.
      *
      * @tparam Args Argument types for the pattern and log levels.
      * @param ostream Reference to the output stream to be used by the sink.
      * @param args Optional pattern and list of log levels.
      */
     template<typename... Args>
-    explicit OStreamSink(const std::basic_ostream<CharType>& ostream, Args&&... args)
+    explicit FileSink(std::string_view filename, Args&&... args)
         : Sink<Logger>(std::forward<Args>(args)...)
-        , m_ostream(ostream.rdbuf())
     {
+        fp = std::fopen(filename.data(), "w+");
+        if (!fp) {
+            throw std::system_error({errno, std::system_category()}, std::strerror(errno));
+        }
     }
 
-    /**
-     * @brief Constructs a new OStreamSink object.
-     *
-     * @tparam Args Argument types for the pattern and log levels.
-     * @param streambuf Pointer to the output stream buffer to be used by the sink.
-     * @param args Optional pattern and list of log levels.
-     */
-    template<typename... Args>
-    explicit OStreamSink(std::basic_streambuf<CharType>* streambuf, Args&&... args)
-        : Sink<Logger>(std::forward<Args>(args)...)
-        , m_ostream(streambuf)
+    virtual ~FileSink()
     {
+        std::fclose(fp);
     }
 
     /**
@@ -66,7 +64,7 @@ public:
         FormatBufferType buffer;
         Sink<Logger>::format(buffer, record);
         buffer.push_back('\n');
-        m_ostream.write(buffer.begin(), buffer.size());
+        std::fwrite(buffer.data(), buffer.size(), 1, fp);
     }
 
     /**
@@ -74,11 +72,10 @@ public:
      */
     auto flush() -> void override
     {
-        m_ostream.flush();
+        std::fflush(fp);
     }
 
 private:
-    std::basic_ostream<CharType> m_ostream;
+    FILE* fp = nullptr;
 };
-
 } // namespace SlimLog
