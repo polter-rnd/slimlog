@@ -117,12 +117,23 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # fmtlib is recommended for better formatting performance
+set(FMT_OPTION ENABLE_FMTLIB)
+set(FMT_PURPOSE "Implementation of C++20 std::format")
+if(ENABLE_FMTLIB AND ENABLE_FMTLIB_HO)
+    message(FATAL_ERROR "ENABLE_FMTLIB and ENABLE_FMTLIB_HO are mutually exclusive")
+elseif(ENABLE_FMTLIB)
+    option(ENABLE_FMTLIB_HO "${FMT_PURPOSE} (header-only)" OFF)
+else()
+    option(ENABLE_FMTLIB ${FMT_PURPOSE} OFF)
+    set(FMT_OPTION ENABLE_FMTLIB_HO)
+    set(FMT_PURPOSE "${FMT_PURPOSE} (header-only)")
+endif()
 find_package_switchable(
     fmt
     MIN_VERSION 9.1.0
-    OPTION ENABLE_FMTLIB
+    OPTION ${FMT_OPTION}
     DEFAULT ON
-    PURPOSE "Implementation of std::format from C++20"
+    PURPOSE ${FMT_PURPOSE}
 )
 
 # If fmtlib is not available, check for C++20 std::format()
