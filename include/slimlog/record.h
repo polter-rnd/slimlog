@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "util/unicode.h"
+#include <slimlog/util/unicode.h>
 
 #include <atomic>
 #include <cstdint>
@@ -13,7 +13,7 @@
 #include <string_view>
 #include <variant>
 
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
 #include <ctime> // IWYU pragma: no_forward_declare tm
 #else
 #include <chrono>
@@ -149,7 +149,7 @@ RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
  * @brief Time tag of the log record.
  */
 struct RecordTime {
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
     /**
      * @brief Alias for \a std::tm.
      *

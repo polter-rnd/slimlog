@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "sink.h" // IWYU pragma: export
+#include <slimlog/sink.h> // IWYU pragma: export
 
 #include <cerrno>
 #include <cstdio>

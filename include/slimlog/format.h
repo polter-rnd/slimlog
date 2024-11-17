@@ -5,7 +5,7 @@
 
 #pragma once
 
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
 #if __has_include(<fmt/base.h>)
 #include <fmt/base.h> // IWYU pragma: export
 #else
@@ -19,9 +19,9 @@
 #include <format>
 #endif
 
-#include "location.h"
-#include "util/buffer.h"
-#include "util/types.h"
+#include <slimlog/location.h>
+#include <slimlog/util/buffer.h>
+#include <slimlog/util/types.h>
 
 #include <concepts>
 #include <cstddef>
@@ -33,7 +33,7 @@
 
 namespace SlimLog {
 
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
 /**
  * @brief Alias for \a fmt::basic_format_string.
  *
@@ -143,7 +143,7 @@ private:
  */
 template<typename Char, typename... Args>
 concept Formattable = requires(const Char* fmt, Args... args) {
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
     fmt::format(fmt, args...);
 #else
     std::format(fmt, args...);
@@ -221,7 +221,7 @@ public:
      * @param fmt Format string.
      */
     constexpr explicit CachedFormatter(std::basic_string_view<Char> fmt)
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
         : m_empty(fmt.empty())
 #endif
     {
@@ -239,7 +239,7 @@ public:
     template<typename Out>
     void format(Out& out, T value) const
     {
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
         if constexpr (std::is_arithmetic_v<T>) {
             if (m_empty) [[likely]] {
                 out.append(fmt::format_int(value));
@@ -259,7 +259,7 @@ public:
 #endif
     }
 
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
 private:
     bool m_empty;
 #endif
@@ -317,7 +317,7 @@ public:
         requires Formattable<Char, Args...>
     auto format(FormatString<Char, std::type_identity_t<Args>...> fmt, Args&&... args) -> void
     {
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
         if constexpr (std::is_same_v<Char, char>) {
             fmt::format_to(fmt::appender(*this), std::move(fmt), std::forward<Args>(args)...);
         } else {
@@ -338,7 +338,7 @@ public:
 
 } // namespace SlimLog
 
-#ifndef ENABLE_FMTLIB
+#ifndef SLIMLOG_FMTLIB
 /** @cond */
 template<typename T, SlimLog::Formattable<T> Char>
 struct std::formatter<SlimLog::FormatValue<T, Char>, Char> { // NOLINT (cert-dcl58-cpp)

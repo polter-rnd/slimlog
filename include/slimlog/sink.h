@@ -5,11 +5,11 @@
 
 #pragma once
 
-#include "format.h"
-#include "location.h"
-#include "pattern.h"
-#include "record.h"
-#include "util/os.h"
+#include <slimlog/format.h>
+#include <slimlog/location.h>
+#include <slimlog/pattern.h>
+#include <slimlog/record.h>
+#include <slimlog/util/os.h>
 
 #include <cstddef>
 #include <cstdint>

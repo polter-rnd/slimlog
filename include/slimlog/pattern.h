@@ -5,11 +5,11 @@
 
 #pragma once
 
-#include "format.h"
-#include "level.h"
-#include "record.h"
-#include "util/types.h"
-#include "util/unicode.h"
+#include <slimlog/format.h>
+#include <slimlog/level.h>
+#include <slimlog/record.h>
+#include <slimlog/util/types.h>
+#include <slimlog/util/unicode.h>
 
 #include <array>
 #include <climits>

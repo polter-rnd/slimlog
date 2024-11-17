@@ -11,21 +11,21 @@
 #include <memory>
 #include <type_traits>
 
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
 #if __has_include(<fmt/base.h>)
 #include <fmt/base.h>
 #else
 #include <fmt/core.h>
 #endif
 #else
-#include "util/types.h"
+#include <slimlog/util/types.h>
 
 #include <iterator>
 #endif
 
 namespace SlimLog::Util {
 
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
 /**
  * @brief Defines an alias for `fmt::detail::buffer<T>`.
  */
@@ -345,7 +345,7 @@ public:
      * @param allocator Allocator for growing the buffer.
      */
     constexpr explicit MemoryBuffer(const Allocator& allocator = Allocator())
-#if defined(ENABLE_FMTLIB) && FMT_VERSION < 110000
+#if defined(SLIMLOG_FMTLIB) && FMT_VERSION < 110000
         : m_allocator(allocator)
 #else
         : Buffer<T>(grow)
@@ -436,7 +436,7 @@ public:
     }
 
 protected:
-#if defined(ENABLE_FMTLIB) && FMT_VERSION < 110000
+#if defined(SLIMLOG_FMTLIB) && FMT_VERSION < 110000
     /**
      * @brief Grows the buffer to the desired size.
      *

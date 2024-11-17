@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.23...3.26)
 
 # Setup vcpkg
 if(DEFINED ENV{VCPKG_INSTALLATION_ROOT} AND NOT DEFINED CMAKE_TOOLCHAIN_FILE)
@@ -18,6 +18,25 @@ project(
 set(CMAKE_CXX_STANDARD 20)
 set(CXX_STANDARD_REQUIRED ON)
 set(CXX_EXTENSIONS OFF)
+
+# Set build type if none specified
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "Setting build type to 'Release' as none was specified.")
+    set(CMAKE_BUILD_TYPE
+        "Release"
+        CACHE STRING "Choose the type of build." FORCE
+    )
+    # Set the possible values of build type for cmake-gui
+    set_property(
+        CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo"
+    )
+endif()
+
+# build shared option
+option(SLIMLOG_BUILD_SHARED "Build shared library" OFF)
+
+# install options
+option(SLIMLOG_SYSTEM_INCLUDES "Include as system headers (skip for clang-tidy)." OFF)
 
 # CMake include files
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
@@ -97,6 +116,25 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     endif()
 endif()
 
+# fmtlib is recommended for better formatting performance
+find_package_switchable(
+    fmt
+    MIN_VERSION 9.1.0
+    OPTION ENABLE_FMTLIB
+    DEFAULT ON
+    PURPOSE "Implementation of std::format from C++20"
+)
+
+# If fmtlib is not available, check for C++20 std::format()
+if(NOT ENABLE_FMTLIB AND NOT ENABLE_FMTLIB_HO)
+    include(CheckCXXSymbolExists)
+    check_cxx_symbol_exists(__cpp_lib_format "format" HAS_CXX20_LIBFORMAT)
+    if(NOT HAS_CXX20_LIBFORMAT)
+        message(FATAL_ERROR "C++20 std::format() is not available, please enable fmtlib support")
+    endif()
+endif()
+
+# Include library targets
 add_subdirectory(src)
 
 # Option for building documentation

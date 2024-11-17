@@ -5,9 +5,9 @@
 
 #pragma once
 
-#include "util/types.h"
+#include <slimlog/util/types.h>
 
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
 #include <fmt/chrono.h>
 #endif
 
@@ -163,7 +163,7 @@ template<typename TimePoint>
     if (curtime.tv_sec != cached_time) {
         cached_time = curtime.tv_sec;
         if constexpr (std::is_same_v<TimePoint, std::tm>) {
-#ifdef ENABLE_FMTLIB
+#ifdef SLIMLOG_FMTLIB
             cached_local = fmt::localtime(cached_time);
 #else
             static_assert(

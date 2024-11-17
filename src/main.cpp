@@ -2,15 +2,15 @@
 
 #define ENABLE_MYSTRING 0
 
-#include "format.h"
-#include "level.h"
-#include "logger.h"
-#include "sinks/dummy_sink.h"
-#include "sinks/ostream_sink.h"
+#include <slimlog/format.h>
+#include <slimlog/level.h>
+#include <slimlog/logger.h>
+#include <slimlog/sinks/dummy_sink.h>
+#include <slimlog/sinks/ostream_sink.h>
 #if ENABLE_MYSTRING
-#include "mystring.h"
+#include "include/slimlog/mystring.h"
 #endif
-#include "util/locale.h"
+#include <slimlog/util/locale.h>
 
 #ifndef _MSC_VER
 #include <unistd.h>

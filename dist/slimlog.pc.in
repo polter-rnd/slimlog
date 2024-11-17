@@ -1,0 +1,12 @@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+includedir=@PKG_CONFIG_INCLUDEDIR@
+libdir=@PKG_CONFIG_LIBDIR@
+
+Name: lib@PROJECT_NAME@
+Description: Slim and quick C++20 logging library.
+URL: https://github.com/polter-rnd/@PROJECT_NAME@
+Version: @PROJECT_VERSION@
+CFlags: -I${includedir} @PKG_CONFIG_DEFINES@
+Libs: -L${libdir} -lslimlog
+Requires: @PKG_CONFIG_REQUIRES@

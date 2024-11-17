@@ -5,12 +5,12 @@
 
 #pragma once
 
-#include "format.h"
-#include "level.h"
-#include "location.h"
-#include "policy.h"
-#include "sink.h"
-#include "util/types.h"
+#include <slimlog/format.h>
+#include <slimlog/level.h>
+#include <slimlog/location.h>
+#include <slimlog/policy.h>
+#include <slimlog/sink.h>
+#include <slimlog/util/types.h>
 
 #include <cstddef>
 #include <memory>

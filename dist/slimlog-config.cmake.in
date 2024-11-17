@@ -1,0 +1,12 @@
+@PACKAGE_INIT@
+
+set(SLIMLOG_FMTLIB @ENABLE_FMTLIB@)
+set(SLIMLOG_FMTLIB_HO @ENABLE_FMTLIB_HO@)
+if(SLIMLOG_FMTLIB OR SLIMLOG_FMTLIB_HO)
+    include(CMakeFindDependencyMacro)
+    find_dependency(fmt CONFIG)
+endif()
+
+include("${CMAKE_CURRENT_LIST_DIR}/slimlog-targets.cmake")
+
+check_required_components(slimlog)
