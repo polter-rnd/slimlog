@@ -7,16 +7,16 @@
 
 #ifdef SLIMLOG_FMTLIB
 #if __has_include(<fmt/base.h>)
-#include <fmt/base.h> // IWYU pragma: export
+#include <fmt/base.h>
 #else
-#include <fmt/core.h> // IWYU pragma: export
+#include <fmt/core.h>
 #endif
 #include <fmt/chrono.h> // IWYU pragma: keep
 #include <fmt/format.h> // IWYU pragma: keep
 #include <fmt/xchar.h> // IWYU pragma: keep
 #else
 #include <array>
-#include <format> // IWYU pragma: export
+#include <format>
 #endif
 
 #include <slimlog/location.h>

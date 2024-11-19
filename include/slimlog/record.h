@@ -149,5 +149,5 @@ struct Record {
 } // namespace SlimLog
 
 #ifdef SLIMLOG_HEADER_ONLY
-#include <slimlog/record-inl.h>
+#include <slimlog/record-inl.h> // IWYU pragma: keep
 #endif

@@ -361,5 +361,5 @@ private:
 } // namespace SlimLog
 
 #ifdef SLIMLOG_HEADER_ONLY
-#include <slimlog/sink-inl.h>
+#include <slimlog/sink-inl.h> // IWYU pragma: keep
 #endif
