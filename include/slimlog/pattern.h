@@ -16,9 +16,9 @@
 #include <concepts>
 #include <cstdint>
 #if defined(__cpp_unicode_characters) or defined(__cpp_char8_t)
-#include <cuchar>
+#include <cuchar> // IWYU pragma: keep
 #endif
-#include <cwchar>
+#include <cwchar> // IWYU pragma: keep
 #include <functional>
 #include <initializer_list>
 #include <iterator>
