@@ -14,10 +14,11 @@
 #include <variant>
 
 #ifdef SLIMLOG_FMTLIB
-#include <ctime> // IWYU pragma: no_forward_declare tm
+// IWYU pragma: no_forward_declare tm
+#include <ctime> // IWYU pragma: export
 #else
-#include <chrono>
-#include <cstddef>
+#include <chrono> // IWYU pragma: export
+#include <cstddef> // IWYU pragma: export
 #endif
 
 namespace SlimLog {

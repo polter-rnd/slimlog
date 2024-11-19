@@ -32,6 +32,14 @@
         ]
     },
     {
+        "include": [
+            "\"format.h\"",
+            "private",
+            "<slimlog/format.h>",
+            "public"
+        ]
+    },
+    {
         "symbol": [
             "std::pair",
             "private",

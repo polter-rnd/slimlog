@@ -16,7 +16,7 @@
 #include <fmt/xchar.h> // IWYU pragma: keep
 #else
 #include <array>
-#include <format>
+#include <format> // IWYU pragma: export
 #endif
 
 #include <slimlog/location.h>

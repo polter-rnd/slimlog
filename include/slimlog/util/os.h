@@ -7,13 +7,13 @@
 
 #include <slimlog/util/types.h>
 
-#ifdef SLIMLOG_FMTLIB
-#include <fmt/chrono.h>
-#endif
-
 #include <chrono>
 #include <ctime> // IWYU pragma: no_forward_declare tm
 #include <utility>
+
+#ifdef SLIMLOG_FMTLIB
+#include <fmt/chrono.h>
+#endif
 
 #ifdef _WIN32
 #ifndef NOMINMAX

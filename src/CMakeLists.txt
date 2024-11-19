@@ -10,7 +10,7 @@ endif()
 # ---------------------------------------------------------------------------------------
 # Static/shared library
 # ---------------------------------------------------------------------------------------
-add_library(slimlog main.cpp)
+add_library(slimlog slimlog.cpp)
 add_library(slimlog::slimlog ALIAS slimlog)
 
 file(GLOB PUBLIC_HEADERS ${PROJECT_SOURCE_DIR}/include/slimlog/*.h
@@ -55,6 +55,7 @@ add_library(slimlog-header-only INTERFACE)
 add_library(slimlog::slimlog-header-only ALIAS slimlog-header-only)
 
 target_compile_features(slimlog-header-only INTERFACE cxx_std_20)
+target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_HEADER_ONLY)
 
 target_include_directories(
     slimlog-header-only ${SLIMLOG_INCLUDES_LEVEL}

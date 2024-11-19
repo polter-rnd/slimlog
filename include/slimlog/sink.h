@@ -1,6 +1,6 @@
 /**
  * @file sink.h
- * @brief Contains the definition of Sink and SinkDriver classes.
+ * @brief Contains the declaration of Sink and SinkDriver classes.
  */
 
 #pragma once
@@ -8,22 +8,18 @@
 #include <slimlog/format.h>
 #include <slimlog/location.h>
 #include <slimlog/pattern.h>
+#include <slimlog/policy.h>
 #include <slimlog/record.h>
 #include <slimlog/util/os.h>
 
-#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <memory>
-#include <queue>
 #include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
-
-// Suppress include for std::equal_to() which is not used directly
-// IWYU pragma: no_include <functional>
 
 namespace SlimLog {
 
@@ -104,11 +100,7 @@ public:
      * @param pattern Log message pattern.
      * @return Pointer to the self sink object.
      */
-    virtual auto set_pattern(StringViewType pattern) -> std::shared_ptr<Sink<Logger>>
-    {
-        m_pattern.set_pattern(std::move(pattern));
-        return this->shared_from_this();
-    }
+    virtual auto set_pattern(StringViewType pattern) -> std::shared_ptr<Sink<Logger>>;
 
     /**
      * @brief Sets the log level names.
@@ -123,11 +115,7 @@ public:
      * @return Pointer to the self sink object.
      */
     virtual auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels)
-        -> std::shared_ptr<Sink<Logger>>
-    {
-        m_pattern.set_levels(std::move(levels));
-        return this->shared_from_this();
-    }
+        -> std::shared_ptr<Sink<Logger>>;
 
     /**
      * @brief Processes a log record.
@@ -150,10 +138,7 @@ protected:
      * @param result Buffer to store the formatted message.
      * @param record The log record to format.
      */
-    auto format(FormatBufferType& result, RecordType& record) -> void
-    {
-        m_pattern.format(result, record);
-    }
+    auto format(FormatBufferType& result, RecordType& record) -> void;
 
 private:
     Pattern<CharType> m_pattern;
@@ -186,15 +171,7 @@ public:
      * @param logger Pointer to the logger.
      * @param parent Pointer to the parent instance (if any).
      */
-    explicit SinkDriver(const Logger* logger, SinkDriver* parent = nullptr)
-        : m_logger(logger)
-        , m_parent(parent)
-    {
-        if (m_parent) {
-            m_parent->add_child(this);
-            update_effective_sinks();
-        }
-    }
+    explicit SinkDriver(const Logger* logger, SinkDriver* parent = nullptr);
 
     SinkDriver(const SinkDriver&) = delete;
     SinkDriver(SinkDriver&&) = delete;
@@ -204,16 +181,7 @@ public:
     /**
      * @brief Destroys the SinkDriver object.
      */
-    ~SinkDriver()
-    {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
-        for (auto* child : m_children) {
-            child->set_parent(m_parent);
-        }
-        if (m_parent) {
-            m_parent->remove_child(this);
-        }
-    }
+    ~SinkDriver();
 
     /**
      * @brief Adds an existing sink.
@@ -222,31 +190,21 @@ public:
      * @return \b true if the sink was actually inserted.
      * @return \b false if the sink is already present in this logger.
      */
-    auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
-    {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
-        const auto result = m_sinks.insert_or_assign(sink, true).second;
-        update_effective_sinks();
-        return result;
-    }
+    auto add_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool;
 
     /**
      * @brief Creates and emplaces a new sink.
      *
      * @tparam T Sink type (e.g., ConsoleSink).
-     * @tparam Args Sink constructor argument types (deduced from arguments).
+     * @tparam Args Sink constructor argument types.
      * @param args Any arguments accepted by the specified sink constructor.
-     * @return Pointer to the created sink.
+     * @return Shared pointer to the created sink or `nullptr` in case of failure.
      */
     template<typename T, typename... Args>
     auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Logger>>
     {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
-        const auto result
-            = m_sinks.insert_or_assign(std::make_shared<T>(std::forward<Args>(args)...), true)
-                  .first->first;
-        update_effective_sinks();
-        return result;
+        auto sink = std::make_shared<T>(std::forward<Args>(args)...);
+        return add_sink(sink) ? sink : nullptr;
     }
 
     /**
@@ -256,15 +214,7 @@ public:
      * @return \b true if the sink was actually removed.
      * @return \b false if the sink does not exist in this logger.
      */
-    auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool
-    {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
-        if (m_sinks.erase(sink) == 1) {
-            update_effective_sinks();
-            return true;
-        }
-        return false;
-    }
+    auto remove_sink(const std::shared_ptr<Sink<Logger>>& sink) -> bool;
 
     /**
      * @brief Enables or disables a sink for this logger.
@@ -274,16 +224,7 @@ public:
      * @return \b true if the sink exists and is enabled.
      * @return \b false if the sink does not exist in this logger.
      */
-    auto set_sink_enabled(const std::shared_ptr<Sink<Logger>>& sink, bool enabled) -> bool
-    {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
-        if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
-            itr->second = enabled;
-            update_effective_sinks();
-            return true;
-        }
-        return false;
-    }
+    auto set_sink_enabled(const std::shared_ptr<Sink<Logger>>& sink, bool enabled) -> bool;
 
     /**
      * @brief Checks if a sink is enabled.
@@ -292,14 +233,7 @@ public:
      * @return \b true if the sink is enabled.
      * @return \b false if the sink is disabled.
      */
-    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool
-    {
-        const typename ThreadingPolicy::ReadLock lock(m_mutex);
-        if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
-            return itr->second;
-        }
-        return false;
-    }
+    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool;
 
     /**
      * @brief Emits a new callback-based log message if it fits the specified logging level.
@@ -388,81 +322,33 @@ protected:
      *
      * @return Pointer to the parent sink.
      */
-    auto parent() -> SinkDriver*
-    {
-        const typename ThreadingPolicy::ReadLock lock(m_mutex);
-        return m_parent;
-    }
+    auto parent() -> SinkDriver*;
 
     /**
      * @brief Sets the parent sink object.
      *
      * @param parent Pointer to the parent sink driver.
      */
-    auto set_parent(SinkDriver* parent) -> void
-    {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
-        m_parent = parent;
-        update_effective_sinks();
-    }
+    auto set_parent(SinkDriver* parent) -> void;
 
     /**
      * @brief Adds a child sink driver.
      *
      * @param child Pointer to the child sink driver.
      */
-    auto add_child(SinkDriver* child) -> void
-    {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
-        m_children.insert(child);
-    }
-
+    auto add_child(SinkDriver* child) -> void;
     /**
      * @brief Removes a child sink driver.
      *
      * @param child Pointer to the child sink driver.
      */
-    auto remove_child(SinkDriver* child) -> void
-    {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
-        m_children.erase(child);
-    }
+    auto remove_child(SinkDriver* child) -> void;
 
 private:
     /**
      * @brief Updates the effective sinks for the current sink driver and its children.
      */
-    auto update_effective_sinks() -> void
-    {
-        // Queue for level order traversal
-        std::queue<SinkDriver*> nodes;
-        nodes.push(this);
-        while (!nodes.empty()) {
-            auto* node = nodes.front();
-            if (node->m_parent) {
-                node->m_effective_sinks = node->m_parent->m_effective_sinks;
-                for (const auto& [sink, enabled] : node->m_sinks) {
-                    if (enabled) {
-                        node->m_effective_sinks.insert_or_assign(sink.get(), node->m_logger);
-                    } else {
-                        node->m_effective_sinks.erase(sink.get());
-                    }
-                }
-            } else {
-                node->m_effective_sinks.clear();
-                for (const auto& [sink, enabled] : node->m_sinks) {
-                    if (enabled) {
-                        node->m_effective_sinks.emplace(sink.get(), node->m_logger);
-                    }
-                }
-            }
-            nodes.pop();
-
-            for (auto* child : node->m_children) {
-                nodes.push(child);
-            }
-        }
-    }
+    auto update_effective_sinks() -> void;
 
     const Logger* m_logger;
     SinkDriver* m_parent;
@@ -473,3 +359,7 @@ private:
 }; // namespace SlimLog
 
 } // namespace SlimLog
+
+#ifdef SLIMLOG_HEADER_ONLY
+#include <slimlog/sink-inl.h>
+#endif
