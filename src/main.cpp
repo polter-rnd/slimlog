@@ -5,7 +5,7 @@
 #include <slimlog/format.h>
 #include <slimlog/level.h>
 #include <slimlog/logger.h>
-#include <slimlog/sinks/dummy_sink.h>
+#include <slimlog/sinks/null_sink.h>
 #include <slimlog/sinks/ostream_sink.h>
 #if ENABLE_MYSTRING
 #include "include/slimlog/mystring.h"
@@ -295,7 +295,7 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         log_root->info(L"Hello {}! ({})", L"World", 4);
 
         auto log_child = std::make_shared<Log::Logger<std::wstring_view>>(L"child", *log_root);
-        log_child->add_sink<Log::DummySink>();
+        log_child->add_sink<Log::NullSink>();
         log_child->add_sink(sink2);
         log_child->set_sink_enabled(sink2, false);
         log_child->info(L"One two three!");

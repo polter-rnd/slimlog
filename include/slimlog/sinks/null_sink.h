@@ -1,6 +1,6 @@
 /**
- * @file dummy_sink.h
- * @brief Contains definition of DummySink class.
+ * @file null_sink.h
+ * @brief Contains definition of NullSink class.
  */
 
 #pragma once
@@ -12,26 +12,26 @@
 namespace SlimLog {
 
 /**
- * @brief Dummy sink for testing and benchmarking.
+ * @brief Null sink for testing and benchmarking.
  *
  * This sink performs no action and is intended for use in performance tests.
  *
  * @tparam Logger The logger class type intended for use with this sink.
  */
 template<typename Logger>
-class DummySink : public Sink<Logger> {
+class NullSink : public Sink<Logger> {
 public:
     using typename Sink<Logger>::RecordType;
     using typename Sink<Logger>::FormatBufferType;
 
     /**
-     * @brief Constructs a new DummySink object.
+     * @brief Constructs a new NullSink object.
      *
      * @tparam Args Argument types for the pattern and log levels.
      * @param args Optional pattern and list of log levels.
      */
     template<typename... Args>
-    explicit DummySink(Args&&... args)
+    explicit NullSink(Args&&... args)
         : Sink<Logger>(std::forward<Args>(args)...)
     {
     }
@@ -51,7 +51,7 @@ public:
     }
 
     /**
-     * @brief Flush operation (no-op for DummySink).
+     * @brief Flush operation (no-op for NullSink).
      */
     auto flush() -> void override
     {
