@@ -1,11 +1,9 @@
 /**
  * @file record.h
- * @brief Contains the definition of the Record class.
+ * @brief Contains the declaration of the Record and RecordStringView classes.
  */
 
 #pragma once
-
-#include <slimlog/util/unicode.h>
 
 #include <atomic>
 #include <cstdint>
@@ -38,101 +36,54 @@ class RecordStringView : public std::basic_string_view<T> {
 public:
     using std::basic_string_view<T>::basic_string_view;
 
-    constexpr ~RecordStringView() = default;
+    ~RecordStringView() = default;
 
     /**
      * @brief Copy constructor.
      * @param str_view The RecordStringView to copy from.
      */
-    constexpr RecordStringView(const RecordStringView& str_view) noexcept
-        : std::basic_string_view<T>(str_view)
-        , m_codepoints(str_view.m_codepoints.load(std::memory_order_relaxed))
-    {
-    }
+    RecordStringView(const RecordStringView& str_view) noexcept;
 
     /**
      * @brief Move constructor.
      * @param str_view The RecordStringView to move from.
      */
-    constexpr RecordStringView(RecordStringView&& str_view) noexcept
-        : std::basic_string_view<T>(std::move(static_cast<std::basic_string_view<T>&&>(str_view)))
-        , m_codepoints(str_view.m_codepoints.load(std::memory_order_relaxed))
-    {
-    }
+    RecordStringView(RecordStringView&& str_view) noexcept;
 
     /**
      * @brief Constructor from `std::basic_string_view`.
      * @param str_view The std::basic_string_view to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
-    constexpr RecordStringView(std::basic_string_view<T> str_view) noexcept
-        : std::basic_string_view<T>(std::move(str_view))
-    {
-    }
+    RecordStringView(std::basic_string_view<T> str_view) noexcept;
 
     /**
      * @brief Assignment operator.
      * @param str_view The RecordStringView to assign from.
      * @return Reference to this RecordStringView.
      */
-    constexpr auto operator=(const RecordStringView& str_view) noexcept -> RecordStringView&
-    {
-        if (this == &str_view) {
-            return *this;
-        }
-
-        std::basic_string_view<T>::operator=(str_view);
-        m_codepoints.store(
-            str_view.m_codepoints.load(std::memory_order_relaxed), std::memory_order_relaxed);
-        return *this;
-    }
+    auto operator=(const RecordStringView& str_view) noexcept -> RecordStringView&;
 
     /**
      * @brief Move assignment operator.
      * @param str_view The RecordStringView to move from.
      * @return Reference to this RecordStringView.
      */
-    constexpr auto operator=(RecordStringView&& str_view) noexcept -> RecordStringView&
-    {
-        if (this == &str_view) {
-            return *this;
-        }
-
-        std::basic_string_view<T>::operator=(
-            std::move(static_cast<std::basic_string_view<T>&&>(str_view)));
-        m_codepoints.store(
-            str_view.m_codepoints.load(std::memory_order_relaxed), std::memory_order_relaxed);
-        return *this;
-    }
+    auto operator=(RecordStringView&& str_view) noexcept -> RecordStringView&;
 
     /**
      * @brief Assignment from `std::basic_string_view`.
      * @param str_view The std::basic_string_view to assign from.
      * @return Reference to this RecordStringView.
      */
-    constexpr auto operator=(std::basic_string_view<T> str_view) noexcept -> RecordStringView&
-    {
-        if (this != &str_view) {
-            std::basic_string_view<T>::operator=(std::move(str_view));
-            m_codepoints.store(std::string_view::npos, std::memory_order_relaxed);
-        }
-        return *this;
-    }
+    auto operator=(std::basic_string_view<T> str_view) noexcept -> RecordStringView&;
 
     /**
      * @brief Calculate the number of Unicode code points.
      *
      * @return Number of code points.
      */
-    auto codepoints() -> std::size_t
-    {
-        auto codepoints = m_codepoints.load(std::memory_order_acquire);
-        if (codepoints == std::string_view::npos) {
-            codepoints = Util::Unicode::count_codepoints(this->data(), this->size());
-            m_codepoints.store(codepoints, std::memory_order_release);
-        }
-        return codepoints;
-    }
+    auto codepoints() -> std::size_t;
 
 private:
     std::atomic<std::size_t> m_codepoints = std::string_view::npos;
@@ -196,3 +147,7 @@ struct Record {
 };
 
 } // namespace SlimLog
+
+#ifdef SLIMLOG_HEADER_ONLY
+#include <slimlog/record-inl.h>
+#endif
