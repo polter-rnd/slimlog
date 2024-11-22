@@ -73,7 +73,7 @@ jobs:
 
     - name: Install dependencies (Linux)
       if: runner.os == 'Linux'
-      run: sudo apt-get install -y libfmt-dev clang-tidy clang-format cmake-format cppcheck iwyu
+      run: sudo apt-get install -y libfmt-dev clang-tidy clang-format cmake-format cppcheck iwyu libc++-dev libc++abi-dev
 
     - name: Install dependencies (Windows)
       if: runner.os == 'Windows' && matrix.format_lib == 'fmtlib'
@@ -99,7 +99,8 @@ jobs:
         -DENABLE_ANALYZERS=ON
         -DENABLE_FORMATTERS=ON
         -DENABLE_SANITIZERS=ON
-        -DENABLE_FMTLIB=${{ matrix.format_lib == 'fmtlib' && 'ON' || 'OFF' }}
+        ${{ matrix.format_lib == 'std' && '-DENABLE_FMTLIB_HO=OFF' || '' }}
+        ${{ matrix.cpp_compiler == 'clang++' && '-DCMAKE_CXX_FLAGS="-stdlib=libc++" -DCMAKE_EXE_LINKER_FLAGS="-lc++abi"' || '' }}
         -S ${{ github.workspace }}
 
     - name: Check formatting

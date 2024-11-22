@@ -9,13 +9,12 @@
 
 #ifndef SLIMLOG_HEADER_ONLY
 #include <slimlog/record.h>
-#else
-#include <cstddef>
 #endif
 
 #include <slimlog/util/unicode.h>
 
 #include <atomic>
+#include <cstddef>
 #include <string_view>
 #include <utility>
 

@@ -84,7 +84,7 @@ if(ENABLE_ANALYZERS)
     include(StaticCodeAnalysis)
     enable_static_code_analysis(
         CLANG_TIDY_EXTRA_ARGS -header-filter=.*
-        IWYU_EXTRA_ARGS --cxx17ns --quoted_includes_first
+        IWYU_EXTRA_ARGS --cxx17ns --quoted_includes_first --no_fwd_decls --verbose=3
                         --mapping_file=${CMAKE_CURRENT_SOURCE_DIR}/.iwyu-mappings
         CPPCHECK_EXTRA_ARGS --enable=warning,performance,portability,information,missingInclude
                             --inline-suppr --suppress=missingIncludeSystem --check-level=exhaustive
@@ -139,8 +139,8 @@ find_package_switchable(
 # If fmtlib is not available, check for C++20 std::format()
 if(NOT ENABLE_FMTLIB AND NOT ENABLE_FMTLIB_HO)
     include(CheckCXXSymbolExists)
-    check_cxx_symbol_exists(__cpp_lib_format "format" HAS_CXX20_LIBFORMAT)
-    if(NOT HAS_CXX20_LIBFORMAT)
+    check_cxx_symbol_exists("std::make_format_args<std::format_context>" "format" HAS_CXX20_FORMAT)
+    if(NOT HAS_CXX20_FORMAT)
         message(FATAL_ERROR "C++20 std::format() is not available, please enable fmtlib support")
     endif()
 endif()

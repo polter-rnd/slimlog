@@ -89,12 +89,7 @@ function(enable_static_code_analysis)
         foreach(language ${enabled_languages})
             if(language MATCHES "^C|CXX$")
                 set(CMAKE_${language}_INCLUDE_WHAT_YOU_USE
-                    ${Iwyu_EXECUTABLE}
-                    -Xiwyu
-                    --error=1
-                    -Xiwyu
-                    --check_also=${PROJECT_SOURCE_DIR}/*
-                    ${iwyu_mapping_files_args}
+                    ${Iwyu_EXECUTABLE} -Xiwyu --error=1 -Xiwyu --check_also=${PROJECT_SOURCE_DIR}/*
                     ${iwyu_extra_args}
                     CACHE STRING ""
                 )

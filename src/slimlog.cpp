@@ -30,7 +30,7 @@ template class RecordStringView<wchar_t>;
 template class Pattern<wchar_t>;
 
 // char8_t (std::mbrtoc8() is supported only for newer versions of glibc++ and libc++)
-#if defined(__cpp_char8_t)
+/*#if defined(__cpp_char8_t)
 #if defined(_GLIBCXX_USE_UCHAR_C8RTOMB_MBRTOC8_CXX20)                                              \
     or defined(_LIBCPP_VERSION) and !defined(_LIBCPP_HAS_NO_C8RTOMB_MBRTOC8)
 template class SinkDriver<Logger<std::u8string_view>, SingleThreadedPolicy>;
@@ -55,5 +55,5 @@ template class SinkDriver<Logger<std::u32string_view>, MultiThreadedPolicy>;
 template class Sink<Logger<std::u32string_view>>;
 template class RecordStringView<char32_t>;
 template class Pattern<char32_t>;
-#endif
+#endif*/
 } // namespace SlimLog

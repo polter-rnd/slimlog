@@ -6,18 +6,18 @@
 #pragma once
 
 // IWYU pragma: private, include <slimlog/sink.h>
-// IWYU pragma: no_include <chrono>
 
 #ifndef SLIMLOG_HEADER_ONLY
 #include <slimlog/logger.h>
 #include <slimlog/sink.h>
 #endif
 
+#include <slimlog/level.h>
 #include <slimlog/pattern.h>
 #include <slimlog/policy.h>
 
-#include <algorithm>
-#include <cstdint>
+#include <algorithm> // IWYU pragma: keep
+#include <exception>
 #include <initializer_list>
 #include <memory>
 #include <queue>
@@ -27,16 +27,6 @@
 #include <utility>
 
 namespace SlimLog {
-
-enum class Level : std::uint8_t;
-
-#ifdef SLIMLOG_HEADER_ONLY
-template<typename Logger>
-class Sink;
-
-template<typename Logger, typename ThreadingPolicy>
-class SinkDriver;
-#endif
 
 template<typename Logger>
 auto Sink<Logger>::set_pattern(StringViewType pattern) -> std::shared_ptr<Sink<Logger>>
@@ -73,12 +63,16 @@ SinkDriver<Logger, ThreadingPolicy>::SinkDriver(const Logger* logger, SinkDriver
 template<typename Logger, typename ThreadingPolicy>
 SinkDriver<Logger, ThreadingPolicy>::~SinkDriver()
 {
-    const typename ThreadingPolicy::WriteLock lock(m_mutex);
-    for (auto* child : m_children) {
-        child->set_parent(m_parent);
-    }
-    if (m_parent) {
-        m_parent->remove_child(this);
+    try {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        for (auto* child : m_children) {
+            child->set_parent(m_parent);
+        }
+        if (m_parent) {
+            m_parent->remove_child(this);
+        }
+    } catch (...) {
+        std::terminate();
     }
 }
 

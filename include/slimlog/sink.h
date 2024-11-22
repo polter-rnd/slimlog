@@ -6,13 +6,14 @@
 #pragma once
 
 #include <slimlog/format.h>
+#include <slimlog/level.h>
 #include <slimlog/location.h>
 #include <slimlog/pattern.h>
 #include <slimlog/policy.h>
 #include <slimlog/record.h>
 #include <slimlog/util/os.h>
 
-#include <cstdint>
+#include <cstddef>
 #include <initializer_list>
 #include <memory>
 #include <tuple>
@@ -22,8 +23,6 @@
 #include <utility>
 
 namespace SlimLog {
-
-enum class Level : std::uint8_t;
 
 /**
  * @brief Base abstract sink class.
@@ -267,8 +266,8 @@ public:
                 static_cast<std::size_t>(location.line())},
                std::move(category),
                Util::OS::thread_id()};
-        std::tie(record.time.local, record.time.nsec)
-            = Util::OS::local_time<RecordTime::TimePoint>();
+        std::tie(record.time.local, record.time.nsec) = Util::OS::local_time();
+        // MOVE THIS TO SEPARATE INL FUNC?
 
         // Flag to check that message has been evaluated
         bool evaluated = false;
@@ -304,7 +303,6 @@ public:
                     }
                 } else if constexpr (std::is_convertible_v<T, RecordStringView<CharType>>) {
                     // Non-invocable argument: argument is the message itself
-                    // get rid of extra constructor
                     // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                     record.message = RecordStringView<CharType>{std::forward<T>(callback)};
                 } else {

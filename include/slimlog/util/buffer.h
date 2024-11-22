@@ -345,11 +345,11 @@ public:
      * @param allocator Allocator for growing the buffer.
      */
     constexpr explicit MemoryBuffer(const Allocator& allocator = Allocator())
-#if defined(SLIMLOG_FMTLIB) && FMT_VERSION < 110000
-        : m_allocator(allocator)
-#else
+#if !defined(SLIMLOG_FMTLIB) || FMT_VERSION >= 110000
         : Buffer<T>(grow)
         , m_allocator(allocator)
+#else
+        : m_allocator(allocator)
 #endif
     {
         this->set(static_cast<T*>(m_store), Size);
@@ -370,7 +370,9 @@ public:
      * @brief Constructs a MemoryBuffer object by moving the content of another object to it.
      */
     constexpr MemoryBuffer(MemoryBuffer&& other) noexcept
+#if !defined(SLIMLOG_FMTLIB) || FMT_VERSION >= 110000
         : Buffer<T>(grow)
+#endif
     {
         move_from(other);
     }
@@ -436,16 +438,7 @@ public:
     }
 
 protected:
-#if defined(SLIMLOG_FMTLIB) && FMT_VERSION < 110000
-    /**
-     * @brief Grows the buffer to the desired size.
-     *
-     * @param size Desired buffer size.
-     */
-    constexpr void grow(std::size_t size) final
-    {
-        auto& self = *this;
-#else
+#if !defined(SLIMLOG_FMTLIB) || FMT_VERSION >= 110000
     /**
      * @brief Grows the buffer to accommodate additional elements.
      *
@@ -458,6 +451,15 @@ protected:
     static constexpr void grow(Buffer<T>& buf, std::size_t size)
     {
         auto& self = static_cast<MemoryBuffer&>(buf);
+#else
+    /**
+     * @brief Grows the buffer to the desired size.
+     *
+     * @param size Desired buffer size.
+     */
+    constexpr void grow(std::size_t size) final
+    {
+        auto& self = *this;
 #endif
         const std::size_t max_size = std::allocator_traits<Allocator>::max_size(self.m_allocator);
         const std::size_t old_capacity = self.capacity();
@@ -502,9 +504,9 @@ private:
         T* data = other.data();
         const std::size_t size = other.size();
         const std::size_t capacity = other.capacity();
+        // NOLINTBEGIN(*-array-to-pointer-decay,*-no-array-decay)
         if (data == other.m_store) {
             this->set(m_store, capacity);
-            // m_store.append(other.m_store, other.m_store + size);
             std::uninitialized_copy_n(other.m_store, size, m_store);
         } else {
             this->set(data, capacity);
@@ -513,6 +515,7 @@ private:
             other.set(other.m_store, 0);
             other.clear();
         }
+        // NOLINTEND(*-array-to-pointer-decay,*-no-array-decay)
         this->resize(size);
     }
 

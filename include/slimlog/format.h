@@ -24,9 +24,10 @@
 #include <slimlog/util/types.h>
 
 #include <concepts>
-#include <cstddef>
+#include <cstring>
 #include <iterator>
 #include <memory>
+#include <optional>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -34,12 +35,7 @@
 namespace SlimLog {
 
 #ifdef SLIMLOG_FMTLIB
-/**
- * @brief Alias for \a fmt::basic_format_string.
- *
- * @tparam T Character type.
- * @tparam Args Format argument types.
- */
+/** @brief Alias for \a fmt::basic_format_string. */
 template<typename T, typename... Args>
 using FormatString = fmt::basic_format_string<T, Args...>;
 /** @brief Alias for \a fmt::format_error. */
@@ -51,12 +47,7 @@ using Formatter = fmt::formatter<T, Char>;
 template<typename Char>
 using FormatParseContext = fmt::basic_format_parse_context<Char>;
 #else
-/**
- * @brief Alias for std::basic_format_string.
- *
- * @tparam T Character type.
- * @tparam Args Format argument types.
- */
+/** @brief Alias for std::basic_format_string. */
 template<typename T, typename... Args>
 using FormatString = std::basic_format_string<T, Args...>;
 /** @brief Alias for \a std::format_error. */
@@ -150,6 +141,7 @@ concept Formattable = requires(const Char* fmt, Args... args) {
 #endif
 };
 
+#ifndef SLIMLOG_FMTLIB
 template<typename T, Formattable<T> Char>
 class CachedFormatter;
 
@@ -201,69 +193,7 @@ private:
     const CachedFormatter<T, Char>& m_formatter;
     T m_value;
 };
-
-/**
- * @brief Wrapper to parse the format string and store the format context.
- *
- * Used to parse format string only once and then cache the formatter.
- *
- * @tparam T Value type.
- * @tparam Char Output character type.
- */
-template<typename T, Formattable<T> Char>
-class CachedFormatter final : Formatter<T, Char> {
-public:
-    using Formatter<T, Char>::format;
-
-    /**
-     * @brief Constructs a new CachedFormatter object from a format string.
-     *
-     * @param fmt Format string.
-     */
-    constexpr explicit CachedFormatter(std::basic_string_view<Char> fmt)
-#ifdef SLIMLOG_FMTLIB
-        : m_empty(fmt.empty())
 #endif
-    {
-        FormatParseContext<Char> parse_context(std::move(fmt));
-        Formatter<T, Char>::parse(parse_context);
-    }
-
-    /**
-     * @brief Formats the value and writes to the output buffer.
-     *
-     * @tparam Out Output buffer type (see MemoryBuffer).
-     * @param out Output buffer.
-     * @param value Value to be formatted.
-     */
-    template<typename Out>
-    void format(Out& out, T value) const
-    {
-#ifdef SLIMLOG_FMTLIB
-        if constexpr (std::is_arithmetic_v<T>) {
-            if (m_empty) [[likely]] {
-                out.append(fmt::format_int(value));
-                return;
-            }
-        }
-
-        using Appender = std::conditional_t<
-            std::is_same_v<Char, char>,
-            fmt::appender,
-            std::back_insert_iterator<std::remove_cvref_t<Out>>>;
-        fmt::basic_format_context<Appender, Char> fmt_context(Appender(out), {});
-        Formatter<T, Char>::format(std::move(value), fmt_context);
-#else
-        static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
-        out.format(Fmt.data(), FormatValue(*this, std::move(value)));
-#endif
-    }
-
-#ifdef SLIMLOG_FMTLIB
-private:
-    bool m_empty;
-#endif
-};
 
 /**
  * @brief Buffer used for log message formatting.
@@ -334,6 +264,138 @@ public:
         std::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);
 #endif
     }
+
+    /**
+     * @brief Formats a log message using argument storage.
+     *
+     * @tparam Args Format argument types. Deduced from arguments.
+     * @param fmt Format string.
+     * @param args Format argument storage (see make_format_args).
+     * @throws FormatError if fmt is not a valid format string for the provided arguments.
+     */
+    template<typename Args>
+    auto vformat(std::basic_string_view<Char> fmt, Args&& args) -> void
+    {
+#ifdef SLIMLOG_FMTLIB
+        if constexpr (std::is_same_v<Char, char>) {
+            fmt::vformat_to(fmt::appender(*this), std::move(fmt), std::forward<Args>(args));
+        } else {
+            fmt::vformat_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args));
+        }
+#else
+        std::vformat_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args));
+#endif
+    }
+
+    /**
+     * @brief Returns an object that stores an array of formatting arguments.
+     *
+     * @tparam Char Character type of the format string.
+     * @tparam Args Format argument types.
+     * @param args Format arguments.
+     * @return Format argument storage.
+     */
+    template<typename... Args>
+    static constexpr auto make_format_args(Args... args) -> auto
+    {
+#if defined(SLIMLOG_FMTLIB) and FMT_VERSION >= 110000
+        return fmt::make_format_args<fmt::buffered_context<Char>>(args...);
+#elif defined(SLIMLOG_FMTLIB)
+        return fmt::make_format_args<fmt::buffer_context<Char>>(args...);
+#else
+        if constexpr (std::is_same_v<Char, char>) {
+            return std::make_format_args(args...);
+        } else if constexpr (std::is_same_v<Char, wchar_t>) {
+            return std::make_wformat_args(args...);
+        } else {
+            static_assert(
+                Util::Types::AlwaysFalse<Char>{},
+                "std::vformat_to() supports only `char` or `wchar_t` character types");
+        }
+#endif
+    }
+};
+
+/**
+ * @brief Wrapper to parse the format string and store the format context.
+ *
+ * Used to parse format string only once and then cache the formatter.
+ *
+ * @tparam T Value type.
+ * @tparam Char Output character type.
+ */
+template<typename T, Formattable<T> Char>
+class CachedFormatter final : Formatter<T, Char> {
+public:
+    using Formatter<T, Char>::format;
+
+    /** @brief Default size of formatted string (enough for numbers and date/time) */
+    constexpr static size_t CachedBufferSize = 20;
+
+    /**
+     * @brief Constructs a new CachedFormatter object from a format string.
+     *
+     * @param fmt Format string.
+     */
+    constexpr explicit CachedFormatter(std::basic_string_view<Char> fmt)
+#ifdef SLIMLOG_FMTLIB
+        : m_empty(fmt.empty())
+#endif
+    {
+        FormatParseContext<Char> parse_context(std::move(fmt));
+        // Suppress buggy GCC warning on fmtlib sources
+#if defined(__GNUC__) and not defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wstringop-overflow"
+#endif
+        Formatter<T, Char>::parse(parse_context);
+#if defined(__GNUC__) and not defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+    }
+
+    /**
+     * @brief Formats the value and writes to the output buffer.
+     *
+     * @tparam Out Output buffer type (see MemoryBuffer).
+     * @param out Output buffer.
+     * @param value Value to be formatted.
+     */
+    template<typename Out>
+    void format(Out& out, T value) const
+    {
+        if (!m_value || value != *m_value) [[unlikely]] {
+            m_value = std::move(value);
+            m_buffer.clear();
+#ifdef SLIMLOG_FMTLIB
+            if constexpr (std::is_arithmetic_v<T>) {
+                if (m_empty) [[likely]] {
+                    m_buffer.append(fmt::format_int(*m_value));
+                    out.append(m_buffer);
+                    return;
+                }
+            }
+
+            using Appender = std::conditional_t<
+                std::is_same_v<Char, char>,
+                fmt::appender,
+                std::back_insert_iterator<decltype(m_buffer)>>;
+            fmt::basic_format_context<Appender, Char> fmt_context(Appender(m_buffer), {});
+            Formatter<T, Char>::format(*m_value, fmt_context);
+#else
+            static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
+            m_buffer.vformat(Fmt.data(), m_buffer.make_format_args(FormatValue(*this, *m_value)));
+#endif
+        }
+        out.append(m_buffer);
+    }
+
+private:
+#ifdef SLIMLOG_FMTLIB
+    bool m_empty;
+#endif
+    mutable std::optional<T> m_value;
+    mutable FormatBuffer<Char, CachedBufferSize> m_buffer;
 };
 
 } // namespace SlimLog
@@ -344,7 +406,7 @@ template<typename T, SlimLog::Formattable<T> Char>
 struct std::formatter<SlimLog::FormatValue<T, Char>, Char> { // NOLINT (cert-dcl58-cpp)
     constexpr auto parse(SlimLog::FormatParseContext<Char>& context)
     {
-        return context.end();
+        return context.begin();
     }
 
     template<typename Context>

@@ -5,10 +5,13 @@
 
 #pragma once
 
-#include <slimlog/format.h> // IWYU pragma: keep
+#include <slimlog/format.h>
+#include <slimlog/level.h>
 #include <slimlog/record.h>
 
 #include <array>
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <string>
@@ -18,8 +21,6 @@
 #include <vector>
 
 namespace SlimLog {
-
-enum class Level : std::uint8_t;
 
 /**
  * @brief Converts a string to a `std::basic_string_view`.
@@ -126,7 +127,7 @@ public:
             StringViewType,
             StringSpecs,
             CachedFormatter<std::size_t, Char>,
-            CachedFormatter<RecordTime::TimePoint, Char>>
+            CachedFormatter<std::chrono::sys_seconds, Char>>
             value = StringViewType{}; ///< Placeholder value.
     };
 

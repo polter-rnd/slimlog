@@ -5,23 +5,16 @@
 
 #pragma once
 
+#include <slimlog/level.h>
+
 #include <atomic>
-#include <cstdint>
+#include <chrono>
+#include <cstddef>
 #include <functional>
 #include <string_view>
 #include <variant>
 
-#ifdef SLIMLOG_FMTLIB
-// IWYU pragma: no_forward_declare tm
-#include <ctime> // IWYU pragma: export
-#else
-#include <chrono> // IWYU pragma: export
-#include <cstddef> // IWYU pragma: export
-#endif
-
 namespace SlimLog {
-
-enum class Level : std::uint8_t;
 
 /**
  * @brief Record string view type.
@@ -101,22 +94,7 @@ RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
  * @brief Time tag of the log record.
  */
 struct RecordTime {
-#ifdef SLIMLOG_FMTLIB
-    /**
-     * @brief Alias for \a std::tm.
-     *
-     * Time format with `fmt::format()` is much faster for std::tm.
-     */
-    using TimePoint = std::tm;
-#else
-    /**
-     * @brief Alias for \a std::chrono::sys_seconds.
-     *
-     * Time format with `std::format()` supports only `std::chrono` types.
-     */
-    using TimePoint = std::chrono::sys_seconds;
-#endif
-    TimePoint local; ///< Local time (seconds precision).
+    std::chrono::sys_seconds local; ///< Local time (seconds precision).
     std::size_t nsec; ///< Event time (nanoseconds part).
 };
 

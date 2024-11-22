@@ -8,12 +8,10 @@
 #include <slimlog/util/types.h>
 
 #include <chrono>
-#include <ctime> // IWYU pragma: no_forward_declare tm
+#include <ctime>
+#include <ratio>
 #include <utility>
-
-#ifdef SLIMLOG_FMTLIB
-#include <fmt/chrono.h>
-#endif
+#include <variant>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -46,25 +44,68 @@ namespace SlimLog::Util::OS {
 /** @cond */
 namespace Detail {
 
-namespace TimeZoneFallback {
-// Dummy declaration expanding to no-op, just to make the compiler happy.
-struct TimeZone {
-    template<class Duration>
-    [[nodiscard]] auto to_local(const Duration&) const -> Duration;
-};
-
-// Dummy class to detect missing time zone support in std::chrono.
-template<typename T = TimeZone>
-auto current_zone() -> const T*
+namespace Fallback {
+template<typename... Args>
+inline auto localtime_r(Args... /*unused*/)
 {
-    static_assert(Util::Types::AlwaysFalse<T>{}, "C++20 time zone support is required");
-}
-} // namespace TimeZoneFallback
+    return std::monostate{};
+};
+template<typename... Args>
+inline auto localtime_s(Args... /*unused*/)
+{
+    return std::monostate{};
+};
+} // namespace Fallback
 
-namespace TimeZone {
-using namespace TimeZoneFallback;
-using namespace std::chrono;
-} // namespace TimeZone
+struct LocalTime {
+    explicit LocalTime(const std::time_t& time)
+        : m_time(time)
+    {
+    }
+
+    ~LocalTime() = default;
+
+    LocalTime(const LocalTime&) = delete;
+    LocalTime(LocalTime&&) = delete;
+    auto operator=(const LocalTime&) -> LocalTime& = delete;
+    auto operator=(LocalTime&&) noexcept -> LocalTime& = delete;
+
+    auto get(std::tm* result) -> bool
+    {
+        using namespace Fallback;
+        m_tm = result;
+        return handle(localtime_r(&m_time, m_tm));
+    }
+
+protected:
+    template<typename T = std::monostate>
+    auto handle(T /*unused*/) -> bool
+    {
+        using namespace Fallback;
+        return fallback(localtime_s(m_tm, &m_time));
+    }
+
+    static auto handle(std::tm* res) -> bool
+    {
+        return res != nullptr;
+    }
+
+    static auto fallback(int res) -> bool
+    {
+        return res == 0;
+    }
+
+    template<typename T = std::monostate>
+    static auto fallback(T /*unused*/) -> int
+    {
+        static_assert(Util::Types::AlwaysFalse<T>{}, "No localtime_r() or localtime_s() found");
+        return -1;
+    }
+
+private:
+    const std::time_t& m_time;
+    std::tm* m_tm{nullptr};
+};
 
 } // namespace Detail
 /** @endcond */
@@ -147,10 +188,9 @@ using namespace std::chrono;
  * @tparam TimePoint The type used to represent the time point (e.g., `std::tm`).
  * @return A pair consisting of the local time and the nanoseconds part.
  */
-template<typename TimePoint>
-[[nodiscard]] inline auto local_time() -> std::pair<TimePoint, std::size_t>
+[[nodiscard]] inline auto local_time() -> std::pair<std::chrono::sys_seconds, std::size_t>
 {
-    static thread_local TimePoint cached_local;
+    static thread_local std::chrono::sys_seconds cached_local;
     static thread_local std::time_t cached_time;
 
     std::timespec curtime{};
@@ -162,19 +202,17 @@ template<typename TimePoint>
 
     if (curtime.tv_sec != cached_time) {
         cached_time = curtime.tv_sec;
-        if constexpr (std::is_same_v<TimePoint, std::tm>) {
-#ifdef SLIMLOG_FMTLIB
-            cached_local = fmt::localtime(cached_time);
-#else
-            static_assert(
-                Util::Types::AlwaysFalse<TimePoint>{}, "fmtlib is required for fmt::localtime()");
-#endif
-        } else {
-            cached_local = TimePoint(std::chrono::duration_cast<typename TimePoint::duration>(
-                Detail::TimeZone::current_zone()
-                    ->to_local(std::chrono::sys_seconds(std::chrono::seconds(cached_time)))
-                    .time_since_epoch()));
-        }
+
+        std::tm local_tm{};
+        Detail::LocalTime(cached_time).get(&local_tm);
+
+        constexpr int TmEpoch = 1900;
+        cached_local = std::chrono::sys_days(std::chrono::year_month_day(
+                           std::chrono::year(local_tm.tm_year + TmEpoch),
+                           std::chrono::month(local_tm.tm_mon),
+                           std::chrono::day(local_tm.tm_mday)))
+            + std::chrono::hours(local_tm.tm_hour) + std::chrono::minutes(local_tm.tm_min)
+            + std::chrono::seconds(local_tm.tm_sec);
     }
 
     return std::make_pair(cached_local, static_cast<std::size_t>(curtime.tv_nsec));

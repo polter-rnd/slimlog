@@ -24,7 +24,8 @@
 #if defined(__cpp_unicode_characters) or defined(__cpp_char8_t)
 #include <cuchar> // IWYU pragma: keep
 #endif
-#include <cwchar> // IWYU pragma: keep
+#include <chrono>
+#include <cwchar>
 #include <functional>
 #include <initializer_list>
 #include <iterator>
@@ -44,23 +45,20 @@ namespace Detail {
 // Fallback functions to detect missing ones from stdlib
 namespace Fallback {
 #ifdef __cpp_char8_t
-template<typename T = char8_t>
-inline auto
-mbrtoc8(T* /*unused*/, const char* /*unused*/, std::size_t /*unused*/, mbstate_t* /*unused*/)
+template<typename... Args>
+inline auto mbrtoc8(Args... /*unused*/)
 {
     return std::monostate{};
 };
 #endif
 #ifdef __cpp_unicode_characters
-template<typename T = char16_t>
-inline auto
-mbrtoc16(T* /*unused*/, const char* /*unused*/, std::size_t /*unused*/, mbstate_t* /*unused*/)
+template<typename... Args>
+inline auto mbrtoc16(Args... /*unused*/)
 {
     return std::monostate{};
 };
-template<typename T = char32_t>
-inline auto
-mbrtoc32(T* /*unused*/, const char* /*unused*/, std::size_t /*unused*/, mbstate_t* /*unused*/)
+template<typename... Args>
+inline auto mbrtoc32(Args... /*unused*/)
 {
     return std::monostate{};
 };
@@ -69,7 +67,7 @@ mbrtoc32(T* /*unused*/, const char* /*unused*/, std::size_t /*unused*/, mbstate_
 
 template<typename Char>
 struct FromMultibyte {
-    auto run(Char* chr, const char* str, std::size_t len, mbstate_t* state) -> int
+    static auto get(Char* chr, const char* str, std::size_t len, mbstate_t* state) -> int
     {
         using namespace Fallback;
         if constexpr (std::is_same_v<Char, wchar_t>) {
@@ -90,12 +88,13 @@ struct FromMultibyte {
         }
     }
 
-    auto handle(std::size_t res) -> int
+    static auto handle(std::size_t res) -> int
     {
         return static_cast<int>(res);
     }
 
-    auto handle(std::monostate /*unused*/) -> int
+    template<typename T = std::monostate>
+    static auto handle(T /*unused*/) -> int
     {
         static_assert(
             Util::Types::AlwaysFalse<Char>{},
@@ -323,8 +322,8 @@ void Pattern<Char>::from_multibyte(auto& out, std::string_view data)
 {
     Char wchr;
     auto state = std::mbstate_t{};
-    Detail::FromMultibyte<Char> dispatcher;
-    for (int ret{}; (ret = dispatcher.run(&wchr, data.data(), data.size(), &state)) > 0;
+    const Detail::FromMultibyte<Char> dispatcher;
+    for (int ret{}; (ret = dispatcher.get(&wchr, data.data(), data.size(), &state)) > 0;
          data = data.substr(ret)) {
         out.push_back(wchr);
     }
@@ -464,7 +463,7 @@ void Pattern<Char>::append_placeholder(Placeholder::Type type, std::size_t count
         m_placeholders.emplace_back(type, CachedFormatter<std::size_t, Char>(data));
         break;
     case Placeholder::Type::Time:
-        m_placeholders.emplace_back(type, CachedFormatter<RecordTime::TimePoint, Char>(data));
+        m_placeholders.emplace_back(type, CachedFormatter<std::chrono::sys_seconds, Char>(data));
         break;
     }
 };
