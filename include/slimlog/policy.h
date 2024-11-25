@@ -30,9 +30,9 @@ struct SingleThreadedPolicy final {
     };
 
     /** @brief Dummy read lock. */
-    using ReadLock = std::lock_guard<Mutex>;
+    using ReadLock = std::unique_lock<Mutex>;
     /** @brief Dummy write lock. */
-    using WriteLock = std::lock_guard<Mutex>;
+    using WriteLock = std::unique_lock<Mutex>;
 };
 
 /**

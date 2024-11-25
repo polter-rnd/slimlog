@@ -17,10 +17,9 @@
 #include <slimlog/policy.h>
 
 #include <algorithm> // IWYU pragma: keep
-#include <exception>
 #include <initializer_list>
+#include <iterator>
 #include <memory>
-#include <queue>
 #include <string_view>
 #include <unordered_map>
 #include <unordered_set>
@@ -63,16 +62,12 @@ SinkDriver<Logger, ThreadingPolicy>::SinkDriver(const Logger* logger, SinkDriver
 template<typename Logger, typename ThreadingPolicy>
 SinkDriver<Logger, ThreadingPolicy>::~SinkDriver()
 {
-    try {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
-        for (auto* child : m_children) {
-            child->set_parent(m_parent);
-        }
-        if (m_parent) {
-            m_parent->remove_child(this);
-        }
-    } catch (...) {
-        std::terminate();
+    const typename ThreadingPolicy::WriteLock lock(m_mutex);
+    for (auto* child : m_children) {
+        child->set_parent(m_parent);
+    }
+    if (m_parent) {
+        m_parent->remove_child(this);
     }
 }
 
@@ -152,35 +147,59 @@ auto SinkDriver<Logger, ThreadingPolicy>::remove_child(SinkDriver* child) -> voi
 }
 
 template<typename Logger, typename ThreadingPolicy>
+auto SinkDriver<Logger, ThreadingPolicy>::update_effective_sinks(SinkDriver* driver) -> SinkDriver*
+{
+    typename ThreadingPolicy::ReadLock parent_lock;
+    SinkDriver* parent = driver->m_parent;
+    if (parent) {
+        if (parent != this) {
+            // Avoid deadlock when locking parent which is already write-locked
+            parent_lock = typename ThreadingPolicy::ReadLock(parent->m_mutex);
+        }
+        driver->m_effective_sinks = parent->m_effective_sinks;
+    } else {
+        driver->m_effective_sinks.clear();
+    }
+
+    // Update the current node's effective sinks
+    for (const auto& [sink, enabled] : driver->m_sinks) {
+        if (enabled) {
+            driver->m_effective_sinks.insert_or_assign(sink.get(), driver->m_logger);
+        } else {
+            driver->m_effective_sinks.erase(sink.get());
+        }
+    }
+
+    // Find the next node in level order
+    SinkDriver* next = nullptr;
+    if (driver->m_children.empty()) {
+        // Move to the next sibling or parent's sibling
+        SinkDriver* prev = driver;
+        while (parent && !next) {
+            if (auto prev_it = parent->m_children.find(prev);
+                std::distance(prev_it, parent->m_children.end()) > 1) {
+                next = *std::next(prev_it);
+            }
+            prev = parent;
+            parent = parent->m_parent != this ? parent->m_parent : nullptr;
+        }
+    } else {
+        // Nove to next level
+        next = *driver->m_children.begin();
+    }
+
+    return next;
+}
+
+template<typename Logger, typename ThreadingPolicy>
 auto SinkDriver<Logger, ThreadingPolicy>::update_effective_sinks() -> void
 {
-    // Queue for level order traversal
-    std::queue<SinkDriver*> nodes;
-    nodes.push(this);
-    while (!nodes.empty()) {
-        auto* node = nodes.front();
-        if (node->m_parent) {
-            node->m_effective_sinks = node->m_parent->m_effective_sinks;
-            for (const auto& [sink, enabled] : node->m_sinks) {
-                if (enabled) {
-                    node->m_effective_sinks.insert_or_assign(sink.get(), node->m_logger);
-                } else {
-                    node->m_effective_sinks.erase(sink.get());
-                }
-            }
-        } else {
-            node->m_effective_sinks.clear();
-            for (const auto& [sink, enabled] : node->m_sinks) {
-                if (enabled) {
-                    node->m_effective_sinks.emplace(sink.get(), node->m_logger);
-                }
-            }
-        }
-        nodes.pop();
-
-        for (auto* child : node->m_children) {
-            nodes.push(child);
-        }
+    // Update current driver without lock since update_effective_sinks()
+    // have to be called already under the write lock.
+    SinkDriver* next = update_effective_sinks(this);
+    while (next) {
+        const typename ThreadingPolicy::WriteLock next_lock(next->m_mutex);
+        next = update_effective_sinks(next);
     }
 }
 

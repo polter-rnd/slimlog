@@ -344,9 +344,17 @@ protected:
 
 private:
     /**
-     * @brief Updates the effective sinks for the current sink driver and its children.
+     * @brief Recursively updates the effective sinks for
+     *        the current sink driver and its children.
      */
     auto update_effective_sinks() -> void;
+
+    /**
+     * @brief Updates the effective sinks for the particular sink driver.
+     * @param driver Pointer to the sink driver to update.
+     * @return Pointer to the next sink driver to be updated.
+     */
+    auto update_effective_sinks(SinkDriver* driver) -> SinkDriver*;
 
     const Logger* m_logger;
     SinkDriver* m_parent;
