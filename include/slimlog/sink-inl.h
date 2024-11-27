@@ -33,18 +33,16 @@
 namespace SlimLog {
 
 template<typename Logger>
-auto Sink<Logger>::set_pattern(StringViewType pattern) -> std::shared_ptr<Sink<Logger>>
+auto Sink<Logger>::set_pattern(StringViewType pattern) -> void
 {
     m_pattern.set_pattern(std::move(pattern));
-    return this->shared_from_this();
 }
 
 template<typename Logger>
 auto Sink<Logger>::set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels)
-    -> std::shared_ptr<Sink<Logger>>
+    -> void
 {
     m_pattern.set_levels(std::move(levels));
-    return this->shared_from_this();
 }
 
 template<typename Logger>

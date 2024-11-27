@@ -30,7 +30,7 @@ namespace SlimLog {
  * @tparam Logger The logger class type intended for use with this sink.
  */
 template<typename Logger>
-class Sink : public std::enable_shared_from_this<Sink<Logger>> {
+class Sink {
 public:
     /** @brief String type for log messages. */
     using StringType = typename Logger::StringType;
@@ -97,7 +97,7 @@ public:
      * @param pattern Log message pattern.
      * @return Pointer to the self sink object.
      */
-    virtual auto set_pattern(StringViewType pattern) -> std::shared_ptr<Sink<Logger>>;
+    virtual auto set_pattern(StringViewType pattern) -> void;
 
     /**
      * @brief Sets the log level names.
@@ -111,8 +111,7 @@ public:
      * @param levels List of log levels with corresponding names.
      * @return Pointer to the self sink object.
      */
-    virtual auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels)
-        -> std::shared_ptr<Sink<Logger>>;
+    virtual auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels) -> void;
 
     /**
      * @brief Processes a log record.
