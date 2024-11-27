@@ -1,5 +1,5 @@
 /**
- * @file pattern.h
+ * @file pattern-inl.h
  * @brief Contains the definition of the Pattern class.
  */
 

@@ -1,5 +1,5 @@
 /**
- * @file sink-int.h
+ * @file sink-inl.h
  * @brief Contains the definition of Sink and SinkDriver classes.
  */
 
