@@ -17,8 +17,8 @@
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace SlimLog {
 
@@ -360,7 +360,7 @@ private:
 
     const Logger* m_logger;
     SinkDriver* m_parent;
-    std::unordered_set<SinkDriver*> m_children;
+    std::vector<SinkDriver*> m_children;
     std::unordered_map<Sink<Logger>*, const Logger*> m_effective_sinks;
     std::unordered_map<std::shared_ptr<Sink<Logger>>, bool> m_sinks;
     mutable ThreadingPolicy::Mutex m_mutex;

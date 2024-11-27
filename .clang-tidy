@@ -70,6 +70,14 @@ CheckOptions:
     value: CamelCase
   - key: readability-identifier-naming.TemplateParameterCase
     value: CamelCase
+  - key: readability-identifier-length.MinimumParameterNameLength
+    value: 2
+  - key: readability-identifier-length.MinimumVariableNameLength
+    value: 2
+  - key: cppcoreguidelines-avoid-magic-numbers.IgnorePowersOf2IntegerValues
+    value: true
+  - key: readability-magic-numbers.IgnorePowersOf2IntegerValues
+    value: true
   # Workaround for https://github.com/llvm/llvm-project/issues/46097
   - key: readability-identifier-naming.TypeTemplateParameterIgnoredRegexp
     value: expr-type

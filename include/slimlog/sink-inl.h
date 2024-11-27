@@ -27,8 +27,8 @@
 #include <string_view>
 #include <tuple>
 #include <unordered_map>
-#include <unordered_set>
 #include <utility>
+#include <vector>
 
 namespace SlimLog {
 
@@ -139,14 +139,16 @@ template<typename Logger, typename ThreadingPolicy>
 auto SinkDriver<Logger, ThreadingPolicy>::add_child(SinkDriver* child) -> void
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
-    m_children.insert(child);
+    m_children.push_back(child);
 }
 
 template<typename Logger, typename ThreadingPolicy>
 auto SinkDriver<Logger, ThreadingPolicy>::remove_child(SinkDriver* child) -> void
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
-    m_children.erase(child);
+    if (auto it = std::find(m_children.begin(), m_children.end(), child); it != m_children.end()) {
+        m_children.erase(it);
+    }
 }
 
 template<typename Logger, typename ThreadingPolicy>
@@ -192,16 +194,16 @@ auto SinkDriver<Logger, ThreadingPolicy>::update_effective_sinks(SinkDriver* dri
         // Move to the next sibling or parent's sibling
         SinkDriver* prev = driver;
         while (parent && !next) {
-            if (auto prev_it = parent->m_children.find(prev);
-                std::distance(prev_it, parent->m_children.end()) > 1) {
-                next = *std::next(prev_it);
+            if (auto it = std::find(parent->m_children.begin(), parent->m_children.end(), prev);
+                std::distance(it, parent->m_children.end()) > 1) {
+                next = *std::next(it);
             }
             prev = parent;
             parent = parent->m_parent != this ? parent->m_parent : nullptr;
         }
     } else {
         // Nove to next level
-        next = *driver->m_children.begin();
+        next = driver->m_children.front();
     }
 
     return next;
