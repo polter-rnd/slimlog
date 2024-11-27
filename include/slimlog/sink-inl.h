@@ -13,14 +13,19 @@
 #endif
 
 #include <slimlog/level.h>
+#include <slimlog/location.h>
 #include <slimlog/pattern.h>
 #include <slimlog/policy.h>
+#include <slimlog/record.h>
+#include <slimlog/util/os.h>
 
 #include <algorithm> // IWYU pragma: keep
+#include <cstddef>
 #include <initializer_list>
 #include <iterator>
 #include <memory>
 #include <string_view>
+#include <tuple>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -144,6 +149,19 @@ auto SinkDriver<Logger, ThreadingPolicy>::remove_child(SinkDriver* child) -> voi
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     m_children.erase(child);
+}
+
+template<typename Logger, typename ThreadingPolicy>
+auto SinkDriver<Logger, ThreadingPolicy>::create_record(
+    Level level, StringViewType category, Location location) -> RecordType
+{
+    RecordType record = {
+        level,
+        {location.file_name(), location.function_name(), static_cast<std::size_t>(location.line())},
+        std::move(category),
+        Util::OS::thread_id()};
+    std::tie(record.time.local, record.time.nsec) = Util::OS::local_time();
+    return record;
 }
 
 template<typename Logger, typename ThreadingPolicy>
