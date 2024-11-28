@@ -340,6 +340,7 @@ public:
             m_value = std::move(value);
             m_buffer.clear();
 #ifdef SLIMLOG_FMTLIB
+            // Shortcut for numeric types without formatting
             if constexpr (std::is_arithmetic_v<T>) {
                 if (m_empty) [[likely]] {
                     m_buffer.append(fmt::format_int(*m_value));
@@ -348,6 +349,8 @@ public:
                 }
             }
 
+            // For libfmt it's possible to create a custom fmt::basic_format_context
+            // appending to the buffer directly, which is the most efficient way.
             using Appender = std::conditional_t<
                 std::is_same_v<Char, char>,
                 fmt::appender,
@@ -355,6 +358,9 @@ public:
             fmt::basic_format_context<Appender, Char> fmt_context(Appender(m_buffer), {});
             Formatter<T, Char>::format(*m_value, fmt_context);
 #else
+            // For std::format there is no way to build a custom format context,
+            // so we have to use dummy format string (empty string will be omitted),
+            // and pass FormatValue with a reference to CachedFormatter as an argument.
             static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
             m_buffer.vformat(Fmt.data(), m_buffer.make_format_args(FormatValue(*this, *m_value)));
 #endif
