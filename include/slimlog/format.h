@@ -1,6 +1,6 @@
 /**
  * @file format.h
- * @brief Contains definitions of FormatString, FormatBuffer, and Format classes.
+ * @brief Contains declarations and definitions of classes related to formatting.
  */
 
 #pragma once
@@ -17,13 +17,13 @@
 #else
 #include <slimlog/util/types.h>
 
-#include <array>
 #include <format>
 #endif
 
 #include <slimlog/location.h>
 #include <slimlog/util/buffer.h>
 
+#include <chrono>
 #include <concepts>
 #include <cstring>
 #include <iterator>
@@ -142,60 +142,6 @@ concept Formattable = requires(const Char* fmt, Args... args) {
 #endif
 };
 
-#ifndef SLIMLOG_FMTLIB
-template<typename T, Formattable<T> Char>
-class CachedFormatter;
-
-/**
- * @brief Wrapper for formatting a value with a cached formatter.
- *
- * Stores the value and reference to the cached formatter (see CachedFormatter).
- * Used in combination with `std::formatter<FormatValue<T, Char>, Char>` specialization.
- *
- * @tparam T Value type.
- * @tparam Char Output character type.
- */
-template<typename T, Formattable<T> Char>
-class FormatValue final {
-public:
-    /**
-     * @brief Constructs a new FormatValue object from a reference to the formatter and value.
-     *
-     * @param formatter Reference to the formatter.
-     * @param value Value to be formatted.
-     */
-    constexpr explicit FormatValue(const CachedFormatter<T, Char>& formatter, T value)
-        : m_formatter(formatter)
-        , m_value(std::move(value))
-    {
-    }
-
-    ~FormatValue() = default;
-
-    FormatValue(const FormatValue&) = delete;
-    FormatValue(FormatValue&&) = delete;
-    auto operator=(const FormatValue&) -> FormatValue& = delete;
-    auto operator=(FormatValue&&) noexcept -> FormatValue& = delete;
-
-    /**
-     * @brief Formats the value with the cached formatter.
-     *
-     * @tparam Context Format context type (`std::format_context`).
-     * @param context Format context.
-     * @return Output iterator to the resulting buffer.
-     */
-    template<typename Context>
-    auto format(Context& context) const
-    {
-        return m_formatter.format(m_value, context);
-    }
-
-private:
-    const CachedFormatter<T, Char>& m_formatter;
-    T m_value;
-};
-#endif
-
 /**
  * @brief Buffer used for log message formatting.
  *
@@ -288,6 +234,52 @@ public:
     }
 };
 
+#ifndef SLIMLOG_FMTLIB
+template<typename T, Formattable<T> Char>
+class CachedFormatter;
+
+/**
+ * @brief Wrapper for formatting a value with a cached formatter.
+ *
+ * Stores the value and reference to the cached formatter (see CachedFormatter).
+ * Used in combination with `std::formatter<FormatValue<T, Char>, Char>` specialization.
+ *
+ * @tparam T Value type.
+ * @tparam Char Output character type.
+ */
+template<typename T, Formattable<T> Char>
+class FormatValue final {
+public:
+    /**
+     * @brief Constructs a new FormatValue object from a reference to the formatter and value.
+     *
+     * @param formatter Reference to the formatter.
+     * @param value Value to be formatted.
+     */
+    explicit FormatValue(const CachedFormatter<T, Char>& formatter, T value);
+    ~FormatValue() = default;
+
+    FormatValue(const FormatValue&) = delete;
+    FormatValue(FormatValue&&) = delete;
+    auto operator=(const FormatValue&) -> FormatValue& = delete;
+    auto operator=(FormatValue&&) noexcept -> FormatValue& = delete;
+
+    /**
+     * @brief Formats the value with the cached formatter.
+     *
+     * @tparam Context Format context type (`std::format_context`).
+     * @param context Format context.
+     * @return Output iterator to the resulting buffer.
+     */
+    template<typename Context>
+    auto format(Context& context) const;
+
+private:
+    const CachedFormatter<T, Char>& m_formatter;
+    T m_value;
+};
+#endif
+
 /**
  * @brief Wrapper to parse the format string and store the format context.
  *
@@ -301,30 +293,12 @@ class CachedFormatter final : Formatter<T, Char> {
 public:
     using Formatter<T, Char>::format;
 
-    /** @brief Default size of formatted string (enough for numbers and date/time) */
-    constexpr static size_t CachedBufferSize = 20;
-
     /**
      * @brief Constructs a new CachedFormatter object from a format string.
      *
      * @param fmt Format string.
      */
-    constexpr explicit CachedFormatter(std::basic_string_view<Char> fmt)
-#ifdef SLIMLOG_FMTLIB
-        : m_empty(fmt.empty())
-#endif
-    {
-        FormatParseContext<Char> parse_context(std::move(fmt));
-        // Suppress buggy GCC warning on fmtlib sources
-#if defined(__GNUC__) and not defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wstringop-overflow"
-#endif
-        Formatter<T, Char>::parse(parse_context);
-#if defined(__GNUC__) and not defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
-    }
+    explicit CachedFormatter(std::basic_string_view<Char> fmt);
 
     /**
      * @brief Formats the value and writes to the output buffer.
@@ -334,46 +308,14 @@ public:
      * @param value Value to be formatted.
      */
     template<typename Out>
-    void format(Out& out, T value) const
-    {
-        if (!m_value || value != *m_value) [[unlikely]] {
-            m_value = std::move(value);
-            m_buffer.clear();
-#ifdef SLIMLOG_FMTLIB
-            // Shortcut for numeric types without formatting
-            if constexpr (std::is_arithmetic_v<T>) {
-                if (m_empty) [[likely]] {
-                    m_buffer.append(fmt::format_int(*m_value));
-                    out.append(m_buffer);
-                    return;
-                }
-            }
-
-            // For libfmt it's possible to create a custom fmt::basic_format_context
-            // appending to the buffer directly, which is the most efficient way.
-            using Appender = std::conditional_t<
-                std::is_same_v<Char, char>,
-                fmt::appender,
-                std::back_insert_iterator<decltype(m_buffer)>>;
-            fmt::basic_format_context<Appender, Char> fmt_context(Appender(m_buffer), {});
-            Formatter<T, Char>::format(*m_value, fmt_context);
-#else
-            // For std::format there is no way to build a custom format context,
-            // so we have to use dummy format string (empty string will be omitted),
-            // and pass FormatValue with a reference to CachedFormatter as an argument.
-            static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
-            m_buffer.vformat(Fmt.data(), m_buffer.make_format_args(FormatValue(*this, *m_value)));
-#endif
-        }
-        out.append(m_buffer);
-    }
+    void format(Out& out, T value) const;
 
 private:
 #ifdef SLIMLOG_FMTLIB
     bool m_empty;
 #endif
     mutable std::optional<T> m_value;
-    mutable FormatBuffer<Char, CachedBufferSize> m_buffer;
+    mutable FormatBuffer<Char, 32> m_buffer;
 };
 
 } // namespace SlimLog
@@ -394,4 +336,8 @@ struct std::formatter<SlimLog::FormatValue<T, Char>, Char> { // NOLINT (cert-dcl
     }
 };
 /** @endcond */
+#endif
+
+#ifdef SLIMLOG_HEADER_ONLY
+#include <slimlog/format-inl.h> // IWYU pragma: keep
 #endif
