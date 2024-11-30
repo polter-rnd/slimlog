@@ -58,7 +58,7 @@ inline auto localtime_s(Args... /*unused*/)
 } // namespace Fallback
 
 struct LocalTime {
-    explicit LocalTime(const std::time_t& time)
+    explicit LocalTime(std::time_t time)
         : m_time(time)
     {
     }
@@ -103,7 +103,7 @@ protected:
     }
 
 private:
-    const std::time_t& m_time;
+    const std::time_t m_time;
     std::tm* m_tm{nullptr};
 };
 

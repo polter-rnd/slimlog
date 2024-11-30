@@ -165,7 +165,7 @@ public:
      * @return \b true if the sink is enabled.
      * @return \b false if the sink is disabled.
      */
-    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) const -> bool
+    [[nodiscard]] auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) const -> bool
     {
         return m_sinks.sink_enabled(sink);
     }
