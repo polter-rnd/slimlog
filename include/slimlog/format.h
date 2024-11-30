@@ -164,7 +164,7 @@ public:
      * @param formatter Reference to the formatter.
      * @param value Value to be formatted.
      */
-    constexpr FormatValue(const CachedFormatter<T, Char>& formatter, T value)
+    constexpr explicit FormatValue(const CachedFormatter<T, Char>& formatter, T value)
         : m_formatter(formatter)
         , m_value(std::move(value))
     {
