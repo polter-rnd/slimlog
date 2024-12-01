@@ -5,13 +5,16 @@
 
 #pragma once
 
-#include <slimlog/util/types.h>
+#if !defined(_WIN32) || defined(__STDC_WANT_SECURE_LIB__)
+// In addition to <ctime> below for localtime_r() on POSIX and localtime_s() on Windows
+#include <time.h> // IWYU pragma: keep
+#endif
 
 #include <chrono>
 #include <ctime>
 #include <ratio>
+#include <tuple>
 #include <utility>
-#include <variant>
 
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -40,75 +43,6 @@
 #endif
 
 namespace SlimLog::Util::OS {
-
-/** @cond */
-namespace Detail {
-
-namespace Fallback {
-template<typename... Args>
-inline auto localtime_r(Args... /*unused*/)
-{
-    return std::monostate{};
-};
-template<typename... Args>
-inline auto localtime_s(Args... /*unused*/)
-{
-    return std::monostate{};
-};
-} // namespace Fallback
-
-struct LocalTime {
-    explicit LocalTime(std::time_t time)
-        : m_time(time)
-    {
-    }
-
-    ~LocalTime() = default;
-
-    LocalTime(const LocalTime&) = delete;
-    LocalTime(LocalTime&&) = delete;
-    auto operator=(const LocalTime&) -> LocalTime& = delete;
-    auto operator=(LocalTime&&) noexcept -> LocalTime& = delete;
-
-    auto get(std::tm* result) -> bool
-    {
-        using namespace Fallback;
-        m_tm = result;
-        return handle(localtime_r(&m_time, m_tm));
-    }
-
-protected:
-    template<typename T = std::monostate>
-    auto handle(T /*unused*/) -> bool
-    {
-        using namespace Fallback;
-        return fallback(localtime_s(m_tm, &m_time));
-    }
-
-    static auto handle(std::tm* res) -> bool
-    {
-        return res != nullptr;
-    }
-
-    static auto fallback(int res) -> bool
-    {
-        return res == 0;
-    }
-
-    template<typename T = std::monostate>
-    static auto fallback(T /*unused*/) -> int
-    {
-        static_assert(Util::Types::AlwaysFalse<T>{}, "No localtime_r() or localtime_s() found");
-        return -1;
-    }
-
-private:
-    const std::time_t m_time;
-    std::tm* m_tm{nullptr};
-};
-
-} // namespace Detail
-/** @endcond */
 
 /**
  * @brief Retrieves the current thread ID across different platforms.
@@ -155,19 +89,19 @@ private:
 #ifdef MAC_OS_X_VERSION_MAX_ALLOWED
         {
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 1060) || defined(__POWERPC__)
-            tid = pthread_mach_thread_np(pthread_self());
+            tid = ::pthread_mach_thread_np(::pthread_self());
 #elif MAC_OS_X_VERSION_MIN_REQUIRED < 1060
             if (&pthread_threadid_np) {
-                pthread_threadid_np(nullptr, &tid);
+                ::pthread_threadid_np(nullptr, &tid);
             } else {
-                tid = pthread_mach_thread_np(pthread_self());
+                tid = ::pthread_mach_thread_np(::pthread_self());
             }
 #else
-            pthread_threadid_np(nullptr, &tid);
+            ::pthread_threadid_np(nullptr, &tid);
 #endif
         }
 #else
-        pthread_threadid_np(nullptr, &tid);
+        ::pthread_threadid_np(nullptr, &tid);
 #endif
         cached_tid = static_cast<std::size_t>(tid);
 #else // Default to standard C++11 (other Unix)
@@ -195,16 +129,25 @@ private:
 
     std::timespec curtime{};
 #ifdef __linux__
-    ::clock_gettime(CLOCK_REALTIME_COARSE, &curtime);
+    std::ignore = ::clock_gettime(CLOCK_REALTIME_COARSE, &curtime);
 #else
-    std::timespec_get(&curtime, TIME_UTC);
+    std::ignore = std::timespec_get(&curtime, TIME_UTC);
 #endif
 
     if (curtime.tv_sec != cached_time) {
         cached_time = curtime.tv_sec;
 
         std::tm local_tm{};
-        Detail::LocalTime(cached_time).get(&local_tm);
+#ifdef _WIN32
+#ifdef __STDC_WANT_SECURE_LIB__
+        std::ignore = ::localtime_s(&local_tm, &cached_time);
+#else
+        // MSVC is known to use thread-local buffer
+        local_tm = *std::localtime(&cached_time);
+#endif
+#else
+        std::ignore = ::localtime_r(&cached_time, &local_tm);
+#endif
 
         constexpr int TmEpoch = 1900;
         cached_local = std::chrono::sys_days(std::chrono::year_month_day(
