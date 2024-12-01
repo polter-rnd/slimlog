@@ -1,10 +1,11 @@
 /**
  * @file null_sink.h
- * @brief Contains definition of NullSink class.
+ * @brief Contains declaration of NullSink class.
  */
 
 #pragma once
 
+#include <slimlog/logger.h>
 #include <slimlog/sink.h>
 
 #include <utility>
@@ -43,19 +44,16 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(RecordType& record) -> void override
-    {
-        FormatBufferType buffer;
-        Sink<Logger>::format(buffer, record);
-        buffer.push_back('\n');
-    }
+    auto message(RecordType& record) -> void override;
 
     /**
      * @brief Flush operation (no-op for NullSink).
      */
-    auto flush() -> void override
-    {
-    }
+    auto flush() -> void override;
 };
 
 } // namespace SlimLog
+
+#ifdef SLIMLOG_HEADER_ONLY
+#include <slimlog/sinks/null_sink-inl.h> // IWYU pragma: keep
+#endif

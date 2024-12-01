@@ -3,9 +3,11 @@
     { include: [ "<bits/types/mbstate_t.h>", "private", "<cwchar>", "public" ] },
     { include: [ "<bits/types/mbstate_t.h>", "private", "<cuchar>", "public" ] },
     { include: [ "<bits/chrono.h>", "private", "<chrono>", "public" ] },
+    { include: [ "<bits/types/struct_FILE.h>", "private", "<cstdio>", "public" ] },
     # Mappings for libc++ which are missing from built-in mappings
     { include: [ "@<__mutex/.*>", "private", "<mutex>", "public" ] },
     { include: [ "@<__exception/.*>", "private", "<exception>", "public" ] },
+    { include: [ "@<__system_error/.*>", "private", "<system_error>", "public" ] },
     { include: [ "<__fwd/string_view.h>", "private", "<string_view>", "public" ] },
     { include: [ "<__hash_table>", "private", "<unordered_map>", "public" ] },
     { include: [ "<__hash_table>", "private", "<unordered_set>", "public" ] },

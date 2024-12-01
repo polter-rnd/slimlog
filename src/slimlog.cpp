@@ -4,6 +4,9 @@
 #include <slimlog/policy.h>
 #include <slimlog/record.h>
 #include <slimlog/sink.h>
+#include <slimlog/sinks/file_sink.h>
+#include <slimlog/sinks/null_sink.h>
+#include <slimlog/sinks/ostream_sink.h>
 
 #ifndef SLIMLOG_HEADER_ONLY
 // IWYU pragma: begin_keep
@@ -11,6 +14,9 @@
 #include <slimlog/pattern-inl.h>
 #include <slimlog/record-inl.h>
 #include <slimlog/sink-inl.h>
+#include <slimlog/sinks/file_sink-inl.h>
+#include <slimlog/sinks/null_sink-inl.h>
+#include <slimlog/sinks/ostream_sink-inl.h>
 // IWYU pragma: end_keep
 #endif
 
@@ -23,6 +29,9 @@ namespace SlimLog {
 template class SinkDriver<Logger<std::string_view>, SingleThreadedPolicy>;
 template class SinkDriver<Logger<std::string_view>, MultiThreadedPolicy>;
 template class Sink<Logger<std::string_view>>;
+template class FileSink<Logger<std::string_view>>;
+template class OStreamSink<Logger<std::string_view>>;
+template class NullSink<Logger<std::string_view>>;
 template class RecordStringView<char>;
 template class Pattern<char>;
 template class CachedFormatter<std::size_t, char>;
@@ -36,6 +45,9 @@ template class FormatValue<std::chrono::sys_seconds, char>;
 template class SinkDriver<Logger<std::wstring_view>, SingleThreadedPolicy>;
 template class SinkDriver<Logger<std::wstring_view>, MultiThreadedPolicy>;
 template class Sink<Logger<std::wstring_view>>;
+template class FileSink<Logger<std::wstring_view>>;
+template class OStreamSink<Logger<std::wstring_view>>;
+template class NullSink<Logger<std::wstring_view>>;
 template class RecordStringView<wchar_t>;
 template class Pattern<wchar_t>;
 template class CachedFormatter<std::size_t, wchar_t>;

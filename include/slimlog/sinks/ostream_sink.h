@@ -1,10 +1,11 @@
 /**
  * @file ostream_sink.h
- * @brief Contains definition of OStreamSink class.
+ * @brief Contains declaration of OStreamSink class.
  */
 
 #pragma once
 
+#include <slimlog/logger.h>
 #include <slimlog/sink.h>
 
 #include <ostream>
@@ -61,24 +62,19 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(RecordType& record) -> void override
-    {
-        FormatBufferType buffer;
-        Sink<Logger>::format(buffer, record);
-        buffer.push_back('\n');
-        m_ostream.write(buffer.begin(), buffer.size());
-    }
+    auto message(RecordType& record) -> void override;
 
     /**
      * @brief Flushes the output stream.
      */
-    auto flush() -> void override
-    {
-        m_ostream.flush();
-    }
+    auto flush() -> void override;
 
 private:
     std::basic_ostream<CharType> m_ostream;
 };
 
 } // namespace SlimLog
+
+#ifdef SLIMLOG_HEADER_ONLY
+#include <slimlog/sinks/ostream_sink-inl.h> // IWYU pragma: keep
+#endif

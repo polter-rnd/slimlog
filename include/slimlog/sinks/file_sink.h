@@ -1,17 +1,16 @@
 /**
- * @file ostream_sink.h
- * @brief Contains definition of FileSink class.
+ * @file file_sink.h
+ * @brief Contains declaration of FileSink class.
  */
 
 #pragma once
 
+#include <slimlog/logger.h>
 #include <slimlog/sink.h>
 
-#include <cerrno>
 #include <cstdio>
-#include <cstdlib>
-#include <cstring>
-#include <iterator>
+#include <memory>
+#include <string_view>
 #include <utility>
 
 namespace SlimLog {
@@ -41,15 +40,7 @@ public:
     explicit FileSink(std::string_view filename, Args&&... args)
         : Sink<Logger>(std::forward<Args>(args)...)
     {
-        fp = std::fopen(filename.data(), "w+");
-        if (!fp) {
-            throw std::system_error({errno, std::system_category()}, std::strerror(errno));
-        }
-    }
-
-    virtual ~FileSink()
-    {
-        std::fclose(fp);
+        open(filename);
     }
 
     /**
@@ -59,23 +50,26 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(RecordType& record) -> void override
-    {
-        FormatBufferType buffer;
-        Sink<Logger>::format(buffer, record);
-        buffer.push_back('\n');
-        std::fwrite(buffer.data(), buffer.size(), 1, fp);
-    }
+    auto message(RecordType& record) -> void override;
 
     /**
      * @brief Flushes the output stream.
      */
-    auto flush() -> void override
-    {
-        std::fflush(fp);
-    }
+    auto flush() -> void override;
+
+protected:
+    /**
+     * @brief Opens a particular log file for append.
+     *
+     * @param filename Log file name.
+     */
+    auto open(std::string_view filename) -> void;
 
 private:
-    FILE* fp = nullptr;
+    std::unique_ptr<FILE, int (*)(FILE*)> m_fp;
 };
 } // namespace SlimLog
+
+#ifdef SLIMLOG_HEADER_ONLY
+#include <slimlog/sinks/file_sink-inl.h> // IWYU pragma: keep
+#endif
