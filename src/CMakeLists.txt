@@ -74,14 +74,48 @@ if(ENABLE_FMTLIB OR ENABLE_FMTLIB_HO)
     target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_FMTLIB)
 
     if(ENABLE_FMTLIB)
+        set(CMAKE_REQUIRED_LIBRARIES fmt::fmt)
         target_link_libraries(slimlog PUBLIC fmt::fmt)
         target_link_libraries(slimlog-header-only INTERFACE fmt::fmt)
     else()
+        set(CMAKE_REQUIRED_LIBRARIES fmt::fmt-header-only)
         target_link_libraries(slimlog PUBLIC fmt::fmt-header-only)
         target_link_libraries(slimlog-header-only INTERFACE fmt::fmt-header-only)
     endif()
 
-    set(PKG_CONFIG_REQUIRES fmt) # add dependency to pkg-config
+    # Add dependency to pkg-config
+    set(PKG_CONFIG_REQUIRES fmt)
+
+    # Check which unicode types are supported
+    include(CheckCXXSymbolExists)
+    if(${fmt_VERSION} VERSION_GREATER_EQUAL 11.0.0)
+        set(fmt_format_context "fmt::buffered_context")
+    else()
+        set(fmt_format_context "fmt::buffer_context")
+    endif()
+    foreach(size 8 16 32)
+        check_cxx_symbol_exists(
+            "fmt::make_format_args<${fmt_format_context}<char${size}_t>, std::chrono::sys_seconds>"
+            "fmt/format.h;fmt/chrono.h;chrono" CHAR${size}_T_FORMATTABLE
+        )
+        if(CHAR${size}_T_FORMATTABLE)
+            check_cxx_symbol_exists("std::mbrtoc${size}" "cuchar" HAS_MBRTOC${size})
+            if(HAS_MBRTOC${size})
+                target_compile_definitions(slimlog PUBLIC SLIMLOG_CHAR${size}_T)
+                target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_CHAR${size}_T)
+            endif()
+        endif()
+    endforeach()
+else()
+    # If fmtlib is not available, check for C++20 std::format()
+    include(CheckCXXSymbolExists)
+    check_cxx_symbol_exists(
+        "std::make_format_args<std::format_context, std::chrono::sys_seconds>" "format;chrono"
+        HAS_CXX20_FORMAT
+    )
+    if(NOT HAS_CXX20_FORMAT)
+        message(FATAL_ERROR "C++20 std::format() is not available, please enable fmtlib support")
+    endif()
 endif()
 
 # ---------------------------------------------------------------------------------------

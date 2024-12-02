@@ -21,6 +21,16 @@
 # - `-DENABLE_MYPKG=ON`: marks package as required and fails if it is not found;
 # - `-DENABLE_MYPKG=OFF`: disables package and does not call find_package().
 #
+# If package is found, the following variables are propagated to parent scope:
+#
+# - `\${package}_FOUND`: whether the package was found;
+# - `\${package}_VERSION`: full provided version string;
+# - `\${package}_VERSION_MAJOR`: major version if provided, else 0;
+# - `\${package}_VERSION_MINOR`: minor version if provided, else 0;
+# - `\${package}_VERSION_PATCH`: patch version if provided, else 0;
+# - `\${package}_VERSION_TWEAK`: tweak version if provided, else 0;
+# - `\${package}_VERSION_COUNT`: number of version components, 0 to 4.
+#
 # ~~~{.cmake}
 # include(Helpers)
 # find_package_switchable(MyPackage
@@ -83,6 +93,24 @@ function(find_package_switchable package)
             find_package(${package} ${ARG_MIN_VERSION} REQUIRED)
         endif()
         option(${ARG_OPTION} ${ARG_PURPOSE} ${${ARG_OPTION}})
+    endif()
+    if(${${package}_FOUND})
+        # Expand version variables visibility to parent scope
+        foreach(
+            suffix
+            FOUND
+            VERSION
+            VERSION_MAJOR
+            VERSION_MINOR
+            VERSION_PATCH
+            VERSION_TWEAK
+            VERSION_COUNT
+        )
+            set(${package}_${suffix}
+                ${${package}_${suffix}}
+                PARENT_SCOPE
+            )
+        endforeach()
     endif()
 endfunction()
 

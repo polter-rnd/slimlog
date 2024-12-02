@@ -19,12 +19,12 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <climits>
 #include <concepts>
 #if defined(__cpp_unicode_characters) or defined(__cpp_char8_t)
 #include <cuchar> // IWYU pragma: keep
 #endif
-#include <chrono>
 #include <cwchar>
 #include <functional>
 #include <initializer_list>

@@ -136,15 +136,6 @@ find_package_switchable(
     PURPOSE ${FMT_PURPOSE}
 )
 
-# If fmtlib is not available, check for C++20 std::format()
-if(NOT ENABLE_FMTLIB AND NOT ENABLE_FMTLIB_HO)
-    include(CheckCXXSymbolExists)
-    check_cxx_symbol_exists("std::make_format_args<std::format_context>" "format" HAS_CXX20_FORMAT)
-    if(NOT HAS_CXX20_FORMAT)
-        message(FATAL_ERROR "C++20 std::format() is not available, please enable fmtlib support")
-    endif()
-endif()
-
 # Include library targets
 add_subdirectory(src)
 

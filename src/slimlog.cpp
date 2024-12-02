@@ -57,31 +57,45 @@ template class FormatValue<std::size_t, wchar_t>;
 template class FormatValue<std::chrono::sys_seconds, wchar_t>;
 #endif
 
-// char8_t (std::mbrtoc8() is supported only for newer versions of glibc++ and libc++)
-/*#if defined(__cpp_char8_t)
-#if defined(_GLIBCXX_USE_UCHAR_C8RTOMB_MBRTOC8_CXX20)                                              \
-    or defined(_LIBCPP_VERSION) and !defined(_LIBCPP_HAS_NO_C8RTOMB_MBRTOC8)
+// char8_t
+#ifdef SLIMLOG_CHAR8_T
 template class SinkDriver<Logger<std::u8string_view>, SingleThreadedPolicy>;
 template class SinkDriver<Logger<std::u8string_view>, MultiThreadedPolicy>;
 template class Sink<Logger<std::u8string_view>>;
+template class FileSink<Logger<std::u8string_view>>;
+template class OStreamSink<Logger<std::u8string_view>>;
+template class NullSink<Logger<std::u8string_view>>;
 template class RecordStringView<char8_t>;
 template class Pattern<char8_t>;
-#endif
+template class CachedFormatter<std::size_t, char8_t>;
+template class CachedFormatter<std::chrono::sys_seconds, char8_t>;
 #endif
 
 // char16_t
-#if defined(__cpp_unicode_characters)
+#ifdef SLIMLOG_CHAR16_T
 template class SinkDriver<Logger<std::u16string_view>, SingleThreadedPolicy>;
 template class SinkDriver<Logger<std::u16string_view>, MultiThreadedPolicy>;
 template class Sink<Logger<std::u16string_view>>;
+template class FileSink<Logger<std::u16string_view>>;
+template class OStreamSink<Logger<std::u16string_view>>;
+template class NullSink<Logger<std::u16string_view>>;
 template class RecordStringView<char16_t>;
 template class Pattern<char16_t>;
+template class CachedFormatter<std::size_t, char16_t>;
+template class CachedFormatter<std::chrono::sys_seconds, char16_t>;
+#endif
 
 // char32_t
+#ifdef SLIMLOG_CHAR32_T
 template class SinkDriver<Logger<std::u32string_view>, SingleThreadedPolicy>;
 template class SinkDriver<Logger<std::u32string_view>, MultiThreadedPolicy>;
 template class Sink<Logger<std::u32string_view>>;
+template class FileSink<Logger<std::u32string_view>>;
+template class OStreamSink<Logger<std::u32string_view>>;
+template class NullSink<Logger<std::u32string_view>>;
 template class RecordStringView<char32_t>;
 template class Pattern<char32_t>;
-#endif*/
+template class CachedFormatter<std::size_t, char32_t>;
+template class CachedFormatter<std::chrono::sys_seconds, char32_t>;
+#endif
 } // namespace SlimLog

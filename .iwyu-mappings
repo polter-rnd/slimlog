@@ -12,6 +12,8 @@
     { include: [ "<__hash_table>", "private", "<unordered_map>", "public" ] },
     { include: [ "<__hash_table>", "private", "<unordered_set>", "public" ] },
     { include: [ "<__locale>", "private", "<locale>", "public" ] },
+    # Bug on stdlibc++: std::tm is not from <cwchar>
+    { symbol: [ "std::tm", "private", "<ctime>", "public" ] },
     # Bug on stdlibc++ w/o fmtlib: std::pair is not from <iterator>
     { symbol: [ "std::pair", "private", "<utility>", "public" ] },
     # Bug on libc++ w/o fmtlib: std::reference_wrapper is not from <type_traits>
