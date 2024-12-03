@@ -5,9 +5,10 @@
 
 #pragma once
 
-#include <cstddef>
+#include <cwchar>
 #include <iterator>
 #include <limits>
+#include <stdexcept>
 
 namespace SlimLog::Util::Unicode {
 
@@ -72,11 +73,29 @@ constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size
 {
     if constexpr (sizeof(Char) != 1) {
         return len;
-    } else {
+#ifdef __cpp_char8_t
+    } else if constexpr (std::is_same_v<Char, char8_t>) {
         std::size_t codepoints = 0;
         for (const auto* end = std::next(begin, len); begin != end; ++codepoints) {
             std::advance(begin, Util::Unicode::code_point_length(begin));
         }
+        return codepoints - 1;
+#endif
+    } else {
+        std::mbstate_t state = std::mbstate_t();
+#if defined(_WIN32) and defined(__STDC_WANT_SECURE_LIB__)
+        std::size_t codepoints = 0;
+        if (mbsrtowcs_s(&codepoints, nullptr, codepoints, &begin, 0, &state) != 0) {
+            throw std::runtime_error("mbsrtowcs_s(): conversion error");
+        }
+        codepoints -= 1;
+#else
+        // NOLINTNEXTLINE (concurrency-mt-unsafe)
+        const auto codepoints = std::mbsrtowcs(nullptr, &begin, 0, &state);
+        if (codepoints == static_cast<std::size_t>(-1)) [[unlikely]] {
+            throw std::runtime_error("std::mbsrtowcs(): conversion error");
+        }
+#endif
         return codepoints;
     }
 }

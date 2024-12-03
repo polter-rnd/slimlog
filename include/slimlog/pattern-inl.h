@@ -30,6 +30,7 @@
 #include <initializer_list>
 #include <iterator>
 #include <limits>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -67,25 +68,27 @@ inline auto mbrtoc32(Args... /*unused*/)
 
 template<typename Char>
 struct FromMultibyte {
-    static auto get(Char* chr, const char* str, std::size_t len, mbstate_t* state) -> int
+    auto get(Char* chr, const char* str, std::size_t len) -> int
     {
         using namespace Fallback;
+        // NOLINTBEGIN (concurrency-mt-unsafe)
         if constexpr (std::is_same_v<Char, wchar_t>) {
-            return handle(mbrtowc(chr, str, len, state)); // NOLINT (concurrency-mt-unsafe)
+            return handle(mbrtowc(chr, str, len, &m_state));
 #ifdef __cpp_char8_t
         } else if constexpr (std::is_same_v<Char, char8_t>) {
-            return handle(mbrtoc8(chr, str, len, state)); // NOLINT (concurrency-mt-unsafe)
+            return handle(mbrtoc8(chr, str, len, &m_state));
 #endif
 #ifdef __cpp_unicode_characters
         } else if constexpr (std::is_same_v<Char, char16_t>) {
-            return handle(mbrtoc16(chr, str, len, state)); // NOLINT (concurrency-mt-unsafe)
+            return handle(mbrtoc16(chr, str, len, &m_state));
         } else if constexpr (std::is_same_v<Char, char32_t>) {
-            return handle(mbrtoc32(chr, str, len, state)); // NOLINT (concurrency-mt-unsafe)
+            return handle(mbrtoc32(chr, str, len, &m_state));
 #endif
         } else {
             static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
             return -1;
         }
+        // NOLINTEND (concurrency-mt-unsafe)
     }
 
     static auto handle(std::size_t res) -> int
@@ -101,6 +104,9 @@ struct FromMultibyte {
             "C++ stdlib does not support conversion to given character type");
         return -1;
     }
+
+private:
+    std::mbstate_t m_state = {};
 };
 
 template<typename Char, typename StringType>
@@ -318,29 +324,26 @@ void Pattern<Char>::compile(StringViewType pattern)
 }
 
 template<typename Char>
-void Pattern<Char>::from_multibyte(auto& out, std::string_view data)
-{
-    Char wchr;
-    auto state = std::mbstate_t{};
-    const Detail::FromMultibyte<Char> dispatcher;
-    for (int ret{}; (ret = dispatcher.get(&wchr, data.data(), data.size(), &state)) > 0;
-         data = data.substr(ret)) {
-        out.push_back(wchr);
-    }
-}
-
-template<typename Char>
 template<typename StringView>
 void Pattern<Char>::format_string(auto& out, const auto& item, StringView&& data)
 {
+    constexpr auto CountCodepoints = [](StringView& src) {
+        if constexpr (std::is_same_v<StringView, StringViewType>) {
+            return Util::Unicode::count_codepoints(src.data(), src.size());
+        } else {
+            return src.codepoints();
+        }
+    };
+    const auto codepoints = CountCodepoints(data);
+
     if (auto& specs = std::get<typename Placeholder::StringSpecs>(item); specs.width > 0)
         [[unlikely]] {
-        write_padded(out, std::forward<StringView>(data), specs);
+        write_padded(out, std::forward<StringView>(data), specs, codepoints);
     } else {
         using DataChar = typename std::remove_cvref_t<StringView>::value_type;
         if constexpr (std::is_same_v<DataChar, char> && !std::is_same_v<Char, char>) {
             // NOLINTNEXTLINE (cppcoreguidelines-slicing)
-            from_multibyte(out, std::forward<StringView>(data));
+            from_multibyte(out, std::forward<StringView>(data), codepoints);
         } else {
             out.append(std::forward<StringView>(data));
         }
@@ -502,20 +505,11 @@ auto Pattern<Char>::get_string_specs(StringViewType value) -> Placeholder::Strin
 
 template<typename Char>
 template<typename StringView>
-constexpr void
-Pattern<Char>::write_padded(auto& dst, StringView&& src, const Placeholder::StringSpecs& specs)
+constexpr void Pattern<Char>::write_padded(
+    auto& dst, StringView&& src, const Placeholder::StringSpecs& specs, std::size_t codepoints)
 {
-    constexpr auto CountCodepoints = [](StringView& src) {
-        if constexpr (std::is_same_v<StringView, StringViewType>) {
-            return Util::Unicode::count_codepoints(src.data(), src.size());
-        } else {
-            return src.codepoints();
-        }
-    };
-
     const auto spec_width = Util::Types::to_unsigned(specs.width);
-    const auto width = CountCodepoints(src);
-    const auto padding = spec_width > width ? spec_width - width : 0;
+    const auto padding = spec_width > codepoints ? spec_width - codepoints : 0;
 
     // Shifts are encoded as string literals because constexpr is not
     // supported in constexpr functions.
@@ -565,7 +559,7 @@ Pattern<Char>::write_padded(auto& dst, StringView&& src, const Placeholder::Stri
     using DataChar = typename std::remove_cvref_t<StringView>::value_type;
     if constexpr (std::is_same_v<DataChar, char> && !std::is_same_v<Char, char>) {
         // NOLINTNEXTLINE (cppcoreguidelines-slicing)
-        from_multibyte(dst, std::forward<StringView>(src));
+        from_multibyte(dst, std::forward<StringView>(src), codepoints);
     } else {
         dst.append(std::forward<StringView>(src));
     }
@@ -575,6 +569,71 @@ Pattern<Char>::write_padded(auto& dst, StringView&& src, const Placeholder::Stri
         dst.resize(dst.size() + right_padding * specs.fill.size());
         FillPattern(dst, specs.fill, right_padding);
     }
+}
+
+template<typename Char>
+void Pattern<Char>::from_multibyte(auto& out, std::string_view data, std::size_t codepoints)
+{
+    const auto buf_size = out.size();
+#if defined(_WIN32) and defined(__STDC_WANT_SECURE_LIB__)
+    out.reserve(buf_size + codepoints + 1);
+#else
+    out.reserve(buf_size + codepoints);
+#endif
+
+    Char* dest = std::next(out.begin(), buf_size);
+    const char* source = data.data();
+
+    std::size_t written = 0;
+    if constexpr (std::is_same_v<Char, wchar_t>) {
+        std::mbstate_t state = {};
+#if defined(_WIN32) and defined(__STDC_WANT_SECURE_LIB__)
+        if (mbsrtowcs_s(&written, dest, codepoints + 1, &source, _TRUNCATE, &state) != 0) {
+            throw std::runtime_error("mbsrtowcs_s(): conversion error");
+        }
+        written -= 1; // Don't take into account null terminator
+#else
+        // NOLINTNEXTLINE (concurrency-mt-unsafe)
+        written = std::mbsrtowcs(dest, &source, codepoints, &state);
+        if (written == static_cast<std::size_t>(-1)) {
+            throw std::runtime_error("std::mbsrtowcs(): conversion error");
+        }
+#endif
+    } else {
+        Char wchr;
+        Detail::FromMultibyte<Char> dispatcher;
+        for (auto source_size = data.size(); source_size > 0;) {
+            const int next = dispatcher.get(&wchr, source, source_size);
+            switch (next) {
+            case 0:
+                // Null character, finish processing
+                source_size = 0;
+                break;
+            case -1:
+                // Encoding error occured
+                throw std::runtime_error("std::mbrtocN(): conversion error");
+                break;
+            case -2:
+                // Incomplete but valid character, skip it
+                break;
+            case -3:
+                // Next character from surrogate pair was processed
+                *dest = wchr;
+                written++;
+                std::advance(dest, 1);
+                break;
+            default:
+                // Successfuly processed
+                *dest = wchr;
+                written++;
+                std::advance(dest, 1);
+                std::advance(source, next);
+                source_size -= next;
+                break;
+            }
+        }
+    }
+    out.resize(buf_size + written);
 }
 
 } // namespace SlimLog
