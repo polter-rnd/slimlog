@@ -143,31 +143,26 @@ constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size
         std::uint8_t state = 0;
         std::size_t codepoints = 0;
         std::uint32_t codepoint = 0;
-        for (const auto* end = std::next(begin, len); begin != end; std::advance(begin, 1)) {
-            if (utf8_decode(state, codepoint, static_cast<std::uint8_t>(*begin)) == 0) {
-                codepoints += (codepoint > std::numeric_limits<std::uint16_t>::max()) ? 2 : 1;
+        for (const auto* const end = std::next(begin, len); begin != end; std::advance(begin, 1)) {
+            utf8_decode(state, codepoint, static_cast<std::uint8_t>(*begin));
+            if (state == 0) {
+                ++codepoints;
+            } else if (state == 1) {
+                throw std::runtime_error("utf8_decode(): conversion error");
             }
-        }
-        if (state != 0) {
-            throw std::runtime_error("Unicode::utf8_decode(): conversion error");
         }
         return codepoints;
 #endif
     } else {
-        std::mbstate_t state = std::mbstate_t();
-#if defined(_WIN32) and defined(__STDC_WANT_SECURE_LIB__)
         std::size_t codepoints = 0;
-        if (mbsrtowcs_s(&codepoints, nullptr, codepoints, &begin, 0, &state) != 0) {
-            throw std::runtime_error("mbsrtowcs_s(): conversion error");
+        std::mbstate_t mb = {};
+        for (const auto* const end = std::next(begin, len); begin != end; ++codepoints) {
+            const auto next = std::mbrlen(begin, end - begin, &mb); // NOLINT(concurrency-mt-unsafe)
+            if (next == static_cast<std::size_t>(-1)) {
+                throw std::runtime_error("std::mbrlen(): conversion error");
+            }
+            std::advance(begin, next);
         }
-        codepoints -= 1;
-#else
-        // NOLINTNEXTLINE (concurrency-mt-unsafe)
-        const auto codepoints = std::mbsrtowcs(nullptr, &begin, 0, &state);
-        if (codepoints == static_cast<std::size_t>(-1)) [[unlikely]] {
-            throw std::runtime_error("std::mbsrtowcs(): conversion error");
-        }
-#endif
         return codepoints;
     }
 }
