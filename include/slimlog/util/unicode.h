@@ -5,15 +5,93 @@
 
 #pragma once
 
+#include <slimlog/util/types.h>
+
 #include <array>
 #include <cassert>
 #include <cstdint>
+#if defined(__cpp_unicode_characters) or defined(__cpp_char8_t)
+#include <cuchar> // IWYU pragma: keep
+#endif
 #include <cwchar>
 #include <iterator>
 #include <limits>
 #include <stdexcept>
+#include <string_view>
+#include <variant>
 
 namespace SlimLog::Util::Unicode {
+
+/** @cond */
+namespace Detail {
+
+// Fallback functions to detect missing ones from stdlib
+namespace Fallback {
+#ifdef __cpp_char8_t
+template<typename... Args>
+inline auto mbrtoc8(Args... /*unused*/)
+{
+    return std::monostate{};
+};
+#endif
+#ifdef __cpp_unicode_characters
+template<typename... Args>
+inline auto mbrtoc16(Args... /*unused*/)
+{
+    return std::monostate{};
+};
+template<typename... Args>
+inline auto mbrtoc32(Args... /*unused*/)
+{
+    return std::monostate{};
+};
+#endif
+} // namespace Fallback
+
+template<typename Char>
+struct FromMultibyte {
+    auto get(Char* chr, const char* str, std::size_t len) -> int
+    {
+        using namespace Fallback;
+        // NOLINTBEGIN (concurrency-mt-unsafe)
+        if constexpr (std::is_same_v<Char, wchar_t>) {
+            return handle(mbrtowc(chr, str, len, &m_state));
+#ifdef __cpp_char8_t
+        } else if constexpr (std::is_same_v<Char, char8_t>) {
+            return handle(mbrtoc8(chr, str, len, &m_state));
+#endif
+#ifdef __cpp_unicode_characters
+        } else if constexpr (std::is_same_v<Char, char16_t>) {
+            return handle(mbrtoc16(chr, str, len, &m_state));
+        } else if constexpr (std::is_same_v<Char, char32_t>) {
+            return handle(mbrtoc32(chr, str, len, &m_state));
+#endif
+        } else {
+            static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
+            return -1;
+        }
+        // NOLINTEND (concurrency-mt-unsafe)
+    }
+
+    static auto handle(std::size_t res) -> int
+    {
+        return static_cast<int>(res);
+    }
+
+    template<typename T = std::monostate>
+    static auto handle(T /*unused*/) -> int
+    {
+        static_assert(
+            Util::Types::AlwaysFalse<Char>{},
+            "C++ stdlib does not support conversion to given character type");
+        return -1;
+    }
+
+private:
+    std::mbstate_t m_state = {};
+};
+
+} // namespace Detail
 
 /**
  * @brief Calculates the length of a Unicode code point starting from the given pointer.
@@ -182,6 +260,66 @@ template<typename Char>
 constexpr auto to_ascii(Char chr) -> char
 {
     return chr <= std::numeric_limits<unsigned char>::max() ? static_cast<char>(chr) : '\0';
+}
+
+template<typename Char>
+constexpr auto from_multibyte(Char* dest, std::string_view data, std::size_t codepoints)
+{
+    const char* source = data.data();
+    std::size_t written = 0;
+
+    if constexpr (std::is_same_v<Char, wchar_t>) {
+        std::mbstate_t state = {};
+#if defined(_WIN32) and defined(__STDC_WANT_SECURE_LIB__)
+        if (mbsrtowcs_s(&written, dest, codepoints + 1, &source, _TRUNCATE, &state) != 0) {
+            throw std::runtime_error("mbsrtowcs_s(): conversion error");
+        }
+#else
+        // NOLINTNEXTLINE (concurrency-mt-unsafe)
+        written = std::mbsrtowcs(dest, &source, codepoints, &state);
+        if (written == static_cast<std::size_t>(-1)) {
+            throw std::runtime_error("std::mbsrtowcs(): conversion error");
+        }
+        *std::next(dest, codepoints) = '\0';
+        ++written;
+#endif
+    } else {
+        Char wchr;
+        Detail::FromMultibyte<Char> dispatcher;
+        for (auto source_size = data.size(); source_size > 0;) {
+            const int next = dispatcher.get(&wchr, source, source_size);
+            switch (next) {
+            case 0:
+                // Null character, finish processing
+                source_size = 0;
+                break;
+            case -1:
+                // Encoding error occured
+                throw std::runtime_error("std::mbrtocN(): conversion error");
+                break;
+            case -2:
+                // Incomplete but valid character, skip it
+                break;
+            case -3:
+                // Next character from surrogate pair was processed
+                *dest = wchr;
+                ++written;
+                std::advance(dest, 1);
+                break;
+            default:
+                // Successfuly processed
+                *dest = wchr;
+                ++written;
+                std::advance(dest, 1);
+                std::advance(source, next);
+                source_size -= next;
+                break;
+            }
+        }
+        *std::next(dest, codepoints) = '\0';
+        ++written;
+    }
+    return written;
 }
 
 } // namespace SlimLog::Util::Unicode
