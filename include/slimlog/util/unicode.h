@@ -53,7 +53,7 @@ struct FromMultibyte {
     auto get(Char* chr, const char* str, std::size_t len) -> int
     {
         using namespace Fallback;
-        // NOLINTBEGIN (concurrency-mt-unsafe)
+        // NOLINTBEGIN(concurrency-mt-unsafe)
         if constexpr (std::is_same_v<Char, wchar_t>) {
             return handle(mbrtowc(chr, str, len, &m_state));
 #ifdef __cpp_char8_t
@@ -70,7 +70,7 @@ struct FromMultibyte {
             static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
             return -1;
         }
-        // NOLINTEND (concurrency-mt-unsafe)
+        // NOLINTEND(concurrency-mt-unsafe)
     }
 
     static auto handle(std::size_t res) -> int
@@ -287,7 +287,7 @@ constexpr auto from_multibyte(Char* dest, std::string_view data, std::size_t cod
             throw std::runtime_error("mbsrtowcs_s(): conversion error");
         }
 #else
-        // NOLINTNEXTLINE (concurrency-mt-unsafe)
+        // NOLINTNEXTLINE(concurrency-mt-unsafe)
         written = std::mbsrtowcs(dest, &source, codepoints, &state);
         if (written == static_cast<std::size_t>(-1)) {
             throw std::runtime_error("std::mbsrtowcs(): conversion error");

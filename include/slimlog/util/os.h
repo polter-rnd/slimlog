@@ -64,8 +64,7 @@ namespace SlimLog::Util::OS {
 #if defined(__ANDROID__) && defined(__ANDROID_API__) && (__ANDROID_API__ < 21)
 #define SYS_gettid __NR_gettid
 #endif
-        // NOLINTNEXTLINE (*-vararg)
-        cached_tid = static_cast<size_t>(::syscall(SYS_gettid));
+        cached_tid = static_cast<size_t>(::syscall(SYS_gettid)); // NOLINT(*-vararg)
 #elif defined(_AIX)
         struct __pthrdsinfo buf;
         int reg_size = 0;

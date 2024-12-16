@@ -19,7 +19,7 @@ consteval static auto extract_file_name(const char* path) -> const char*
         '/';
 #endif
     while (*path != '\0') {
-        // NOLINTNEXTLINE (cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
         if (*path++ == sep) {
             file = path;
         }

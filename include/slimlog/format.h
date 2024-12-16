@@ -323,7 +323,7 @@ private:
 #ifndef SLIMLOG_FMTLIB
 /** @cond */
 template<typename T, SlimLog::Formattable<T> Char>
-struct std::formatter<SlimLog::FormatValue<T, Char>, Char> { // NOLINT (cert-dcl58-cpp)
+struct std::formatter<SlimLog::FormatValue<T, Char>, Char> { // NOLINT(cert-dcl58-cpp)
     constexpr auto parse(SlimLog::FormatParseContext<Char>& context)
     {
         return context.begin();
