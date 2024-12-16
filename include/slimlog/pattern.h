@@ -334,33 +334,31 @@ private:
     static auto get_string_specs(StringViewType value) -> Placeholder::StringSpecs;
 
     /**
+     * @brief Writes the source string to the destination buffer.
+     *
+     * @tparam StringView String view type, convertible to `std::basic_string_view`.
+     * @param dst Destination buffer where the string will be written.
+     * @param src Source string view to be written.
+     * @param codepoints Number of codepoints the source string contains.
+     */
+    template<typename StringView>
+    constexpr static void write_string(auto& dst, StringView&& src, std::size_t codepoints);
+
+    /**
      * @brief Writes the source string to the destination buffer with specific alignment.
      *
      * This function writes the source string to the destination buffer, applying the specified
      * alignment and fill character.
      *
-     * @tparam T Character type for the string view.
+     * @tparam StringView String view type, convertible to `std::basic_string_view`.
      * @param dst Destination buffer where the string will be written.
      * @param src Source string view to be written.
      * @param specs String specifications, including alignment and fill character.
      * @param codepoints Number of codepoints the source string contains.
      */
     template<typename StringView>
-    constexpr static void write_padded(
+    constexpr static void write_string_padded(
         auto& dst, StringView&& src, const Placeholder::StringSpecs& specs, std::size_t codepoints);
-
-    /**
-     * @brief Converts a multi-byte string to a single-byte string.
-     *
-     * This function converts a multi-byte string to a single-byte string and appends the result to
-     * the provided destination stream buffer.
-     *
-     * @tparam T Character type of the source string.
-     * @param out Destination stream buffer where the converted string will be appended.
-     * @param data Source multi-byte string to be converted.
-     * @param codepoints Number of codepoints the data string contains.
-     */
-    static void from_multibyte(auto& out, std::string_view data, std::size_t codepoints);
 
     std::basic_string<Char> m_pattern;
     std::vector<Placeholder> m_placeholders;

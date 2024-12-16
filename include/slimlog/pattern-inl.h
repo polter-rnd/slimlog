@@ -268,19 +268,9 @@ void Pattern<Char>::format_string(auto& out, const auto& item, StringView&& data
 
     if (auto& specs = std::get<typename Placeholder::StringSpecs>(item); specs.width > 0)
         [[unlikely]] {
-        write_padded(out, std::forward<StringView>(data), specs, codepoints);
+        write_string_padded(out, std::forward<StringView>(data), specs, codepoints);
     } else {
-        using DataChar = typename std::remove_cvref_t<StringView>::value_type;
-        if constexpr (std::is_same_v<DataChar, char> && !std::is_same_v<Char, char>) {
-            out.resize(out.size() + codepoints + 1);
-            const std::size_t written = Util::Unicode::from_multibyte(
-                std::prev(out.end()),
-                std::forward<StringView>(data), // NOLINT(cppcoreguidelines-slicing)
-                codepoints);
-            out.resize(out.size() + codepoints - written);
-        } else {
-            out.append(std::forward<StringView>(data));
-        }
+        write_string(out, std::forward<StringView>(data), codepoints);
     }
 }
 
@@ -439,7 +429,24 @@ auto Pattern<Char>::get_string_specs(StringViewType value) -> Placeholder::Strin
 
 template<typename Char>
 template<typename StringView>
-constexpr void Pattern<Char>::write_padded(
+constexpr void Pattern<Char>::write_string(auto& dst, StringView&& src, std::size_t codepoints)
+{
+    using DataChar = typename std::remove_cvref_t<StringView>::value_type;
+    if constexpr (std::is_same_v<DataChar, char> && !std::is_same_v<Char, char>) {
+        dst.reserve(dst.size() + codepoints + 1); // Take into account null terminator
+        const std::size_t written = Util::Unicode::from_multibyte(
+            dst.end(),
+            std::forward<StringView>(src), // NOLINT(cppcoreguidelines-slicing)
+            codepoints + 1);
+        dst.resize(dst.size() + written - 1); // Trim null terminator
+    } else {
+        dst.append(std::forward<StringView>(src));
+    }
+}
+
+template<typename Char>
+template<typename StringView>
+constexpr void Pattern<Char>::write_string_padded(
     auto& dst, StringView&& src, const Placeholder::StringSpecs& specs, std::size_t codepoints)
 {
     const auto spec_width = Util::Types::to_unsigned(specs.width);
@@ -490,17 +497,7 @@ constexpr void Pattern<Char>::write_padded(
     }
 
     // Fill data
-    using DataChar = typename std::remove_cvref_t<StringView>::value_type;
-    if constexpr (std::is_same_v<DataChar, char> && !std::is_same_v<Char, char>) {
-        dst.resize(dst.size() + codepoints + 1);
-        const std::size_t written = Util::Unicode::from_multibyte(
-            std::prev(dst.end()),
-            std::forward<StringView>(src), // NOLINT(cppcoreguidelines-slicing)
-            codepoints);
-        dst.resize(dst.size() + codepoints - written);
-    } else {
-        dst.append(std::forward<StringView>(src));
-    }
+    write_string(dst, std::forward<StringView>(src), codepoints);
 
     // Fill right padding
     if (right_padding != 0) {

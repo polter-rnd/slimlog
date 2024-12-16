@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #if defined(__cpp_unicode_characters) or defined(__cpp_char8_t)
 #include <cuchar> // IWYU pragma: keep
@@ -18,7 +19,6 @@
 #include <limits>
 #include <stdexcept>
 #include <string_view>
-#include <variant>
 
 namespace SlimLog::Util::Unicode {
 
@@ -29,21 +29,21 @@ namespace Detail {
 namespace Fallback {
 #ifdef __cpp_char8_t
 template<typename... Args>
-inline auto mbrtoc8(Args... /*unused*/)
+inline auto mbrtoc8(Args... /*unused*/) -> std::nullptr_t
 {
-    return std::monostate{};
+    return nullptr;
 };
 #endif
 #ifdef __cpp_unicode_characters
 template<typename... Args>
-inline auto mbrtoc16(Args... /*unused*/)
+inline auto mbrtoc16(Args... /*unused*/) -> std::nullptr_t
 {
-    return std::monostate{};
+    return nullptr;
 };
 template<typename... Args>
-inline auto mbrtoc32(Args... /*unused*/)
+inline auto mbrtoc32(Args... /*unused*/) -> std::nullptr_t
 {
-    return std::monostate{};
+    return nullptr;
 };
 #endif
 } // namespace Fallback
@@ -78,7 +78,7 @@ struct FromMultibyte {
         return static_cast<int>(res);
     }
 
-    template<typename T = std::monostate>
+    template<typename T = std::nullptr_t>
     static auto handle(T /*unused*/) -> int
     {
         static_assert(
@@ -262,6 +262,18 @@ constexpr auto to_ascii(Char chr) -> char
     return chr <= std::numeric_limits<unsigned char>::max() ? static_cast<char>(chr) : '\0';
 }
 
+/**
+ * @brief Converts a null-terminated multibyte string to a singlebyte character sequence.
+ *
+ * Destination buffer has to be capable of storing at least @p codepoints + 1 characters
+ * including null terminator.
+ *
+ * @tparam Char Character type of the destination string.
+ * @param dest Pointer to destination buffer for the converted string.
+ * @param data Source multi-byte string to be converted.
+ * @param codepoints Number of codepoints to be written to the destination string.
+ * @return Number of characters written including null terminator.
+ */
 template<typename Char>
 constexpr auto from_multibyte(Char* dest, std::string_view data, std::size_t codepoints)
 {
@@ -271,7 +283,7 @@ constexpr auto from_multibyte(Char* dest, std::string_view data, std::size_t cod
     if constexpr (std::is_same_v<Char, wchar_t>) {
         std::mbstate_t state = {};
 #if defined(_WIN32) and defined(__STDC_WANT_SECURE_LIB__)
-        if (mbsrtowcs_s(&written, dest, codepoints + 1, &source, _TRUNCATE, &state) != 0) {
+        if (mbsrtowcs_s(&written, dest, codepoints, &source, codepoints - 1, &state) != 0) {
             throw std::runtime_error("mbsrtowcs_s(): conversion error");
         }
 #else
@@ -280,13 +292,12 @@ constexpr auto from_multibyte(Char* dest, std::string_view data, std::size_t cod
         if (written == static_cast<std::size_t>(-1)) {
             throw std::runtime_error("std::mbsrtowcs(): conversion error");
         }
-        *std::next(dest, codepoints) = '\0';
-        ++written;
+        *std::next(dest, written++) = '\0';
 #endif
     } else {
-        Char wchr;
         Detail::FromMultibyte<Char> dispatcher;
         for (auto source_size = data.size(); source_size > 0;) {
+            Char wchr;
             const int next = dispatcher.get(&wchr, source, source_size);
             switch (next) {
             case 0:
@@ -298,7 +309,7 @@ constexpr auto from_multibyte(Char* dest, std::string_view data, std::size_t cod
                 throw std::runtime_error("std::mbrtocN(): conversion error");
                 break;
             case -2:
-                // Incomplete but valid character, skip it
+                // Incomplete but valid character, go further
                 break;
             case -3:
                 // Next character from surrogate pair was processed
@@ -316,7 +327,7 @@ constexpr auto from_multibyte(Char* dest, std::string_view data, std::size_t cod
                 break;
             }
         }
-        *std::next(dest, codepoints) = '\0';
+        *dest = '\0';
         ++written;
     }
     return written;
