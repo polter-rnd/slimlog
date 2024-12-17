@@ -66,7 +66,7 @@ protected:
     auto open(std::string_view filename) -> void;
 
 private:
-    std::unique_ptr<FILE, int (*)(FILE*)> m_fp;
+    std::unique_ptr<FILE, int (*)(FILE*)> m_fp = {nullptr, nullptr};
 };
 } // namespace SlimLog
 
