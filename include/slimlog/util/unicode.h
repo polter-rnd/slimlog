@@ -18,7 +18,6 @@
 #include <iterator>
 #include <limits>
 #include <stdexcept>
-#include <string_view>
 
 namespace SlimLog::Util::Unicode {
 
@@ -270,16 +269,16 @@ constexpr auto to_ascii(Char chr) -> char
  *
  * @tparam Char Character type of the destination string.
  * @param dest Pointer to destination buffer for the converted string.
- * @param data Source multi-byte string to be converted.
  * @param codepoints Number of codepoints to be written to the destination string.
+ * @param source Pointer to multi-byte string to be converted.
+ * @param source_size Source string length.
  * @return Number of characters written including null terminator.
  */
 template<typename Char>
-constexpr auto from_multibyte(Char* dest, std::string_view data, std::size_t codepoints)
+constexpr auto
+from_multibyte(Char* dest, std::size_t codepoints, const char* source, std::size_t source_size)
 {
-    const char* source = data.data();
     std::size_t written = 0;
-
     if constexpr (std::is_same_v<Char, wchar_t>) {
         std::mbstate_t state = {};
 #if defined(_WIN32) and defined(__STDC_WANT_SECURE_LIB__)
@@ -296,7 +295,7 @@ constexpr auto from_multibyte(Char* dest, std::string_view data, std::size_t cod
 #endif
     } else {
         Detail::FromMultibyte<Char> dispatcher;
-        for (auto source_size = data.size(); source_size > 0;) {
+        while (source_size > 0) {
             Char wchr;
             const int next = dispatcher.get(&wchr, source, source_size);
             switch (next) {

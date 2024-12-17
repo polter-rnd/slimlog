@@ -11,11 +11,13 @@
 
 #include <array>
 #include <chrono>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <initializer_list>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -265,6 +267,9 @@ protected:
      * @param data Source string to be formatted.
      */
     template<typename StringView>
+        requires(
+            std::same_as<std::remove_cvref_t<StringView>, RecordStringView<Char>>
+            || std::same_as<std::remove_cvref_t<StringView>, RecordStringView<char>>)
     static void format_string(auto& out, const auto& item, StringView&& data);
 
     /**
@@ -339,10 +344,9 @@ private:
      * @tparam StringView String view type, convertible to `std::basic_string_view`.
      * @param dst Destination buffer where the string will be written.
      * @param src Source string view to be written.
-     * @param codepoints Number of codepoints the source string contains.
      */
     template<typename StringView>
-    constexpr static void write_string(auto& dst, StringView&& src, std::size_t codepoints);
+    constexpr static void write_string(auto& dst, StringView&& src);
 
     /**
      * @brief Writes the source string to the destination buffer with specific alignment.
@@ -354,11 +358,10 @@ private:
      * @param dst Destination buffer where the string will be written.
      * @param src Source string view to be written.
      * @param specs String specifications, including alignment and fill character.
-     * @param codepoints Number of codepoints the source string contains.
      */
     template<typename StringView>
-    constexpr static void write_string_padded(
-        auto& dst, StringView&& src, const Placeholder::StringSpecs& specs, std::size_t codepoints);
+    constexpr static void
+    write_string_padded(auto& dst, StringView&& src, const Placeholder::StringSpecs& specs);
 
     std::basic_string<Char> m_pattern;
     std::vector<Placeholder> m_placeholders;
