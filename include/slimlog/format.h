@@ -15,13 +15,12 @@
 #include <fmt/format.h> // IWYU pragma: keep
 #include <fmt/xchar.h> // IWYU pragma: keep
 #else
-#include <slimlog/util/types.h>
-
 #include <format>
 #endif
 
 #include <slimlog/location.h>
 #include <slimlog/util/buffer.h>
+#include <slimlog/util/types.h>
 
 #include <chrono>
 #include <concepts>
@@ -153,6 +152,35 @@ template<Formattable Char, std::size_t BufferSize, typename Allocator = std::all
 class FormatBuffer final : public Util::MemoryBuffer<Char, BufferSize, Allocator> {
 public:
     using Util::MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;
+
+    /**
+     * @brief Appends data to the end of the buffer.
+     *
+     * @tparam ContiguousRange Type of the source object.
+     *
+     * @param range Source object containing data to be added to the buffer.
+     */
+    template<typename ContiguousRange>
+    void append(const ContiguousRange& range) // cppcheck-suppress duplInheritedMember
+    {
+        append(range.data(), std::next(range.data(), range.size()));
+    }
+
+    /**
+     * @brief Appends data to the end of the buffer.
+     *
+     * @tparam U Input data type.
+     * @param begin Begin input iterator.
+     * @param end End input iterator.
+     */
+    template<typename U>
+    void append(const U* begin, const U* end) // cppcheck-suppress duplInheritedMember
+    {
+        const auto buf_size = this->size();
+        const auto count = Util::Types::to_unsigned(end - begin);
+        this->resize(buf_size + count);
+        std::uninitialized_copy_n(begin, count, std::next(this->begin(), buf_size));
+    }
 
     /**
      * @brief Formats a log message with compile-time argument checks.

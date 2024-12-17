@@ -8,7 +8,6 @@
 #include <algorithm> // IWYU pragma: keep
 #include <cassert>
 #include <cstddef>
-#include <iterator>
 #include <memory>
 #include <type_traits>
 
@@ -20,6 +19,8 @@
 #endif
 #else
 #include <slimlog/util/types.h>
+
+#include <iterator>
 #endif
 
 namespace SlimLog::Util {
@@ -338,8 +339,6 @@ public:
     using const_reference = const T&; // NOLINT(readability-identifier-naming)
     /// @endcond
 
-    using Buffer<T>::append;
-
     /**
      * @brief Constructs a new MemoryBuffer object.
      *
@@ -435,7 +434,7 @@ public:
     template<typename ContiguousRange>
     void append(const ContiguousRange& range)
     {
-        Buffer<T>::append(range.data(), std::next(range.data(), range.size()));
+        Buffer<T>::append(range.data(), range.data() + range.size());
     }
 
 protected:
