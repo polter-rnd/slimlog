@@ -229,7 +229,7 @@ public:
      * @return \b true if the sink is enabled.
      * @return \b false if the sink is disabled.
      */
-    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) -> bool;
+    auto sink_enabled(const std::shared_ptr<Sink<Logger>>& sink) const -> bool;
 
     /**
      * @brief Emits a new callback-based log message if it fits the specified logging level.

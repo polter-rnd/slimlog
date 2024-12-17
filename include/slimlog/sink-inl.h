@@ -89,7 +89,7 @@ auto SinkDriver<Logger, ThreadingPolicy>::remove_sink(const std::shared_ptr<Sink
     -> bool
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
-    if (m_sinks.erase(sink) == 1) {
+    if (m_sinks.erase(sink) > 0) {
         update_effective_sinks();
         return true;
     }
@@ -110,8 +110,8 @@ auto SinkDriver<Logger, ThreadingPolicy>::set_sink_enabled(
 }
 
 template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::sink_enabled(const std::shared_ptr<Sink<Logger>>& sink)
-    -> bool
+auto SinkDriver<Logger, ThreadingPolicy>::sink_enabled(
+    const std::shared_ptr<Sink<Logger>>& sink) const -> bool
 {
     const typename ThreadingPolicy::ReadLock lock(m_mutex);
     if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
