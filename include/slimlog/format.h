@@ -162,6 +162,8 @@ public:
     template<typename ContiguousRange>
     void append(const ContiguousRange& range) // cppcheck-suppress duplInheritedMember
     {
+        // TODO: Suppress cppcoreguidelines-pro-bounds-pointer-arithmetic check in .clang-tidy
+        // NOLINTNEXTLINE(bugprone-suspicious-stringview-data-usage)
         append(range.data(), std::next(range.data(), range.size()));
     }
 

@@ -177,7 +177,7 @@ auto SinkDriver<Logger, ThreadingPolicy>::update_effective_sinks(SinkDriver* dri
     if (driver->m_children.empty()) {
         // Move to the next sibling or parent's sibling
         SinkDriver* prev = driver;
-        while (parent && !next) {
+        while (parent && next == nullptr) {
             if (auto it = std::find(parent->m_children.begin(), parent->m_children.end(), prev);
                 std::distance(it, parent->m_children.end()) > 1) {
                 next = *std::next(it);

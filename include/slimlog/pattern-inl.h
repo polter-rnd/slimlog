@@ -445,7 +445,7 @@ constexpr void Pattern<Char>::write_string_padded(
     const auto right_padding = padding - left_padding;
 
     // Reserve exact amount for data + padding
-    dst.reserve(dst.size() + codepoints + padding * specs.fill.size());
+    dst.reserve(dst.size() + codepoints + (padding * specs.fill.size()));
 
     // Lambda for filling with single character or multibyte pattern
     constexpr auto FillPattern
@@ -477,7 +477,7 @@ constexpr void Pattern<Char>::write_string_padded(
 
     // Fill left padding
     if (left_padding != 0) {
-        dst.resize(dst.size() + left_padding * specs.fill.size());
+        dst.resize(dst.size() + (left_padding * specs.fill.size()));
         FillPattern(dst, specs.fill, left_padding);
     }
 
@@ -486,7 +486,7 @@ constexpr void Pattern<Char>::write_string_padded(
 
     // Fill right padding
     if (right_padding != 0) {
-        dst.resize(dst.size() + right_padding * specs.fill.size());
+        dst.resize(dst.size() + (right_padding * specs.fill.size()));
         FillPattern(dst, specs.fill, right_padding);
     }
 }

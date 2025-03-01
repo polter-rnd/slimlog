@@ -464,7 +464,7 @@ protected:
 #endif
         const std::size_t max_size = std::allocator_traits<Allocator>::max_size(self.m_allocator);
         const std::size_t old_capacity = self.capacity();
-        std::size_t new_capacity = old_capacity + old_capacity / 2;
+        std::size_t new_capacity = old_capacity + (old_capacity / 2);
         if (size > new_capacity) {
             new_capacity = size;
         } else if (new_capacity > max_size) {
