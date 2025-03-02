@@ -147,3 +147,10 @@ jobs:
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --build-config ${{ matrix.build_type }}
+                 --output-junit ${{ steps.strings.outputs.build-output-dir }}/test/junit.xml
+
+    - name: Test Summary
+      uses: test-summary/action@v2
+      with:
+        paths: ${{ steps.strings.outputs.build-output-dir }}/test/junit.xml
+      if: always()
