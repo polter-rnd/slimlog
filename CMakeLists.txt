@@ -84,11 +84,11 @@ if(ENABLE_ANALYZERS)
     include(StaticCodeAnalysis)
 
     # Static analyzer configuration
-    set(CLANG_TIDY_EXTRA_ARGS -header-filter=.*)
+    set(CLANG_TIDY_EXTRA_ARGS "--header-filter=${CMAKE_SOURCE_DIR}/(include|src|test)/.*")
     set(IWYU_EXTRA_ARGS
         --cxx17ns --quoted_includes_first --no_fwd_decls --verbose=3
         --mapping_file=${CMAKE_SOURCE_DIR}/.iwyu-mappings
-        --check_also=${CMAKE_SOURCE_DIR}/include/slimlog/*
+        --check_also=${CMAKE_SOURCE_DIR}/include/*
     )
     set(CPPCHECK_EXTRA_ARGS --enable=warning,performance,portability,information,missingInclude
                             --inline-suppr --suppress=missingIncludeSystem --check-level=exhaustive
@@ -165,6 +165,24 @@ if(BUILD_DOCS)
     set(DOXYGEN_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/docs)
     set(DOXYGEN_PROJECT_NAME "SlimLog")
     doxygen_add_docs(docs ${PROJECT_SOURCE_DIR} COMMENT "Generating API documentation with Doxygen")
+endif()
+
+# Option for building tests
+option(BUILD_TESTS "Unit tests" OFF)
+add_feature_info("UnitTests" BUILD_TESTS "isolated logger tests")
+
+if(BUILD_TESTS)
+    include(FetchContent)
+    set(FETCHCONTENT_BASE_DIR ${PROJECT_BINARY_DIR}/deps)
+    fetchcontent_declare(
+        ut
+        GIT_REPOSITORY https://github.com/boost-ext/ut.git
+        GIT_TAG v2.3.0
+    )
+    fetchcontent_makeavailable(ut)
+
+    enable_testing()
+    add_subdirectory(test)
 endif()
 
 # Summary of enabled and disabled features
