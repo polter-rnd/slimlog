@@ -285,7 +285,7 @@ public:
     template<typename T, typename... Args>
     auto message(
         Level level,
-        T&& callback,
+        const T& callback,
         StringViewType category,
         Location location = Location::current(), // cppcheck-suppress passedByValue
         Args&&... args) const -> void
@@ -328,7 +328,7 @@ public:
                 } else if constexpr (std::is_convertible_v<T, RecordStringViewType>) {
                     // Non-invocable argument: argument is the message itself
                     // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
-                    record.message = RecordStringViewType{std::forward<T>(callback)};
+                    record.message = RecordStringViewType{callback};
                 } else {
                     record.message = callback;
                 }
