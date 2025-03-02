@@ -3,7 +3,6 @@
 #include "slimlog/pattern.h"
 #include "slimlog/policy.h"
 #include "slimlog/record.h"
-#include "slimlog/sink.h"
 #include "slimlog/sinks/file_sink.h"
 #include "slimlog/sinks/null_sink.h"
 #include "slimlog/sinks/ostream_sink.h"
