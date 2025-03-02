@@ -92,6 +92,7 @@ private:
 };
 
 } // namespace Detail
+/** @endcond */
 
 /**
  * @brief Calculates the length of a Unicode code point starting from the given pointer.

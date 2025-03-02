@@ -88,7 +88,7 @@ using UnderlyingCharType = typename UnderlyingChar<T>::Type;
 /**
  * @brief Casts a nonnegative integer to unsigned.
  *
- * @trapam Int Integer type.
+ * @tparam Int Integer type.
  *
  * @param value Non-negative integer value.
  */

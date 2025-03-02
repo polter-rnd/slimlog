@@ -165,7 +165,9 @@ if(BUILD_DOCS)
     # Create docs target
     set(DOXYGEN_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/docs)
     set(DOXYGEN_PROJECT_NAME "SlimLog")
-    doxygen_add_docs(docs ${PROJECT_SOURCE_DIR} COMMENT "Generating API documentation with Doxygen")
+    doxygen_add_docs(
+        docs ${PROJECT_SOURCE_DIR}/include COMMENT "Generating API documentation with Doxygen"
+    )
 endif()
 
 # Option for building tests

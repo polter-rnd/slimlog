@@ -138,7 +138,6 @@ public:
      * ```
      *
      * @param pattern Log message pattern.
-     * @return Pointer to the self sink object.
      */
     virtual auto set_pattern(StringViewType pattern) -> void;
 
@@ -152,7 +151,6 @@ public:
      * ```
      *
      * @param levels List of log levels with corresponding names.
-     * @return Pointer to the self sink object.
      */
     virtual auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels) -> void;
 

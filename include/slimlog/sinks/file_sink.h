@@ -39,7 +39,7 @@ public:
      * @brief Constructs a new FileSink object.
      *
      * @tparam Args Argument types for the pattern and log levels.
-     * @param ostream Reference to the output stream to be used by the sink.
+     * @param filename Path to the log file.
      * @param args Optional pattern and list of log levels.
      */
     template<typename... Args>
