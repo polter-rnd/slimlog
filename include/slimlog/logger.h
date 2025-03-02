@@ -141,7 +141,7 @@ public:
     template<
         template<typename, typename, std::size_t, typename> // For clang-format < 19
         typename T,
-        std::size_t SinkBufferSize = DefaultBufferSize,
+        std::size_t SinkBufferSize = DefaultSinkBufferSize,
         typename SinkAllocator = Allocator,
         typename... Args>
         requires(IsFormattableSink<T<String, Char, SinkBufferSize, SinkAllocator>>)

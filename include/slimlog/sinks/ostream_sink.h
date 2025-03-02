@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include "slimlog/logger.h"
 #include "slimlog/sink.h" // IWYU pragma: export
 #include "slimlog/util/types.h"
 
@@ -21,12 +20,15 @@ namespace SlimLog {
  *
  * This sink writes formatted log messages to an output stream.
  *
- * @tparam Logger The logger class type intended for use with this sink.
+ * @tparam String String type for log messages.
+ * @tparam Char Character type for the string.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
  */
 template<
     typename String,
     typename Char = Util::Types::UnderlyingCharType<String>,
-    std::size_t BufferSize = DefaultBufferSize,
+    std::size_t BufferSize = DefaultSinkBufferSize,
     typename Allocator = std::allocator<Char>>
 class OStreamSink : public FormattableSink<String, Char, BufferSize, Allocator> {
 public:

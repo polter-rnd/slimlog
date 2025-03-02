@@ -17,7 +17,8 @@ namespace SlimLog {
  *
  * This sink performs no action and is intended for use in performance tests.
  *
- * @tparam Logger The logger class type intended for use with this sink.
+ * @tparam String String type for log messages.
+ * @tparam Char Character type for the string.
  */
 template<typename String, typename Char = Util::Types::UnderlyingCharType<String>>
 class NullSink : public Sink<String, Char> {

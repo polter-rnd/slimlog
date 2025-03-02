@@ -24,6 +24,11 @@
 namespace SlimLog {
 
 /**
+ * @brief Default per-sink buffer size for formatted log messages.
+ */
+static constexpr auto DefaultSinkBufferSize = 256U;
+
+/**
  * @brief Base abstract sink class.
  *
  * A sink is a destination for log messages.
@@ -78,7 +83,11 @@ public:
  * @tparam BufferSize Size of the internal pre-allocated buffer.
  * @tparam Allocator Allocator type for the internal buffer.
  */
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
+template<
+    typename String,
+    typename Char = Util::Types::UnderlyingCharType<String>,
+    std::size_t BufferSize = DefaultSinkBufferSize,
+    typename Allocator = std::allocator<Char>>
 class FormattableSink : public Sink<String, Char> {
 public:
     /** @brief String type for log messages. */
