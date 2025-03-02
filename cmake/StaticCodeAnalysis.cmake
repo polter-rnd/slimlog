@@ -1,15 +1,15 @@
 # [cmake_documentation] StaticCodeAnalysis.cmake
 #
-# Defines the following functions:
-# - @ref enable_static_code_analysis
-#
-# Creates target for static code analysis using various tools.
+# Enables static code analysis (clang-tidy, cppcheck, include-what-you-use) for specified target.
 # Usage example:
 #
 # ~~~{.cmake}
 # include(StaticCodeAnalysis)
-# enable_static_code_analysis()
+# target_enable_static_analysis()
 # ~~~
+#
+# Defines the following functions:
+# - @ref target_enable_static_analysis
 #
 # Uses the following parameters:
 # @arg __ANALYZE_CPPCHECK__:       Enable basic static analysis of C/C++ code
@@ -40,40 +40,51 @@ find_package_switchable(
     MIN_VERSION ${IWYU_MIN_VERSION}
 )
 
-# [cmake_documentation] enable_static_code_analysis()
+# [cmake_documentation] target_enable_static_analysis()
 #
-# Enable static analysis features for all targets.
+# Enable static analysis features for a specific target.
 # Have to be called before adding affected targets.
+#
+# Required arguments:
+# @arg __targetName__: Name of the target for which analyzers should be enabled
 #
 # @param CPPCHECK_EXTRA_ARGS         Additional flags for `cppcheck`
 # @param CLANG_TIDY_EXTRA_ARGS       Additional arguments for `clang-tidy`
 # @param IWYU_EXTRA_ARGS             Additional arguments for `include-what-you-use`
 # [/cmake_documentation]
-function(enable_static_code_analysis)
+function(target_enable_static_analysis targetName)
     set(options "")
     set(oneValueArgs "")
     set(multipleValueArgs CPPCHECK_EXTRA_ARGS CLANG_TIDY_EXTRA_ARGS IWYU_EXTRA_ARGS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multipleValueArgs}" ${ARGN})
 
-    get_property(enabled_languages GLOBAL PROPERTY ENABLED_LANGUAGES)
+    get_target_compilers(${targetName} target_compilers target_languages)
+    list(LENGTH target_compilers num_compilers)
+    if(num_compilers EQUAL 0)
+        # If the target is compiled by no known compiler, give a warning.
+        message(WARNING "Static analyzers for target ${targetName} may not be "
+                        "usable, because it uses no or an unknown compiler. "
+                        "This is a false warning for targets using only object lib(s) as input."
+        )
+    endif()
 
     if(ANALYZE_CPPCHECK)
-        foreach(language ${enabled_languages})
+        foreach(language ${target_languages})
             if(language MATCHES "^C|CXX$")
-                set(CMAKE_${language}_CPPCHECK
-                    ${Cppcheck_EXECUTABLE} ${ARG_CPPCHECK_EXTRA_ARGS}
-                    CACHE STRING ""
+                set_property(
+                    TARGET ${targetName} PROPERTY ${language}_CPPCHECK ${Cppcheck_EXECUTABLE}
+                                                  ${ARG_CPPCHECK_EXTRA_ARGS}
                 )
             endif()
         endforeach()
     endif()
 
     if(ANALYZE_CLANG_TIDY)
-        foreach(language ${enabled_languages})
+        foreach(language ${target_languages})
             if(language MATCHES "^C|CXX|OBJC|OBJCXX$")
-                set(CMAKE_${language}_CLANG_TIDY
-                    ${ClangTidy_EXECUTABLE} ${ARG_CLANG_TIDY_EXTRA_ARGS}
-                    CACHE STRING ""
+                set_property(
+                    TARGET ${targetName} PROPERTY ${language}_CLANG_TIDY ${ClangTidy_EXECUTABLE}
+                                                  ${ARG_CLANG_TIDY_EXTRA_ARGS}
                 )
             endif()
         endforeach()
@@ -86,12 +97,12 @@ function(enable_static_code_analysis)
                 list(APPEND iwyu_extra_args -Xiwyu ${extra_arg})
             endforeach()
         endif()
-        foreach(language ${enabled_languages})
+        foreach(language ${target_languages})
             if(language MATCHES "^C|CXX$")
-                set(CMAKE_${language}_INCLUDE_WHAT_YOU_USE
-                    ${Iwyu_EXECUTABLE} -Xiwyu --error=1 -Xiwyu --check_also=${PROJECT_SOURCE_DIR}/*
-                    ${iwyu_extra_args}
-                    CACHE STRING ""
+                set_property(
+                    TARGET ${targetName}
+                    PROPERTY ${language}_INCLUDE_WHAT_YOU_USE ${Iwyu_EXECUTABLE} -Xiwyu --error=1
+                             ${iwyu_extra_args}
                 )
             endif()
         endforeach()

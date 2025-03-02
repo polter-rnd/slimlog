@@ -48,6 +48,15 @@ if(ENABLE_COVERAGE AND COMMAND target_enable_coverage)
     target_enable_coverage(slimlog)
 endif()
 
+if(ENABLE_ANALYZERS AND COMMAND target_enable_static_analysis)
+    target_enable_static_analysis(
+        slimlog
+        CLANG_TIDY_EXTRA_ARGS ${CLANG_TIDY_EXTRA_ARGS}
+        IWYU_EXTRA_ARGS ${IWYU_EXTRA_ARGS}
+        CPPCHECK_EXTRA_ARGS ${CPPCHECK_EXTRA_ARGS}
+    )
+endif()
+
 # ---------------------------------------------------------------------------------------
 # Header only version
 # ---------------------------------------------------------------------------------------

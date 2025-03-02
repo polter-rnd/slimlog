@@ -127,7 +127,7 @@ additional_commands = {
          'nargs': 1
       }
    },
-   'enable_static_code_analysis': {
+   'target_enable_static_analysis': {
       'kwargs': {
          'CLANG_TIDY_EXTRA_ARGS': '+',
          'CPPCHECK_EXTRA_ARGS': '+',
