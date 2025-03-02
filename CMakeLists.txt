@@ -116,6 +116,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
             HTML COBERTURA COVERALLS SONARQUBE
             COVERAGE_TARGET coverage
             COVERAGE_INIT_TARGET coverage-clean
+            GCOVR_EXCLUDE ${CMAKE_SOURCE_DIR}/test
         )
     endif()
 endif()

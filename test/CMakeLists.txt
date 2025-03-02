@@ -5,6 +5,10 @@ function(slimlog_test name)
         target_enable_sanitizers(test_${name})
     endif()
 
+    if(ENABLE_COVERAGE AND COMMAND target_enable_coverage)
+        target_enable_coverage(test_${name})
+    endif()
+
     if(ENABLE_ANALYZERS AND COMMAND target_enable_static_analysis)
         target_enable_static_analysis(
             test_${name}
