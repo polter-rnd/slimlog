@@ -3,11 +3,11 @@
 #include <sstream>
 #include <string>
 
-class OutputCapturer {
+class OutputCapturer : public std::stringstream {
 public:
     explicit OutputCapturer(std::ostream& stream)
         : m_stream(stream)
-        , m_oldbuf(m_stream.rdbuf(m_capture.rdbuf()))
+        , m_buf(m_stream.rdbuf(rdbuf()))
     {
     }
 
@@ -17,23 +17,12 @@ public:
     auto operator=(OutputCapturer&& other) noexcept -> OutputCapturer& = delete;
     auto operator=(const OutputCapturer& other) -> OutputCapturer& = delete;
 
-    ~OutputCapturer() noexcept
+    ~OutputCapturer() noexcept override
     {
-        m_stream.rdbuf(m_oldbuf);
-    }
-
-    auto clear() -> void
-    {
-        m_capture.str("");
-    }
-
-    auto output() const -> std::string
-    {
-        return m_capture.str();
+        m_stream.rdbuf(m_buf);
     }
 
 private:
-    std::stringstream m_capture;
     std::ostream& m_stream;
-    std::streambuf* m_oldbuf;
+    std::streambuf* m_buf;
 };
