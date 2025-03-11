@@ -1,6 +1,6 @@
 # This starter workflow is for a CMake project running on multiple platforms. There is a different starter workflow if you just want a single platform.
 # See: https://github.com/actions/starter-workflows/blob/main/ci/cmake-single-platform.yml
-name: CMake on multiple platforms
+name: CMake
 
 on:
   push:
@@ -9,6 +9,15 @@ on:
     branches: [ "master" ]
 
 jobs:
+  event_file:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: event_file
+        path: ${{ github.event_path }}
+
   build:
     runs-on: ${{ matrix.os }}
 
@@ -142,16 +151,23 @@ jobs:
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
 
-    - name: Test
+    - name: Unit Tests
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest --build-config ${{ matrix.build_type }}
-                 --output-junit ${{ steps.strings.outputs.build-output-dir }}/test/junit.xml
+      run: ctest --verbose --build-config ${{ matrix.build_type }} --output-junit test/junit.xml
 
-    - name: Test Summary
-      uses: test-summary/action@v2
-      # if: ${{ hashFiles(format('{0}/test/junit.xml', steps.strings.outputs.build-output-dir)) != '' }}
-      if: always()
+    - name: Cleanup JUnit XML
+      # Remove color codes from XML output for cleaner look in reports
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      if: ${{ !cancelled() && hashFiles(format('{0}/test/junit.xml', steps.strings.outputs.build-output-dir)) != '' }}
+      run: sed -E -i".bak" "s/\\[NON-XML-CHAR-0x1B\\]\\[[0-9]+m//g" test/junit.xml
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4  # upload test results
+      if: ${{ !cancelled() }}        # run this step even if previous step failed
       with:
-        paths: ${{ steps.strings.outputs.build-output-dir }}/test/junit.xml
+        name: slimlog-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.format_lib }}
+        path: |
+          ${{ steps.strings.outputs.build-output-dir }}/**/*.xml
+          ${{ steps.strings.outputs.build-output-dir }}/**/LastTest.log
