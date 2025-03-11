@@ -2,10 +2,12 @@
 
 #include <sstream>
 #include <string>
+#include <iostream>
+#include <array>
 
 class StringReader {
 public:
-    explicit StringReader(std::stringstream& stream)
+    explicit StringReader(const std::istream& stream)
         : m_stream(stream)
     {
     }
@@ -20,9 +22,9 @@ public:
 
     [[nodiscard]] virtual auto read() const -> std::string
     {
-        const auto result = m_stream.str();
-        m_stream.str("");
-        return result;
+        std::stringstream buffer;
+        buffer << m_stream.rdbuf();
+        return buffer.str();
     }
 
     explicit operator std::string() const
@@ -32,9 +34,44 @@ public:
 
     auto operator==(const char* str) const -> bool
     {
-        return read() == str;
+        const auto *expected = str;
+        const auto actual = read();
+        if (expected == actual) {
+            return true;
+        }
+        std::cerr << "[ERROR] Expected: \"" << escape_escape_sequences(expected) << "\"\n";
+        std::cerr << "          Actual: \"" << escape_escape_sequences(actual) << "\"\n";
+        return false;
+    }
+
+protected:
+    [[nodiscard]] auto escape_escape_sequences(std::string_view str) const -> std::string {
+        static constexpr std::array<std::pair<char, char>, 8> Sequences {{
+            { '"', '"' },
+            { '\a', 'a' },
+            { '\b', 'b' },
+            { '\f', 'f' },
+            { '\n', 'n' },
+            { '\r', 'r' },
+            { '\t', 't' },
+            { '\v', 'v' },
+        }};
+
+        std::string result;
+        result.reserve(str.size());
+        for (auto chr: str) {
+            for (const auto seq: Sequences) {
+                if (chr == seq.first) {
+                    result.push_back('\\');
+                    chr = seq.second;
+                    break;
+                }
+            }
+            result.push_back(chr);
+        }
+        return result;
     }
 
 private:
-    std::stringstream& m_stream;
+    const std::istream& m_stream;
 };

@@ -9,8 +9,8 @@
 
 #include "slimlog/sinks/file_sink.h" // IWYU pragma: associated
 
-#if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__)
-// In addition to <cstdio> below for fopen_s() on Windows
+#if defined(_WIN32)
+// In addition to <cstdio> below for _fsopen() on Windows
 #include <stdio.h> // IWYU pragma: keep
 #endif
 
@@ -23,12 +23,11 @@ namespace SlimLog {
 template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
 auto FileSink<String, Char, BufferSize, Allocator>::open(std::string_view filename) -> void
 {
-#if defined(_WIN32) && defined(__STDC_WANT_SECURE_LIB__)
-    FILE* fp;
-    std::ignore = fopen_s(&fp, std::string(filename).c_str(), "w+");
+#if defined(_WIN32)
+    FILE* fp = _fsopen(std::string(filename).c_str(), "a", _SH_DENYWR);
     m_fp = {fp, std::fclose};
 #else
-    m_fp = {std::fopen(std::string(filename).c_str(), "w+"), std::fclose};
+    m_fp = {std::fopen(std::string(filename).c_str(), "a"), std::fclose};
 #endif
     if (!m_fp) {
         throw std::system_error({errno, std::system_category()}, "Error opening log file");

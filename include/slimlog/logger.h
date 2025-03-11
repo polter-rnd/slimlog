@@ -24,7 +24,7 @@ namespace SlimLog {
 /**
  * @brief Default buffer size for raw log messages.
  */
-static constexpr auto DefaultBufferSize = 256U;
+static constexpr auto DefaultBufferSize = 128U;
 
 /**
  * @brief Default threading policy for logger sinks.
