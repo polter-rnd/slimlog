@@ -1,3 +1,5 @@
+file(GLOB TEST_HELPERS ${PROJECT_SOURCE_DIR}/test/helpers/*.h)
+
 function(slimlog_test name)
     add_executable(test_${name} ${name}.cpp)
 
@@ -27,6 +29,9 @@ function(slimlog_test name)
     endif()
     target_link_libraries(test_${name} PRIVATE Boost::ut slimlog::slimlog)
     target_compile_definitions(test_${name} PRIVATE BOOST_UT_DISABLE_MODULE)
+    target_sources(test_${name} PRIVATE ${TEST_HELPERS})
 endfunction()
 
 slimlog_test(basics)
+
+target_sources(test_basics PRIVATE)

@@ -1,7 +1,7 @@
 #pragma once
 
+#include <memory>
 #include <sstream>
-#include <string>
 
 class OutputCapturer : public std::stringstream {
 public:

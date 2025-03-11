@@ -7,7 +7,6 @@ Checks: '*,
         -llvm*,
         -zircon-*,
         -bugprone-easily-swappable-parameters,
-        -misc-include-cleaner,
 '
 
 WarningsAsErrors: '*'

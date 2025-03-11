@@ -151,6 +151,7 @@ jobs:
 
     - name: Test Summary
       uses: test-summary/action@v2
+      # if: ${{ hashFiles(format('{0}/test/junit.xml', steps.strings.outputs.build-output-dir)) != '' }}
+      if: always()
       with:
         paths: ${{ steps.strings.outputs.build-output-dir }}/test/junit.xml
-      if: always()
