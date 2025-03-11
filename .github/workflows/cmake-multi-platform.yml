@@ -161,7 +161,9 @@ jobs:
       # Remove color codes from XML output for cleaner look in reports
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       if: ${{ !cancelled() && hashFiles(format('{0}/test/junit.xml', steps.strings.outputs.build-output-dir)) != '' }}
-      run: sed -E -i".bak" "s/\\[NON-XML-CHAR-0x1B\\]\\[[0-9]+m//g" test/junit.xml
+      run: |
+        sed -E -i".bak" "s/\\[NON-XML-CHAR-0x1B\\]\\[[0-9]+m//g" test/junit.xml
+        sed -E -i".bak" "s/(classname=(.)test_([[:alnum:]]+))/\1\2 file=\2test\/\3.cpp\2 line=\21/g" test/junit.xml
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4  # upload test results

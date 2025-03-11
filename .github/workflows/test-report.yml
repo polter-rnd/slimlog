@@ -42,4 +42,5 @@ jobs:
           event_name: ${{ github.event.workflow_run.event }}
           event_file: artifacts/event_file/event.json
           test_file_prefix: -${{ github.workspace }}/
+          report_individual_runs: true
           files: artifacts/**/junit.xml
