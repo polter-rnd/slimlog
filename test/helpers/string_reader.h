@@ -2,14 +2,14 @@
 
 #include <array>
 #include <iostream>
-#include <sstream>
+#include <iterator>
 #include <string>
 #include <string_view>
 #include <utility>
 
 class StringReader {
 public:
-    explicit StringReader(const std::istream& stream)
+    explicit StringReader(std::istream& stream)
         : m_stream(stream)
     {
     }
@@ -24,24 +24,20 @@ public:
 
     [[nodiscard]] virtual auto read() const -> std::string
     {
-        std::stringstream buffer;
-        buffer << m_stream.rdbuf();
-        return buffer.str();
+        m_stream.sync();
+        return {std::istreambuf_iterator<char>(m_stream), std::istreambuf_iterator<char>()};
     }
 
-    explicit operator std::string() const
+    auto operator==(std::string_view str) const -> bool
     {
-        return read();
-    }
-
-    auto operator==(const char* str) const -> bool
-    {
-        const auto* expected = str;
+        const auto expected = str;
         const auto actual = read();
         if (expected == actual) {
             return true;
         }
-        std::cerr << "==================================================\n";
+
+        std::cerr
+            << "===============================================================================\n";
         std::cerr << "[FAIL] Expected: \"" << escape_escape_sequences(expected) << "\"\n";
         std::cerr << "         Actual: \"" << escape_escape_sequences(actual) << "\"\n";
         return false;
@@ -77,5 +73,5 @@ protected:
     }
 
 private:
-    const std::istream& m_stream;
+    std::istream& m_stream;
 };
