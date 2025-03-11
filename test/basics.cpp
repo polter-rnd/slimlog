@@ -41,12 +41,12 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         auto file_sink = log.add_sink<SlimLog::FileSink>(cap_file.path().string());
         log.info("Hello, World!");
         file_sink->flush(); // Flush sink to write to the file
-        ok &= expect(StringReader(cap_file) == "Hello, World!\n");
+        ok &= expect(StringReader(cap_file) == "Hello1, World!\n");
         ok &= expect(StringReader(cap_out) == "Hello, World!\n");
         log.info("Hello, World2!");
         file_sink->flush(); // Flush sink to write to the file
         ok &= expect(StringReader(cap_file) == "Hello, World2!\n");
-        ok &= expect(StringReader(cap_out) == "Hello, World2!\n");
+        ok &= expect(StringReader(cap_out) == "Hello2, World2!\n");
         log.remove_sink(file_sink); // Remove sink to decrease reference counter
     };
 
