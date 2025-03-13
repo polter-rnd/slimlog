@@ -106,7 +106,10 @@ if(ENABLE_SANITIZERS)
     include(CodeSanitizing)
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+# Enable coverage only for Debug builds on GCC and Clang compilers
+if((CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
+   AND (CMAKE_CXX_COMPILER_ID STREQUAL "GCC" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+)
     find_package_switchable(
         Gcovr
         OPTION ENABLE_COVERAGE
@@ -175,19 +178,10 @@ if(BUILD_DOCS)
 endif()
 
 # Option for building tests
-option(BUILD_TESTS "Unit tests" OFF)
-add_feature_info("UnitTests" BUILD_TESTS "isolated logger tests")
+option(BUILD_TESTING "Build unit tests" OFF)
+add_feature_info("UnitTests" BUILD_TESTING "isolated logger tests")
 
-if(BUILD_TESTS)
-    include(FetchContent)
-    set(FETCHCONTENT_BASE_DIR ${PROJECT_BINARY_DIR}/deps)
-    fetchcontent_declare(
-        ut
-        GIT_REPOSITORY https://github.com/boost-ext/ut.git
-        GIT_TAG v2.3.0
-    )
-    fetchcontent_makeavailable(ut)
-
+if(BUILD_TESTING AND PROJECT_IS_TOP_LEVEL)
     enable_testing()
     add_subdirectory(test)
 endif()

@@ -1,7 +1,8 @@
 #pragma once
 
-#include <memory>
+#include <iterator>
 #include <sstream>
+#include <string>
 
 class OutputCapturer : public std::stringstream {
 public:
@@ -16,6 +17,12 @@ public:
 
     auto operator=(OutputCapturer&& other) noexcept -> OutputCapturer& = delete;
     auto operator=(const OutputCapturer& other) -> OutputCapturer& = delete;
+
+    auto read() -> std::string
+    {
+        sync();
+        return {std::istreambuf_iterator<char>(*this), std::istreambuf_iterator<char>()};
+    }
 
     ~OutputCapturer() noexcept override
     {

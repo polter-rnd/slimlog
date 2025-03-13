@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iterator>
 #include <stdexcept>
 #include <string>
 
@@ -27,6 +28,12 @@ public:
     [[nodiscard]] auto path() const -> std::filesystem::path
     {
         return m_path;
+    }
+
+    auto read() -> std::string
+    {
+        sync();
+        return {std::istreambuf_iterator<char>(*this), std::istreambuf_iterator<char>()};
     }
 
     void remove_file()

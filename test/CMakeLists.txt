@@ -1,3 +1,21 @@
+include(FetchContent)
+set(FETCHCONTENT_BASE_DIR ${PROJECT_BINARY_DIR}/deps)
+
+fetchcontent_declare(
+    mettle
+    GIT_REPOSITORY https://github.com/polter-rnd/mettle.git
+    EXCLUDE_FROM_ALL # don't build by default
+    FIND_PACKAGE_ARGS # try find_package() first
+)
+fetchcontent_makeavailable(mettle)
+
+if(ENABLE_SANITIZERS
+   AND COMMAND target_enable_sanitizers
+   AND TARGET libmettle
+)
+    target_enable_sanitizers(libmettle)
+endif()
+
 file(GLOB TEST_HELPERS ${PROJECT_SOURCE_DIR}/test/helpers/*.h)
 
 function(slimlog_test name)
@@ -22,13 +40,12 @@ function(slimlog_test name)
 
     if(ENABLE_TEST_VALGRIND)
         add_test(NAME test_${name} COMMAND valgrind --leak-check=full --error-exitcode=1
-                                           ./test_${name}
+                                           ./test_${name} --no-subproc -o xunit -f test_${name}.xml
         )
     else()
-        add_test(NAME test_${name} COMMAND test_${name})
+        add_test(NAME test_${name} COMMAND test_${name} -o xunit -f test_${name}.xml)
     endif()
-    target_link_libraries(test_${name} PRIVATE Boost::ut slimlog::slimlog)
-    target_compile_definitions(test_${name} PRIVATE BOOST_UT_DISABLE_MODULE)
+    target_link_libraries(test_${name} PRIVATE mettle::mettle slimlog::slimlog)
     target_sources(test_${name} PRIVATE ${TEST_HELPERS})
 endfunction()
 

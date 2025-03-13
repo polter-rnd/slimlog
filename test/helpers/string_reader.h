@@ -14,11 +14,10 @@ public:
     {
     }
 
-    StringReader(StringReader&& other) noexcept = delete;
     StringReader(const StringReader& other) = delete;
-
-    auto operator=(StringReader&& other) noexcept -> StringReader& = delete;
     auto operator=(const StringReader& other) -> StringReader& = delete;
+    StringReader(StringReader&& other) noexcept = delete;
+    auto operator=(StringReader&& other) noexcept -> StringReader& = delete;
 
     virtual ~StringReader() noexcept = default;
 
@@ -28,19 +27,14 @@ public:
         return {std::istreambuf_iterator<char>(m_stream), std::istreambuf_iterator<char>()};
     }
 
+    auto operator()() const -> std::string
+    {
+        return read();
+    }
+
     auto operator==(std::string_view str) const -> bool
     {
-        const auto expected = str;
-        const auto actual = read();
-        if (expected == actual) {
-            return true;
-        }
-
-        std::cerr
-            << "===============================================================================\n";
-        std::cerr << "[FAIL] Expected: \"" << escape_escape_sequences(expected) << "\"\n";
-        std::cerr << "         Actual: \"" << escape_escape_sequences(actual) << "\"\n";
-        return false;
+        return str == read();
     }
 
 protected:

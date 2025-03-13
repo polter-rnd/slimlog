@@ -83,8 +83,9 @@ jobs:
     - name: Install dependencies (Linux)
       if: runner.os == 'Linux'
       run: |
-        sudo apt-get install -y clang-tidy-19 clang-format-19 libclang-19-dev \
-                                libc++-dev libc++abi-dev libfmt-dev cmake-format cppcheck
+        sudo apt-get install -y libclang-19-dev libc++-dev libc++abi-dev \
+                                clang-tidy-19 clang-format-19 cmake-format cppcheck \
+                                libfmt-dev libboost-program-options-dev libboost-iostreams-dev
 
     - name: Cache IWYU (Linux)
       id: cache-iwyu
@@ -107,11 +108,12 @@ jobs:
         make -j && sudo make install
 
     - name: Install dependencies (Windows)
-      if: runner.os == 'Windows' && matrix.format_lib == 'fmtlib'
+      if: runner.os == 'Windows'
       env:
         VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
       run: |
-        vcpkg install fmt
+        vcpkg install ${{ matrix.format_lib == 'std' && '' || 'fmt' }} `
+                      boost-program-options boost-iostreams
         vcpkg integrate install
 
     - name: Setup Developer Command Prompt for Microsoft Visual C++ (Windows)
@@ -121,10 +123,10 @@ jobs:
         arch: x64
 
     - name: Install dependencies (MacOS)
-      if: runner.os == 'MacOS' && matrix.format_lib == 'fmtlib'
+      if: runner.os == 'MacOS'
       run: |
         brew update
-        brew install fmt
+        brew install ${{ matrix.format_lib == 'std' && '' || 'fmt' }} boost
 
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
@@ -136,7 +138,7 @@ jobs:
         -DENABLE_ANALYZERS=ON
         -DENABLE_FORMATTERS=ON
         -DENABLE_SANITIZERS=ON
-        -DBUILD_TESTS=ON
+        -DBUILD_TESTING=ON
         ${{ runner.os == 'Linux' && '-DIwyu_EXECUTABLE=/opt/iwyu/bin/include-what-you-use' || '' }}
         ${{ matrix.format_lib == 'std' && '-DENABLE_FMTLIB_HO=OFF' || '' }}
         ${{ matrix.c_compiler == 'clang' && '-DCMAKE_CXX_FLAGS="-stdlib=libc++" -DCMAKE_EXE_LINKER_FLAGS="-lc++abi"' || '' }}
@@ -155,15 +157,7 @@ jobs:
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
       # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest --verbose --build-config ${{ matrix.build_type }} --output-junit test/junit.xml
-
-    - name: Cleanup JUnit XML
-      # Remove color codes from XML output for cleaner look in reports
-      working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      if: ${{ !cancelled() && hashFiles(format('{0}/test/junit.xml', steps.strings.outputs.build-output-dir)) != '' }}
-      run: |
-        sed -E -i".bak" "s/\\[NON-XML-CHAR-0x1B\\]\\[[0-9]+m//g" test/junit.xml
-        sed -E -i".bak" "s/(classname=(.)test_([[:alnum:]]+))/\1\2 file=\2test\/\3.cpp\2 line=\21/g" test/junit.xml
+      run: ctest --verbose --build-config ${{ matrix.build_type }}
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4  # upload test results

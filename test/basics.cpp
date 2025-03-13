@@ -1,8 +1,7 @@
 #include "helpers/file_capturer.h"
 #include "helpers/output_capturer.h"
-#include "helpers/string_reader.h"
 
-#include <boost/ut.hpp>
+#include <mettle.hpp>
 #include <slimlog/logger.h>
 #include <slimlog/sinks/file_sink.h>
 #include <slimlog/sinks/null_sink.h>
@@ -10,48 +9,51 @@
 
 #include <filesystem>
 #include <iostream>
+#include <string>
+#include <string_view>
+#include <utility>
 
+// IWYU pragma: no_include <utility>
+// IWYU pragma: no_include <functional>
 // IWYU pragma: no_include <memory>
-// IWYU pragma: no_include <string>
-// IWYU pragma: no_include <string_view>
+// clazy:excludeall=clazy-non-pod-global-static
 
-// NOLINTNEXTLINE(bugprone-exception-escape)
-auto main(int /*argc*/, char* /*argv*/[]) -> int
-{
-    using namespace boost::ut;
+namespace {
 
-    bool ok = true;
-    FileCapturer cap_file("test_basics.log");
-    OutputCapturer cap_out{std::cout};
+using namespace mettle;
+using namespace SlimLog;
 
-    "simple"_test = [&cap_file, &cap_out, &ok]() {
-        SlimLog::Logger log("main");
-
+const suite<Logger<std::string_view>> Basic("basic", [](auto& _) {
+    _.test("null_sink", [](Logger<std::string_view>& log) {
         // NullSink should not output anything
-        log.add_sink<SlimLog::NullSink>();
+        OutputCapturer cap_out{std::cout};
+        auto null_sink = log.add_sink<NullSink>();
         log.info("Hello, World!");
-        ok &= expect(cap_out.str().empty());
+        expect(cap_out.read(), equal_to(""));
+        expect(log.remove_sink(null_sink), equal_to(true));
+        log.info("Hello, World!");
+        expect(cap_out.read(), equal_to(""));
+    });
 
+    _.test("ostream_sink", [](Logger<std::string_view>& log) {
         // OStreamSink should output to std::cout
-        log.add_sink<SlimLog::OStreamSink>(std::cout);
+        OutputCapturer cap_out{std::cout};
+        log.add_sink<OStreamSink>(std::cout);
         log.info("Hello, World!");
-        ok &= expect(StringReader(cap_out) == "Hello, World!\n");
+        expect(cap_out.read(), equal_to("Hello, World!\n"));
+    });
 
-        // FileSink should output to a file
-        auto file_sink = log.add_sink<SlimLog::FileSink>(cap_file.path().string());
+    _.test("file_sink", [](Logger<std::string_view>& log) {
+        // OStreamSink should output to std::cout
+        OutputCapturer cap_out{std::cout};
+        FileCapturer cap_file("test_basics.log");
+        auto file_sink = log.add_sink<FileSink>(cap_file.path().string());
+        log.add_sink<OStreamSink>(std::cout);
         log.info("Hello, World!");
         file_sink->flush(); // Flush sink to write to the file
-        ok &= expect(StringReader(cap_file) == "Hello, World!\n");
-        ok &= expect(StringReader(cap_out) == "Hello, World!\n");
-        log.info("Hello, World2!");
-        file_sink->flush(); // Flush sink to write to the file
-        ok &= expect(StringReader(cap_file) == "Hello, World2!\n");
-        ok &= expect(StringReader(cap_out) == "Hello, World2!\n");
-        log.remove_sink(file_sink); // Remove sink to decrease reference counter
-    };
+        expect(cap_out.read(), equal_to("Hello, World!\n"));
+        expect(cap_file.read(), equal_to("Hello, World!\n"));
+    });
+});
 
-    // Remove file on success
-    if (ok) {
-        cap_file.remove_file();
-    }
-}
+} // namespace
