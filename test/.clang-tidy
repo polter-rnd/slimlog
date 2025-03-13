@@ -1,0 +1,6 @@
+Checks: '-misc-include-cleaner,
+         -cert-err58-cpp,
+         -cppcoreguidelines-interfaces-global-init
+'
+
+InheritParentConfig: true

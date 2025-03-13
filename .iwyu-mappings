@@ -13,4 +13,6 @@
     { symbol: [ "std::vector", "private", "<vector>", "public" ] },
     # Bug on fmtlib: format_error::~format_error is not from "format.h"
     { include: [ "\"format.h\"", "private", "\"slimlog/format.h\"", "public" ] },
+    # Fix mapping private headers for mettle.hpp
+    { include: [ "@\"mettle/.*\"", "private", "<mettle.hpp>", "public" ] },
 ]
