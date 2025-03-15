@@ -132,7 +132,7 @@ endif()
 # ---------------------------------------------------------------------------------------
 install(
     TARGETS slimlog slimlog-header-only
-    EXPORT slimlog
+    EXPORT slimlog-targets
     FILE_SET public_headers
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -153,13 +153,10 @@ write_basic_package_version_file(
     COMPATIBILITY SameMajorVersion
 )
 
-export(
-    TARGETS slimlog slimlog-header-only
-    NAMESPACE slimlog::
-    FILE ${PROJECT_BINARY_DIR}/slimlog-targets.cmake
-)
+# export( TARGETS slimlog slimlog-header-only NAMESPACE slimlog:: FILE
+# ${PROJECT_BINARY_DIR}/slimlog-targets.cmake )
 install(
-    EXPORT slimlog
+    EXPORT slimlog-targets
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
     NAMESPACE slimlog::
     FILE slimlog-targets.cmake

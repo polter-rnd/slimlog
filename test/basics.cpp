@@ -1,20 +1,44 @@
-#include "helpers/file_capturer.h"
+/*#include "helpers/file_capturer.h"
 #include "helpers/output_capturer.h"
 #include "helpers/string_reader.h"
 
-#include <boost/ut.hpp>
+#include <mettle.hpp>
 #include <slimlog/logger.h>
 #include <slimlog/sinks/file_sink.h>
 #include <slimlog/sinks/null_sink.h>
 #include <slimlog/sinks/ostream_sink.h>
 
 #include <filesystem>
-#include <iostream>
+#include <iostream>*/
+
+// NOLINTBEGIN
+
+#include <mettle.hpp>
+
+#include <functional>
+#include <utility>
 
 // IWYU pragma: no_include <memory>
 // IWYU pragma: no_include <string>
 // IWYU pragma: no_include <string_view>
 
+using namespace mettle;
+
+suite<> basic("a basic suite", [](auto& _) {
+    _.test("a test", []() { expect(true, equal_to(true)); });
+
+    for (int i = 0; i < 4; i++) {
+        _.test("test number " + std::to_string(i), [i]() { expect(i % 2, less(0)); });
+    }
+
+    subsuite<>(_, "a subsuite", [](auto& _) {
+        _.test("a sub-test", []() { expect(true, equal_to(true)); });
+    });
+
+    _.test("a test", []() { expect("Hello", equal_to("World")); });
+});
+
+#if 0
 // NOLINTNEXTLINE(bugprone-exception-escape)
 auto main(int /*argc*/, char* /*argv*/[]) -> int
 {
@@ -55,3 +79,6 @@ auto main(int /*argc*/, char* /*argv*/[]) -> int
         cap_file.remove_file();
     }
 }
+#endif
+
+// NOLINTEND
