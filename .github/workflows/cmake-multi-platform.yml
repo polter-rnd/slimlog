@@ -19,10 +19,23 @@ jobs:
         path: ${{ github.event_path }}
 
   build:
+    env:
+      CC: ${{ matrix.c_compiler }}
+      CXX: ${{ matrix.cpp_compiler }}
+      # On Clang build and link with libc++
+      CXXFLAGS: ${{ matrix.c_compiler == 'clang' && '-stdlib=libc++' || '' }}
+      LDFLAGS: ${{ matrix.c_compiler == 'clang' && '-lc++abi' || '' }}
+      # Set the build type to Debug for code coverage
+      CMAKE_BUILD_TYPE: Debug
+      # Set the commit hashes for dependent tools
+      IWYU_COMMIT: 30e221fad0967aa6bcb279600127748ed3dab7ad
+      METTLE_COMMIT: 37f7ff840ed2ab9be7e5f0d44be97a601686d8db
+
     runs-on: ${{ matrix.os }}
 
     strategy:
-      # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations. Consider changing this to true when your workflow is stable.
+      # Set fail-fast to false to ensure that feedback is delivered for all matrix combinations.
+      # Consider changing this to true when your workflow is stable.
       fail-fast: false
 
       # Set up a matrix to run the following 3 configurations:
@@ -33,7 +46,6 @@ jobs:
       # To add more build types (Release, Debug, RelWithDebInfo, etc.) customize the build_type list.
       matrix:
         os: [ubuntu-24.04, windows-2022, macos-15]
-        build_type: [Debug]
         c_compiler: [gcc, clang, cl]
         format_lib: [fmtlib, std]
         include:
@@ -45,7 +57,7 @@ jobs:
             cpp_compiler: g++
           - os: ubuntu-24.04
             c_compiler: clang
-            cpp_compiler: clang++-19
+            cpp_compiler: clang++
           - os: macos-15
             c_compiler: clang
             cpp_compiler: clang++
@@ -72,77 +84,113 @@ jobs:
       shell: bash
       run: |
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+        echo "mettle-dir=${{ runner.tool_cache }}/mettle" >> "$GITHUB_OUTPUT"
+        echo "iwyu-dir=${{ runner.tool_cache }}/iwyu" >> "$GITHUB_OUTPUT"
 
-    - name: Export GitHub Actions cache environment variables
+    - name: Update PATH
+      # Add paths to the mettle and include-what-you-use binaries to the PATH
+      shell: bash
+      run: |
+        echo "${{ steps.strings.outputs.iwyu-dir }}/bin" >> "$GITHUB_PATH"
+        echo "${{ steps.strings.outputs.mettle-dir }}/build/src" >> "$GITHUB_PATH"
+        echo "${{ steps.strings.outputs.mettle-dir }}/build/src/${{ env.CMAKE_BUILD_TYPE }}" \
+          >> "$GITHUB_PATH"
+
+    - name: Export GitHub Actions environment variables
       uses: actions/github-script@v7
       with:
         script: |
           core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
           core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+          core.exportVariable('CMAKE_TOOLCHAIN_FILE', process.env.VCPKG_INSTALLATION_ROOT
+            ? process.env.VCPKG_INSTALLATION_ROOT +  '/scripts/buildsystems/vcpkg.cmake'
+            : '');
 
-    - name: Install dependencies (Linux)
-      if: runner.os == 'Linux'
-      run: |
-        sudo apt-get install -y libclang-19-dev libc++-dev libc++abi-dev \
-                                clang-tidy-19 clang-format-19 cmake-format cppcheck \
-                                libfmt-dev libboost-program-options-dev libboost-iostreams-dev
-
-    - name: Cache IWYU (Linux)
-      id: cache-iwyu
-      uses: actions/cache@v4
-      with:
-        path: /opt/iwyu
-        key: ${{ runner.os }}-iwyu-clang19
-
-    - name: Install IWYU (Linux)
-      if: runner.os == 'Linux' && steps.cache-iwyu.outputs.cache-hit != 'true'
-      run: |
-        cd ..
-        git clone https://github.com/include-what-you-use/include-what-you-use.git -b clang_19
-        cd include-what-you-use
-        mkdir build && cd build
-        cmake -DCMAKE_PREFIX_PATH=/usr/lib/llvm-19 \
-              -DIWYU_RESOURCE_RELATIVE_TO=iwyu \
-              -DIWYU_RESOURCE_DIR=../share/include-what-you-use \
-              -DCMAKE_INSTALL_PREFIX=/opt/iwyu ..
-        make -j && sudo make install
-
-    - name: Install dependencies (Windows)
-      if: runner.os == 'Windows'
-      env:
-        VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-      run: |
-        vcpkg install ${{ matrix.format_lib == 'std' && '' || 'fmt' }} `
-                      boost-program-options boost-iostreams
-        vcpkg integrate install
-
-    - name: Setup Developer Command Prompt for Microsoft Visual C++ (Windows)
-      uses: TheMrMilchmann/setup-msvc-dev@v3
+    - name: Setup command prompt for MSVC (Windows)
+      uses: ilammy/msvc-dev-cmd@v1
       if: runner.os == 'Windows'
       with:
         arch: x64
 
-    - name: Install dependencies (MacOS)
+    - name: Install apt dependencies (Linux)
+      if: runner.os == 'Linux'
+      run: >
+        sudo apt-get install -y
+        libc++-dev libc++abi-dev clang-tidy clang-format cmake-format cppcheck
+
+    - name: Install vcpkg dependencies (Windows, Linux)
+      if: runner.os != 'MacOS'
+      env:
+        VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+      run: >
+        vcpkg install
+        ${{ matrix.format_lib == 'std' && '' || 'fmt' }} boost-program-options boost-iostreams
+
+    - name: Install brew dependencies (MacOS)
       if: runner.os == 'MacOS'
       run: |
         brew update
         brew install ${{ matrix.format_lib == 'std' && '' || 'fmt' }} boost
 
+    - name: Cache include-what-you-use
+      id: cache-iwyu
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.strings.outputs.iwyu-dir }}
+        key: ${{ matrix.os }}-iwyu-${{ env.IWYU_COMMIT }}
+
+    - name: Build include-what-you-use (Linux)
+      if: runner.os == 'Linux' && steps.cache-iwyu.outputs.cache-hit != 'true'
+      env:
+        GIT_REPO: https://github.com/include-what-you-use/include-what-you-use.git
+        SRC_DIR: ${{ runner.temp }}/iwyu
+        CMAKE_INSTALL_PREFIX: ${{ steps.strings.outputs.iwyu-dir }}
+        CMAKE_BUILD_TYPE: Release
+      run: |
+        sudo apt-get install clang-19 libclang-19-dev
+        git clone ${{ env.GIT_REPO }} ${{ env.SRC_DIR }}
+        git -C ${{ env.SRC_DIR }} checkout ${{ env.IWYU_COMMIT }}
+        cmake -S ${{ env.SRC_DIR }} -B ${{ env.SRC_DIR }}/build \
+              -DCMAKE_C_COMPILER=clang-19 \
+              -DCMAKE_CXX_COMPILER=clang++-19 \
+              -DCMAKE_CXX_FLAGS='' \
+              -DCMAKE_EXE_LINKER_FLAGS='' \
+              -DCMAKE_PREFIX_PATH=/usr/lib/llvm-19 \
+              -DIWYU_LINK_CLANG_DYLIB=OFF \
+              -DIWYU_RESOURCE_RELATIVE_TO=iwyu \
+              -DIWYU_RESOURCE_DIR=../share/include-what-you-use
+        cmake --build ${{ env.SRC_DIR }}/build --target install --parallel
+
+    - name: Cache mettle
+      id: cache-mettle
+      uses: actions/cache@v4
+      with:
+        path: ${{ steps.strings.outputs.mettle-dir }}
+        key: ${{ matrix.os }}-${{ matrix.c_compiler }}-mettle-${{ env.METTLE_COMMIT }}
+
+    - name: Build mettle
+      if: steps.cache-mettle.outputs.cache-hit != 'true'
+      env:
+        GIT_REPO: https://github.com/polter-rnd/mettle.git
+        SRC_DIR: ${{ steps.strings.outputs.mettle-dir }}
+      run: |
+        git clone ${{ env.GIT_REPO }} ${{ env.SRC_DIR }}
+        cmake -S ${{ env.SRC_DIR }} -B ${{ env.SRC_DIR }}/build  -DBUILD_SHARED_LIBS=ON
+        cmake --build ${{ env.SRC_DIR }}/build
+
     - name: Configure CMake
       # Configure CMake in a 'build' subdirectory. `CMAKE_BUILD_TYPE` is only required if you are using a single-configuration generator such as make.
       # See https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html?highlight=cmake_build_type
       run: >
-        cmake -B ${{ steps.strings.outputs.build-output-dir }}
-        -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
-        -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+        cmake
+        -S ${{ github.workspace }}
+        -B ${{ steps.strings.outputs.build-output-dir }}
         -DENABLE_ANALYZERS=ON
         -DENABLE_FORMATTERS=ON
         -DENABLE_SANITIZERS=ON
         -DBUILD_TESTING=ON
-        ${{ runner.os == 'Linux' && '-DIwyu_EXECUTABLE=/opt/iwyu/bin/include-what-you-use' || '' }}
+        -Dmettle_DIR=${{ steps.strings.outputs.mettle-dir }}/build
         ${{ matrix.format_lib == 'std' && '-DENABLE_FMTLIB_HO=OFF' || '' }}
-        ${{ matrix.c_compiler == 'clang' && '-DCMAKE_CXX_FLAGS="-stdlib=libc++" -DCMAKE_EXE_LINKER_FLAGS="-lc++abi"' || '' }}
-        -S ${{ github.workspace }}
 
     - name: Check formatting
       # Run only on Ubuntu 22.04 because we need clang-format >= 17.0 for this
@@ -150,14 +198,14 @@ jobs:
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --target formatcheck
 
     - name: Build
-      # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
-      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --parallel
 
     - name: Unit Tests
       working-directory: ${{ steps.strings.outputs.build-output-dir }}
-      # Execute tests defined by the CMake configuration. Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
+      # Execute tests defined by the CMake configuration.
+      # Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
-      run: ctest --verbose --build-config ${{ matrix.build_type }}
+      run: ctest --verbose --build-config ${{ env.CMAKE_BUILD_TYPE }}
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4  # upload test results

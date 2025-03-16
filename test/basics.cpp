@@ -11,7 +11,6 @@
 #include <iostream>
 #include <string>
 #include <string_view>
-#include <utility>
 
 // IWYU pragma: no_include <utility>
 // IWYU pragma: no_include <functional>
