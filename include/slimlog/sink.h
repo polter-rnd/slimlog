@@ -24,9 +24,19 @@
 namespace SlimLog {
 
 /**
+ * @brief Default buffer size for raw log messages.
+ */
+static constexpr auto DefaultBufferSize = 128U;
+
+/**
  * @brief Default per-sink buffer size for formatted log messages.
  */
 static constexpr auto DefaultSinkBufferSize = 256U;
+
+/**
+ * @brief Default threading policy for logger sinks.
+ */
+using DefaultThreadingPolicy = SingleThreadedPolicy;
 
 /**
  * @brief Base abstract sink class.
@@ -40,7 +50,7 @@ template<typename String, typename Char = Util::Types::UnderlyingCharType<String
 class Sink {
 public:
     /** @brief Log record type. */
-    using RecordType = Record<Char, String>;
+    using RecordType = Record<String, Char>;
 
     /** @brief Default constructor. */
     Sink() = default;
@@ -90,14 +100,12 @@ template<
     typename Allocator = std::allocator<Char>>
 class FormattableSink : public Sink<String, Char> {
 public:
-    /** @brief String type for log messages. */
-    using StringType = String;
     /** @brief Raw string view type. */
     using StringViewType = std::basic_string_view<Char>;
     /** @brief Buffer type used for log message formatting. */
     using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
     /** @brief Log record type. */
-    using RecordType = Record<Char, String>;
+    using RecordType = Record<String, Char>;
 
     /**
      * @brief Constructs a new Sink object.
@@ -180,28 +188,44 @@ concept IsFormattableSink = requires(const T& arg) {
     }(arg);
 };
 
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+class Logger;
+
 /**
  * @brief Sink driver for the logger.
  *
  * Manages sinks with or without synchronization,
  * depending on the threading policy.
  *
- * @tparam Logger Base logger type used for log messages.
- * @tparam ThreadingPolicy Singlethreaded or multithreaded policy.
+ * @tparam String Type used for logging messages (e.g., `std::string`).
+ * @tparam Char Underlying character type for the string.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
  */
-template<typename Logger, typename ThreadingPolicy>
+template<
+    typename String,
+    typename Char = Util::Types::UnderlyingCharType<String>,
+    typename ThreadingPolicy = DefaultThreadingPolicy,
+    std::size_t BufferSize = DefaultBufferSize,
+    typename Allocator = std::allocator<Char>>
 class SinkDriver final {
 public:
+    using LoggerType = Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>;
+
     /** @brief String view type for log category. */
-    using StringViewType = typename Logger::StringViewType;
+    using StringViewType = std::basic_string_view<Char>;
     /** @brief Buffer type used for log message formatting. */
-    using FormatBufferType = typename Logger::FormatBufferType;
+    using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
     /** @brief Base sink type for the logger. */
-    using SinkType = typename Logger::SinkType;
+    using SinkType = Sink<String, Char>;
     /** @brief Log record type. */
-    using RecordType = typename SinkType::RecordType;
-    /** @brief Log record string view type. */
-    using RecordStringViewType = typename RecordType::StringViewType;
+    using RecordType = Record<String, Char>;
 
     /**
      * @brief Constructs a new SinkDriver object.
@@ -209,7 +233,7 @@ public:
      * @param logger Pointer to the logger.
      * @param parent Pointer to the parent instance (if any).
      */
-    explicit SinkDriver(const Logger* logger, SinkDriver* parent = nullptr);
+    explicit SinkDriver(const LoggerType* logger, SinkDriver* parent = nullptr);
 
     SinkDriver(const SinkDriver&) = delete;
     SinkDriver(SinkDriver&&) = delete;
@@ -313,6 +337,7 @@ public:
                 evaluated = true;
 
                 using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
+                using RecordStringViewType = typename RecordType::StringViewType;
                 if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
                     // Callable with buffer argument: message will be stored in buffer.
                     callback(buffer, std::forward<Args>(args)...);
@@ -400,10 +425,10 @@ private:
      */
     auto update_effective_sinks(SinkDriver* driver) -> SinkDriver*;
 
-    const Logger* m_logger;
-    SinkDriver* m_parent;
+    const LoggerType* m_logger = nullptr;
+    SinkDriver* m_parent = nullptr;
     std::vector<SinkDriver*> m_children;
-    std::unordered_map<SinkType*, const Logger*> m_effective_sinks;
+    std::unordered_map<SinkType*, const LoggerType*> m_effective_sinks;
     std::unordered_map<std::shared_ptr<SinkType>, bool> m_sinks;
     mutable ThreadingPolicy::Mutex m_mutex;
 }; // namespace SlimLog

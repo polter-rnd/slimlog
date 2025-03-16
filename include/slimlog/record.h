@@ -110,10 +110,10 @@ struct RecordLocation {
 /**
  * @brief Represents a log record containing message details.
  *
- * @tparam Char Character type for the message.
  * @tparam String String type for storing the message.
+ * @tparam Char Character type for the message.
  */
-template<typename Char, typename String>
+template<typename String, typename Char>
 struct Record {
     /** @brief String reference type. */
     using StringRefType = std::reference_wrapper<const String>;

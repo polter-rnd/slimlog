@@ -30,12 +30,12 @@ namespace SlimLog {
  * This function takes a String object and returns a `std::basic_string_view`
  * of the same character type.
  *
- * @tparam Char Type of the characters in the string.
  * @tparam String String type.
+ * @tparam Char Type of the characters in the string.
  * @param str The input string object to be converted.
  * @return A `std::basic_string_view` of the same character type as the input string.
  */
-template<typename Char, typename String>
+template<typename String, typename Char>
 struct ConvertString {
     auto operator()(const String&) const -> std::basic_string_view<Char> = delete;
 };
@@ -211,8 +211,8 @@ public:
      * @param out Buffer storing the raw message to be overwritten with the result.
      * @param record Log record.
      */
-    template<typename StringType>
-    auto format(auto& out, Record<Char, StringType>& record) -> void;
+    template<typename String>
+    auto format(auto& out, Record<String, Char>& record) -> void;
 
     /**
      * @brief Sets the message pattern.

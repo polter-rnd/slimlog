@@ -37,8 +37,14 @@ auto FormattableSink<String, Char, BufferSize, Allocator>::format(
     m_pattern.format(result, record);
 }
 
-template<typename Logger, typename ThreadingPolicy>
-SinkDriver<Logger, ThreadingPolicy>::SinkDriver(const Logger* logger, SinkDriver* parent)
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::SinkDriver(
+    const LoggerType* logger, SinkDriver* parent)
     : m_logger(logger)
     , m_parent(parent)
 {
@@ -48,8 +54,13 @@ SinkDriver<Logger, ThreadingPolicy>::SinkDriver(const Logger* logger, SinkDriver
     }
 }
 
-template<typename Logger, typename ThreadingPolicy>
-SinkDriver<Logger, ThreadingPolicy>::~SinkDriver()
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::~SinkDriver()
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     for (auto* child : m_children) {
@@ -60,8 +71,14 @@ SinkDriver<Logger, ThreadingPolicy>::~SinkDriver()
     }
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::add_sink(const std::shared_ptr<SinkType>& sink) -> bool
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::add_sink(
+    const std::shared_ptr<SinkType>& sink) -> bool
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     const auto result = m_sinks.insert_or_assign(sink, true).second;
@@ -69,8 +86,14 @@ auto SinkDriver<Logger, ThreadingPolicy>::add_sink(const std::shared_ptr<SinkTyp
     return result;
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::remove_sink(const std::shared_ptr<SinkType>& sink) -> bool
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::remove_sink(
+    const std::shared_ptr<SinkType>& sink) -> bool
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     if (m_sinks.erase(sink) > 0) {
@@ -80,8 +103,13 @@ auto SinkDriver<Logger, ThreadingPolicy>::remove_sink(const std::shared_ptr<Sink
     return false;
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::set_sink_enabled(
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_sink_enabled(
     const std::shared_ptr<SinkType>& sink, bool enabled) -> bool
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
@@ -93,9 +121,14 @@ auto SinkDriver<Logger, ThreadingPolicy>::set_sink_enabled(
     return false;
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::sink_enabled(const std::shared_ptr<SinkType>& sink) const
-    -> bool
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::sink_enabled(
+    const std::shared_ptr<SinkType>& sink) const -> bool
 {
     const typename ThreadingPolicy::ReadLock lock(m_mutex);
     if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
@@ -104,30 +137,53 @@ auto SinkDriver<Logger, ThreadingPolicy>::sink_enabled(const std::shared_ptr<Sin
     return false;
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::parent() -> SinkDriver*
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::parent() -> SinkDriver*
 {
     const typename ThreadingPolicy::ReadLock lock(m_mutex);
     return m_parent;
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::set_parent(SinkDriver* parent) -> void
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_parent(
+    SinkDriver* parent) -> void
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     m_parent = parent;
     update_effective_sinks();
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::add_child(SinkDriver* child) -> void
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::add_child(SinkDriver* child)
+    -> void
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     m_children.push_back(child);
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::remove_child(SinkDriver* child) -> void
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::remove_child(
+    SinkDriver* child) -> void
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     if (auto it = std::find(m_children.begin(), m_children.end(), child); it != m_children.end()) {
@@ -135,8 +191,13 @@ auto SinkDriver<Logger, ThreadingPolicy>::remove_child(SinkDriver* child) -> voi
     }
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::create_record(
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::create_record(
     Level level, StringViewType category, Location location) -> RecordType
 {
     RecordType record = {
@@ -148,8 +209,14 @@ auto SinkDriver<Logger, ThreadingPolicy>::create_record(
     return record;
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::update_effective_sinks(SinkDriver* driver) -> SinkDriver*
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_effective_sinks(
+    SinkDriver* driver) -> SinkDriver*
 {
     typename ThreadingPolicy::ReadLock parent_lock;
     SinkDriver* parent = driver->m_parent;
@@ -193,8 +260,14 @@ auto SinkDriver<Logger, ThreadingPolicy>::update_effective_sinks(SinkDriver* dri
     return next;
 }
 
-template<typename Logger, typename ThreadingPolicy>
-auto SinkDriver<Logger, ThreadingPolicy>::update_effective_sinks() -> void
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_effective_sinks()
+    -> void
 {
     // Update current driver without lock since update_effective_sinks()
     // have to be called already under the write lock.

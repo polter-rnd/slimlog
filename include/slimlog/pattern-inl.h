@@ -23,9 +23,9 @@ namespace SlimLog {
 /** @cond */
 namespace Detail {
 
-template<typename Char, typename StringType>
-concept HasConvertString = requires(StringType value) {
-    { ConvertString<Char, StringType>{}(value) } -> std::same_as<std::basic_string_view<Char>>;
+template<typename String, typename Char>
+concept HasConvertString = requires(String value) {
+    { ConvertString<String, Char>{}(value) } -> std::same_as<std::basic_string_view<Char>>;
 };
 } // namespace Detail
 /** @endcond */
@@ -83,8 +83,8 @@ template<typename Char>
 }
 
 template<typename Char>
-template<typename StringType>
-auto Pattern<Char>::format(auto& out, Record<Char, StringType>& record) -> void
+template<typename String>
+auto Pattern<Char>::format(auto& out, Record<String, Char>& record) -> void
 {
     constexpr std::size_t MsecInNsec = 1000000;
     constexpr std::size_t UsecInNsec = 1000;
@@ -128,12 +128,12 @@ auto Pattern<Char>::format(auto& out, Record<Char, StringType>& record) -> void
         case Placeholder::Type::Message:
             std::visit(
                 Util::Types::Overloaded{
-                    [&out, &value = item.value](std::reference_wrapper<const StringType> arg) {
-                        if constexpr (Detail::HasConvertString<Char, StringType>) {
+                    [&out, &value = item.value](std::reference_wrapper<const String> arg) {
+                        if constexpr (Detail::HasConvertString<String, Char>) {
                             format_string(
                                 out,
                                 value,
-                                RecordStringView{ConvertString<Char, StringType>{}(arg.get())});
+                                RecordStringView{ConvertString<String, Char>{}(arg.get())});
                         } else {
                             (void)out;
                             (void)value;

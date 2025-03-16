@@ -22,16 +22,6 @@
 namespace SlimLog {
 
 /**
- * @brief Default buffer size for raw log messages.
- */
-static constexpr auto DefaultBufferSize = 128U;
-
-/**
- * @brief Default threading policy for logger sinks.
- */
-using DefaultThreadingPolicy = MultiThreadedPolicy;
-
-/**
  * @brief Logger front-end class.
  *
  * The Logger class performs log message filtering and emits messages through specified sinks.
@@ -50,16 +40,10 @@ template<
     typename Allocator = std::allocator<Char>>
 class Logger {
 public:
-    /** @brief String type for log messages. */
-    using StringType = String;
-    /** @brief Character type for log messages. */
-    using CharType = Char;
     /** @brief String view type for log categories. */
-    using StringViewType = std::basic_string_view<CharType>;
+    using StringViewType = std::basic_string_view<Char>;
     /** @brief Base sink type for the logger. */
     using SinkType = Sink<String, Char>;
-    /** @brief Buffer type used for log message formatting. */
-    using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
 
     Logger(Logger const&) = delete;
     Logger(Logger&&) = delete;
@@ -163,6 +147,7 @@ public:
         requires(!IsFormattableSink<T<String, Char>>)
     auto add_sink(Args&&... args) -> std::shared_ptr<SinkType>
     {
+
         return m_sinks.template add_sink<T<String, Char>>(std::forward<Args>(args)...);
     }
 
@@ -268,10 +253,9 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    void
-    message(Level level, Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const
+    void message(Level level, Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const
     {
-        auto callback = [&fmt = fmt.fmt()](FormatBufferType& buffer, Args&&... args) {
+        auto callback = [&fmt = fmt.fmt()](auto& buffer, Args&&... args) {
             buffer.format(fmt, std::forward<Args>(args)...);
         };
 
@@ -286,7 +270,7 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    auto info(Format<CharType, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    auto info(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
     {
         this->message(Level::Info, std::move(fmt), std::forward<Args>(args)...);
     }
@@ -311,7 +295,7 @@ public:
 private:
     std::basic_string<Char> m_category;
     LevelDriver<ThreadingPolicy> m_level;
-    SinkDriver<Logger, ThreadingPolicy> m_sinks;
+    SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator> m_sinks;
 };
 
 /**

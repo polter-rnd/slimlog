@@ -222,11 +222,11 @@ void do_test2()
 
 namespace SlimLog {
 #if ENABLE_MYSTRING
-template<typename Char, typename String>
+template<typename String, typename Char>
 struct ConvertString;
 
 template<typename Char>
-struct ConvertString<Char, mystr> {
+struct ConvertString<mystr, Char> {
     std::basic_string_view<Char> operator()(const mystr& str) const
     {
         return std::basic_string_view<char>(str.c_str());
