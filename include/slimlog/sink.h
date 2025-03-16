@@ -9,6 +9,7 @@
 #include "slimlog/level.h"
 #include "slimlog/location.h"
 #include "slimlog/pattern.h"
+#include "slimlog/policy.h"
 #include "slimlog/record.h"
 #include "slimlog/util/types.h"
 

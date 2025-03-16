@@ -86,9 +86,13 @@ if(ENABLE_ANALYZERS)
     # Static analyzer configuration
     set(CLANG_TIDY_EXTRA_ARGS "--header-filter=${CMAKE_SOURCE_DIR}/(include|src|test)/.*")
     set(IWYU_EXTRA_ARGS
-        --cxx17ns --quoted_includes_first --no_fwd_decls --verbose=3
+        --cxx17ns
+        --quoted_includes_first
+        --no_fwd_decls
+        --verbose=3
         --mapping_file=${CMAKE_SOURCE_DIR}/.iwyu-mappings
         --check_also=${CMAKE_SOURCE_DIR}/include/*
+        --transitive_includes_only
     )
     set(CPPCHECK_EXTRA_ARGS --enable=warning,performance,portability,information,missingInclude
                             --inline-suppr --suppress=missingIncludeSystem --check-level=exhaustive
