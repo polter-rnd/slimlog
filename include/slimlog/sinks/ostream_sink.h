@@ -35,6 +35,13 @@ public:
     using typename FormattableSink<String, Char, BufferSize, Allocator>::RecordType;
     using typename FormattableSink<String, Char, BufferSize, Allocator>::FormatBufferType;
 
+    // Disable copy and move semantics because of the reference member.
+    OStreamSink(const OStreamSink&) = delete;
+    OStreamSink(OStreamSink&&) noexcept = delete;
+    auto operator=(const OStreamSink&) -> OStreamSink& = delete;
+    auto operator=(OStreamSink&&) noexcept -> OStreamSink& = delete;
+    ~OStreamSink() override = default;
+
     /**
      * @brief Constructs a new OStreamSink object.
      *
@@ -43,9 +50,9 @@ public:
      * @param args Optional pattern and list of log levels.
      */
     template<typename... Args>
-    explicit OStreamSink(const std::basic_ostream<Char>& ostream, Args&&... args)
+    explicit OStreamSink(std::basic_ostream<Char>& ostream, Args&&... args)
         : FormattableSink<String, Char, BufferSize, Allocator>(std::forward<Args>(args)...)
-        , m_ostream(ostream.rdbuf())
+        , m_ostream(ostream)
     {
     }
 
@@ -78,7 +85,7 @@ public:
     auto flush() -> void override;
 
 private:
-    std::basic_ostream<Char> m_ostream;
+    std::basic_ostream<Char>& m_ostream;
 };
 
 } // namespace SlimLog

@@ -56,12 +56,12 @@ public:
     /** @brief Default constructor. */
     Sink() = default;
     /** @brief Copy constructor. */
-    Sink(Sink const&) = default;
+    Sink(const Sink&) = default;
     /** @brief Move constructor. */
     Sink(Sink&&) noexcept = default;
 
     /** @brief Assignment operator. */
-    auto operator=(Sink const&) -> Sink& = default;
+    auto operator=(const Sink&) -> Sink& = default;
     /** @brief Move assignment operator. */
     auto operator=(Sink&&) noexcept -> Sink& = default;
 
