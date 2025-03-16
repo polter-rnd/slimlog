@@ -11,6 +11,7 @@
 #include "slimlog/sink.h"
 #include "slimlog/util/types.h"
 
+#include <array>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -60,6 +61,11 @@ public:
         : m_category(category) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
         , m_sinks(this)
+    {
+    }
+
+    Logger()
+        : Logger(StringViewType{DefaultCategory.data()})
     {
     }
 
@@ -295,6 +301,7 @@ private:
     std::basic_string<Char> m_category;
     LevelDriver<ThreadingPolicy> m_level;
     SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator> m_sinks;
+    static constexpr std::array<Char, 8> DefaultCategory{'d', 'e', 'f', 'a', 'u', 'l', 't', '\0'};
 };
 
 /**
