@@ -7,10 +7,10 @@ Checks: '*,
         -llvm*,
         -zircon-*,
         -bugprone-easily-swappable-parameters,
+        -misc-include-cleaner,
 '
 
 WarningsAsErrors: '*'
-HeaderFilterRegex: ''
 CheckOptions:
   - key: readability-identifier-naming.InlineNamespaceCase
     value: CamelCase
