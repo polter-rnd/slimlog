@@ -12,7 +12,8 @@ public:
         : m_path(path)
     {
         if (truncate_file) {
-            const std::ofstream file(path, std::ios_base::out | std::ios_base::trunc);
+            // NOLINTNEXTLINE(hicpp-signed-bitwise)
+            const std::ofstream file(path, std::ios::out | std::ios::trunc);
             if (!file.is_open()) {
                 throw std::runtime_error("Error truncating file " + path.string());
             }

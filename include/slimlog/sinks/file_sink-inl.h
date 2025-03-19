@@ -9,11 +9,6 @@
 
 #include "slimlog/sinks/file_sink.h" // IWYU pragma: associated
 
-#if defined(_WIN32)
-// In addition to <cstdio> below for _fsopen() on Windows
-#include <stdio.h> // IWYU pragma: keep
-#endif
-
 #include <cerrno>
 #include <string>
 #include <system_error>

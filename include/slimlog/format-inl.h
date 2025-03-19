@@ -15,7 +15,7 @@
 #else
 #include <fmt/core.h>
 #endif
-#include <chrono>
+// IWYU pragma: no_include <chrono>
 #else
 #include <array>
 #endif

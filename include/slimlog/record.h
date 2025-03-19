@@ -95,7 +95,7 @@ RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
  */
 struct RecordTime {
     std::chrono::sys_seconds local; ///< Local time (seconds precision).
-    std::size_t nsec; ///< Event time (nanoseconds part).
+    std::size_t nsec = {}; ///< Event time (nanoseconds part).
 };
 
 /**
