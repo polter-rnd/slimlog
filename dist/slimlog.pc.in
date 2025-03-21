@@ -9,4 +9,3 @@ URL: https://github.com/polter-rnd/@PROJECT_NAME@
 Version: @PROJECT_VERSION@
 CFlags: -I${includedir} @PKG_CONFIG_DEFINES@
 Libs: -L${libdir} -lslimlog
-Requires: @PKG_CONFIG_REQUIRES@

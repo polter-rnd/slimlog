@@ -24,14 +24,13 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     )
 endif()
 
-# build shared option
-option(SLIMLOG_BUILD_SHARED "Build shared library" OFF)
-
-# install options
+# Include as system headers
 option(SLIMLOG_SYSTEM_INCLUDES "Include as system headers (skip for clang-tidy)." OFF)
 
 # CMake include files
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+# TODO: do we really need to change standard variables in cache?
 
 # Compilation database is required for static code analysis
 set(CMAKE_EXPORT_COMPILE_COMMANDS
@@ -59,6 +58,8 @@ if(ENABLE_FORMATTERS)
         EXCLUDE_DIRS ${CMAKE_BINARY_DIR}
     )
 endif()
+
+# TODO: do not touch standard CMake variables in cache
 
 # Reset all static analyzers by default
 unset(CMAKE_CXX_CPPCHECK CACHE)

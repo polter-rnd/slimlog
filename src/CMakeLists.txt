@@ -92,9 +92,6 @@ if(ENABLE_FMTLIB OR ENABLE_FMTLIB_HO)
         target_link_libraries(slimlog-header-only INTERFACE fmt::fmt-header-only)
     endif()
 
-    # Add dependency to pkg-config
-    set(PKG_CONFIG_REQUIRES fmt)
-
     # Check which unicode types are supported
     include(CheckCXXSymbolExists)
     if(${fmt_VERSION} VERSION_GREATER_EQUAL 11.0.0)
@@ -132,7 +129,7 @@ endif()
 # ---------------------------------------------------------------------------------------
 install(
     TARGETS slimlog slimlog-header-only
-    EXPORT slimlog
+    EXPORT slimlog-targets
     FILE_SET public_headers
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -153,13 +150,14 @@ write_basic_package_version_file(
     COMPATIBILITY SameMajorVersion
 )
 
+# Save targets to binary dir for use without installing
 export(
     TARGETS slimlog slimlog-header-only
     NAMESPACE slimlog::
     FILE ${PROJECT_BINARY_DIR}/slimlog-targets.cmake
 )
 install(
-    EXPORT slimlog
+    EXPORT slimlog-targets
     DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
     NAMESPACE slimlog::
     FILE slimlog-targets.cmake
@@ -183,6 +181,7 @@ if(IS_ABSOLUTE "${CMAKE_INSTALL_LIBDIR}")
 else()
     set(PKG_CONFIG_LIBDIR "\${exec_prefix}/${CMAKE_INSTALL_LIBDIR}")
 endif()
+
 get_property(
     PKG_CONFIG_DEFINES
     TARGET slimlog
