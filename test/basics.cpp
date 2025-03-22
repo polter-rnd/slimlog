@@ -48,7 +48,7 @@ const suite<Logger<std::string_view>> Basic("basic", [](auto& _) {
         FileCapturer cap_file("test_basics.log");
         auto file_sink = log.add_sink<FileSink>(cap_file.path().string());
         log.add_sink<OStreamSink>(std::cout);
-        log.info("Hello2, World!");
+        log.info("Hello, World!");
         file_sink->flush(); // Flush sink to write to the file
         expect(cap_out.read(), equal_to("Hello, World!\n"));
         expect(cap_file.read(), equal_to("Hello, World!\n"));
