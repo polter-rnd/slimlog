@@ -37,10 +37,21 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v2
         if: ${{ !cancelled() }}
         with:
-          check_name: Unit test results
+          check_name: test_report
+          comment_title: Pull Request Unit Test Report
           commit: ${{ github.event.workflow_run.head_sha }}
           event_name: ${{ github.event.workflow_run.event }}
           event_file: artifacts/event_file/event.json
           test_file_prefix: -${{ github.workspace }}/
           report_individual_runs: true
           files: artifacts/**/test_*.xml
+
+      - name: Delete Event File
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.actions.deleteArtifact({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              artifact_id: event_file
+            });

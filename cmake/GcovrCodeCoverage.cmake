@@ -5,7 +5,7 @@
 # ~~~{.cmake}
 # include(GcovrCodeCoverage)
 # add_gcovr_coverage_target(
-#     HTML COBERTURA COVERALLS SONARQUBE
+#     HTML LCOV JSON COBERTURA COVERALLS SONARQUBE
 #     COVERAGE_TARGET coverage COVERAGE_INIT_TARGET coverage-init
 # )
 # target_enable_coverage(my_target)
@@ -29,9 +29,11 @@
 #
 # Options for different report types (can be specified together):
 # @arg __HTML__:  Generate HTML report (`\${OUTPUT_DIRECTORY}/html`)
+# @arg __LCOV__:  Generate LCov report (`\${OUTPUT_DIRECTORY}/coverage.lcov`)
+# @arg __JSON__:  Generate JSON report (`\${OUTPUT_DIRECTORY}/coverage.json`)
 # @arg __COBERTURA__:  Generate HTML report (`\${OUTPUT_DIRECTORY}/cobertura.xml`)
-# @arg __COVERALLS__:  Generate HTML report (`\${OUTPUT_DIRECTORY}/coveralls.xml`)
-# @arg __SONARQUBE__:  Generate HTML report (`\${OUTPUT_DIRECTORY}/sonarqube.json`)
+# @arg __COVERALLS__:  Generate HTML report (`\${OUTPUT_DIRECTORY}/coveralls.json`)
+# @arg __SONARQUBE__:  Generate HTML report (`\${OUTPUT_DIRECTORY}/sonarqube.xml`)
 #
 # @param COVERAGE_TARGET      Coverage target name (mandatody)
 # @param COVERAGE_INIT_TARGET Coverage counters reset target name (mandatory)
@@ -46,7 +48,7 @@
 # @param GCOVR_OPTIONS        List of extra options for `gcovr`
 # [/cmake_documentation]
 function(add_gcovr_coverage_target)
-    set(options HTML COBERTURA COVERALLS SONARQUBE)
+    set(options HTML LCOV JSON COBERTURA COVERALLS SONARQUBE)
     set(oneValueArgs COVERAGE_TARGET COVERAGE_INIT_TARGET CHECK_TARGET OUTPUT_DIRECTORY)
     set(multiValueArgs GCOV_LANGUAGES GCOVR_EXCLUDE GCOVR_FILTER GCOVR_OPTIONS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -77,18 +79,40 @@ function(add_gcovr_coverage_target)
                             "Please set GCOV_EXECUTABLE or fill GCOV_LANGUAGES "
                             "only with languages using the same compiler."
             )
+            set(ENABLE_COVERAGE
+                OFF
+                PARENT_SCOPE
+            )
             return()
         endif()
     endforeach()
 
     if(compiler_id MATCHES "Clang")
-        find_package(LlvmCov REQUIRED)
+        find_package(LlvmCov)
+        if(NOT LlvmCov_FOUND)
+            set(ENABLE_COVERAGE
+                OFF
+                PARENT_SCOPE
+            )
+            return()
+        endif()
         set(ARG_GCOV_EXECUTABLE "${LlvmCov_EXECUTABLE} gcov")
     elseif(compiler_id MATCHES "GNU")
-        find_package(Gcov REQUIRED)
+        find_package(Gcov)
+        if(NOT Gcov_FOUND)
+            set(ENABLE_COVERAGE
+                OFF
+                PARENT_SCOPE
+            )
+            return()
+        endif()
         set(ARG_GCOV_EXECUTABLE "${Gcov_EXECUTABLE}")
     else()
         message(WARNING "Coverage supported only for GCC or Clang compilers")
+        set(ENABLE_COVERAGE
+            OFF
+            PARENT_SCOPE
+        )
         return()
     endif()
 
@@ -135,14 +159,20 @@ function(add_gcovr_coverage_target)
             ${ARG_OUTPUT_DIRECTORY}/html
         )
     endif()
+    if(ARG_LCOV)
+        list(APPEND gcovr_options --lcov ${ARG_OUTPUT_DIRECTORY}/coverage.lcov)
+    endif()
+    if(ARG_JSON)
+        list(APPEND gcovr_options --json ${ARG_OUTPUT_DIRECTORY}/coverage.json)
+    endif()
     if(ARG_COBERTURA)
         list(APPEND gcovr_options --xml ${ARG_OUTPUT_DIRECTORY}/cobertura.xml)
     endif()
     if(ARG_SONARQUBE)
-        list(APPEND gcovr_options --sonarqube ${ARG_OUTPUT_DIRECTORY}/sonarqube.json)
+        list(APPEND gcovr_options --sonarqube ${ARG_OUTPUT_DIRECTORY}/sonarqube.xml)
     endif()
     if(ARG_COVERALLS)
-        list(APPEND gcovr_options --coveralls ${ARG_OUTPUT_DIRECTORY}/coveralls.xml)
+        list(APPEND gcovr_options --coveralls ${ARG_OUTPUT_DIRECTORY}/coveralls.json)
     endif()
 
     list(APPEND gcovr_commands COMMAND ${Gcovr_EXECUTABLE} ${gcovr_options} ${gcovr_dirs})
@@ -196,7 +226,7 @@ function(target_enable_coverage targetName)
 
     # Coverage works only on GCC/LLVM
     set(coverage_flags "-O0 --coverage")
-    if(${target_compiler} STREQUAL "GNU")
+    if(${target_compiler} MATCHES "GNU")
         # set(coverage_flags "${coverage_flags} -fprofile-abs-path")
     endif()
 
