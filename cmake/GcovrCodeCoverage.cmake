@@ -77,18 +77,40 @@ function(add_gcovr_coverage_target)
                             "Please set GCOV_EXECUTABLE or fill GCOV_LANGUAGES "
                             "only with languages using the same compiler."
             )
+            set(ENABLE_COVERAGE
+                OFF
+                PARENT_SCOPE
+            )
             return()
         endif()
     endforeach()
 
     if(compiler_id MATCHES "Clang")
-        find_package(LlvmCov REQUIRED)
+        find_package(LlvmCov)
+        if(NOT LlvmCov_FOUND)
+            set(ENABLE_COVERAGE
+                OFF
+                PARENT_SCOPE
+            )
+            return()
+        endif()
         set(ARG_GCOV_EXECUTABLE "${LlvmCov_EXECUTABLE} gcov")
     elseif(compiler_id MATCHES "GNU")
-        find_package(Gcov REQUIRED)
+        find_package(Gcov)
+        if(NOT Gcov_FOUND)
+            set(ENABLE_COVERAGE
+                OFF
+                PARENT_SCOPE
+            )
+            return()
+        endif()
         set(ARG_GCOV_EXECUTABLE "${Gcov_EXECUTABLE}")
     else()
         message(WARNING "Coverage supported only for GCC or Clang compilers")
+        set(ENABLE_COVERAGE
+            OFF
+            PARENT_SCOPE
+        )
         return()
     endif()
 
@@ -196,7 +218,7 @@ function(target_enable_coverage targetName)
 
     # Coverage works only on GCC/LLVM
     set(coverage_flags "-O0 --coverage")
-    if(${target_compiler} STREQUAL "GNU")
+    if(${target_compiler} MATCHES "GNU")
         # set(coverage_flags "${coverage_flags} -fprofile-abs-path")
     endif()
 

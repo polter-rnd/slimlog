@@ -133,7 +133,7 @@ jobs:
     - name: Install apt dependencies (Linux)
       if: runner.os == 'Linux'
       run: >
-        sudo apt-get install -y libc++-dev libc++abi-dev clang-tidy cppcheck
+        sudo apt-get install -y libc++-dev libc++abi-dev clang-tidy cppcheck gcovr
 
     - name: Install vcpkg dependencies (Windows, Linux)
       if: runner.os != 'MacOS'
@@ -147,7 +147,7 @@ jobs:
       if: runner.os == 'MacOS'
       run: |
         brew update
-        brew install ${{ matrix.format_lib == 'std' && '' || 'fmt' }} boost
+        brew install ${{ matrix.format_lib == 'std' && '' || 'fmt' }} boost gcovr
 
     - name: Cache include-what-you-use
       id: cache-iwyu
@@ -217,6 +217,11 @@ jobs:
       # Note that --build-config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       # See https://cmake.org/cmake/help/latest/manual/ctest.1.html for more detail
       run: ctest --verbose --build-config ${{ env.CMAKE_BUILD_TYPE }}
+
+    - name: Code Coverage
+      if: runner.os != 'Windows'
+      working-directory: ${{ steps.strings.outputs.build-output-dir }}
+      run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --target coverage
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4  # upload test results
