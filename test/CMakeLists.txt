@@ -43,12 +43,10 @@ function(slimlog_test name)
                                            ./test_${name} --no-subproc -o xunit -f test_${name}.xml
         )
     else()
-        add_test(NAME test_${name} COMMAND test_${name} -o xunit -f test_${name}.xml)
+        add_test(NAME test_${name} COMMAND test_${name} --no-subproc -o xunit -f test_${name}.xml)
     endif()
     target_link_libraries(test_${name} PRIVATE mettle::mettle slimlog::slimlog)
     target_sources(test_${name} PRIVATE ${TEST_HELPERS})
 endfunction()
 
 slimlog_test(basics)
-
-target_sources(test_basics PRIVATE)
