@@ -145,8 +145,7 @@ jobs:
 
     - name: Install brew dependencies (MacOS)
       if: runner.os == 'MacOS'
-      run: |
-        brew update
+      run: >
         brew install ${{ matrix.format_lib == 'std' && '' || 'fmt' }} boost
 
     - name: Cache include-what-you-use
