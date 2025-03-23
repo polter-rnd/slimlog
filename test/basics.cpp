@@ -50,7 +50,7 @@ const suite<Logger<std::string_view>> Basic("basic", [](auto& _) {
         log.add_sink<OStreamSink>(std::cout);
         log.info("Hello, World!");
         file_sink->flush(); // Flush sink to write to the file
-        expect(cap_out.read(), equal_to("Hello, World!\n"));
+        expect(cap_out.read(), equal_to("Hello2, World!\n"));
         expect(cap_file.read(), equal_to("Hello, World!\n"));
     });
 });
