@@ -38,7 +38,7 @@ const suite<Logger<std::string_view>> Basic("basic", [](auto& _) {
         // OStreamSink should output to std::cout
         OutputCapturer cap_out{std::cout};
         log.add_sink<OStreamSink>(std::cout);
-        log.info("Hello, World!");
+        log.info("Hello, World2!");
         expect(cap_out.read(), equal_to("Hello, World!\n"));
     });
 
