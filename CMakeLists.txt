@@ -101,7 +101,7 @@ endif()
 
 # Enable coverage only for Debug builds on GCC and Clang compilers
 if((CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
-   AND (CMAKE_CXX_COMPILER_ID STREQUAL "GCC" OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+   AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 )
     find_package_switchable(
         Gcovr
@@ -113,7 +113,7 @@ if((CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(ENABLE_COVERAGE)
         include(GcovrCodeCoverage)
         add_gcovr_coverage_target(
-            HTML COBERTURA COVERALLS SONARQUBE
+            COVERALLS HTML
             COVERAGE_TARGET coverage
             COVERAGE_INIT_TARGET coverage-clean
             GCOVR_EXCLUDE ${CMAKE_SOURCE_DIR}/test
