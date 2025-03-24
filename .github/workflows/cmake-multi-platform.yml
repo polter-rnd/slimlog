@@ -221,10 +221,7 @@ jobs:
       uses: mikepenz/action-junit-report@v5
       with:
         annotate_only: true
-        fail_on_failure: false
-        skip_success_summary: true
-        detailed_summary: true
-        include_time_in_summary: true
+        job_summary: false
         check_title_template: "Failed test: {{BREAD_CRUMB}}{{SUITE_NAME}}/{{TEST_NAME}}"
         report_paths: ${{ steps.strings.outputs.build-output-dir }}/test/*.xml
 
@@ -259,3 +256,44 @@ jobs:
         path: |
           ${{ steps.strings.outputs.build-output-dir }}/test/*.xml
           ${{ steps.strings.outputs.build-output-dir }}/coverage
+
+  report:
+    runs-on: ubuntu-latest
+    needs: build
+    if: ${{ !cancelled() }}
+
+    steps:
+    - name: Download and Extract Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+
+    - name: Gather unit test reports
+      id: reports
+      run: |
+        echo EOF
+        {
+          echo 'names<<EOF'
+          for i in artifacts/*; do
+            [ -d "$i/test" ] && basename "$i"
+          done
+          echo EOF
+        } >> "$GITHUB_OUTPUT"
+        {
+          echo 'paths<<EOF'
+          for i in artifacts/*; do
+            [ -d "$i/test" ] && echo "$i/test/*.xml"
+          done
+          echo EOF
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Generate JUnit test summary
+      uses: mikepenz/action-junit-report@v5
+      with:
+        annotate_only: true
+        skip_annotations: true
+        include_time_in_summary: true
+        verbose_summary: false
+        include_passed: true
+        check_name: ${{ steps.reports.outputs.names }}
+        report_paths: ${{ steps.reports.outputs.paths }}
