@@ -9,7 +9,7 @@ on:
     branches: [ "master" ]
 
 jobs:
-  format_check:
+  formatcheck:
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -222,8 +222,11 @@ jobs:
       with:
         annotate_only: true
         fail_on_failure: false
+        skip_success_summary: true
+        detailed_summary: true
+        include_time_in_summary: true
+        check_title_template: "Failed test: {{BREAD_CRUMB}}{{SUITE_NAME}}/{{TEST_NAME}}"
         report_paths: ${{ steps.strings.outputs.build-output-dir }}/test/*.xml
-        test_files_prefix: ${{ github.workspace }}/
 
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
