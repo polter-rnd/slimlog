@@ -113,7 +113,7 @@ if((CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(ENABLE_COVERAGE)
         include(GcovrCodeCoverage)
         add_gcovr_coverage_target(
-            COVERALLS HTML
+            COBERTURA HTML
             COVERAGE_TARGET coverage
             COVERAGE_INIT_TARGET coverage-clean
             GCOVR_EXCLUDE ${CMAKE_SOURCE_DIR}/test
