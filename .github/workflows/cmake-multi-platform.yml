@@ -297,3 +297,11 @@ jobs:
         include_passed: true
         check_name: ${{ steps.reports.outputs.names }}
         report_paths: ${{ steps.reports.outputs.paths }}
+
+    - name: Trigger notifications for Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/codecov-action@v5
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        run_command: send-notifications
+        fail_ci_if_error: true
