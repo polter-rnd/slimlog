@@ -29,8 +29,8 @@
 #
 # Options for different report types (can be specified together):
 # @arg __HTML__:  Generate HTML report (`\${OUTPUT_DIRECTORY}/html`)
-# @arg __LCOV__:  Generate LCov report (`\${OUTPUT_DIRECTORY}/coverage.lcov`)
-# @arg __JSON__:  Generate JSON report (`\${OUTPUT_DIRECTORY}/coverage.json`)
+# @arg __LCOV__:  Generate Lcov intermediate report (`\${OUTPUT_DIRECTORY}/lcov.info`)
+# @arg __GCOV__:  Generate Gcov intermediate report (`\${OUTPUT_DIRECTORY}/gcov.json`)
 # @arg __COBERTURA__:  Generate HTML report (`\${OUTPUT_DIRECTORY}/cobertura.xml`)
 # @arg __COVERALLS__:  Generate HTML report (`\${OUTPUT_DIRECTORY}/coveralls.json`)
 # @arg __SONARQUBE__:  Generate HTML report (`\${OUTPUT_DIRECTORY}/sonarqube.xml`)
@@ -48,7 +48,7 @@
 # @param GCOVR_OPTIONS        List of extra options for `gcovr`
 # [/cmake_documentation]
 function(add_gcovr_coverage_target)
-    set(options HTML LCOV JSON COBERTURA COVERALLS SONARQUBE)
+    set(options HTML LCOV GCOV COBERTURA COVERALLS SONARQUBE)
     set(oneValueArgs COVERAGE_TARGET COVERAGE_INIT_TARGET CHECK_TARGET OUTPUT_DIRECTORY)
     set(multiValueArgs GCOV_LANGUAGES GCOVR_EXCLUDE GCOVR_FILTER GCOVR_OPTIONS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -160,10 +160,10 @@ function(add_gcovr_coverage_target)
         )
     endif()
     if(ARG_LCOV)
-        list(APPEND gcovr_options --lcov ${ARG_OUTPUT_DIRECTORY}/coverage.lcov)
+        list(APPEND gcovr_options --lcov ${ARG_OUTPUT_DIRECTORY}/lcov.info)
     endif()
-    if(ARG_JSON)
-        list(APPEND gcovr_options --json ${ARG_OUTPUT_DIRECTORY}/coverage.json)
+    if(ARG_GCOV)
+        list(APPEND gcovr_options --json ${ARG_OUTPUT_DIRECTORY}/gcov.json)
     endif()
     if(ARG_COBERTURA)
         list(APPEND gcovr_options --xml ${ARG_OUTPUT_DIRECTORY}/cobertura.xml)
