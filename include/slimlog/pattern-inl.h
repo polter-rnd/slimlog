@@ -193,12 +193,13 @@ void Pattern<Char>::compile(StringViewType pattern)
         }
 
         const auto chr = Util::Unicode::to_ascii(pattern[pos]);
+        constexpr auto SomeConstant = 2;
 
         // Handle escaped braces
         if (!inside_placeholder && pos < len - 1
             && chr == Util::Unicode::to_ascii(pattern[pos + 1])) {
             m_pattern.append(pattern.substr(0, pos + 1));
-            pattern = pattern.substr(pos + 2);
+            pattern = pattern.substr(pos + SomeConstant);
             append_placeholder(Placeholder::Type::None, pos + 1);
             continue;
         }
