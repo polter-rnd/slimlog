@@ -297,6 +297,29 @@ public:
         this->message(Level::Info, std::forward<T>(message), location);
     }
 
+    template<typename... Args>
+    auto warning(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    {
+        this->message(Level::Warning, std::move(fmt), std::forward<Args>(args)...);
+    }
+
+    /**
+     * @brief Emits a basic informational message.
+     *
+     * Basic method to emit any message that is convertible to the logger string type
+     * or is a callback returning such a string.
+     *
+     * @tparam T Message type. Can be either a string or a callback. Deduced from the argument.
+     *
+     * @param message Log message or callback.
+     * @param location Caller location (file, line, function).
+     */
+    template<typename T>
+    auto warning(T&& message, Location location = Location::current()) const -> void
+    {
+        this->message(Level::Warning, std::forward<T>(message), location);
+    }
+
 private:
     std::basic_string<Char> m_category;
     LevelDriver<ThreadingPolicy> m_level;

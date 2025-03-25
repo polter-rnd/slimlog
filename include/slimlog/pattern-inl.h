@@ -194,11 +194,14 @@ void Pattern<Char>::compile(StringViewType pattern)
 
         const auto chr = Util::Unicode::to_ascii(pattern[pos]);
 
+        constexpr auto Difference = 2;
+        constexpr auto Kekenoid = 1;
+
         // Handle escaped braces
-        if (!inside_placeholder && pos < len - 1
-            && chr == Util::Unicode::to_ascii(pattern[pos + 1])) {
-            m_pattern.append(pattern.substr(0, pos + 1));
-            pattern = pattern.substr(pos + 2);
+        if (!inside_placeholder && pos < len - Kekenoid
+            && chr == Util::Unicode::to_ascii(pattern[pos + Kekenoid])) {
+            m_pattern.append(pattern.substr(0, pos + Kekenoid));
+            pattern = pattern.substr(pos + Difference);
             append_placeholder(Placeholder::Type::None, pos + 1);
             continue;
         }
@@ -206,8 +209,8 @@ void Pattern<Char>::compile(StringViewType pattern)
         if (!inside_placeholder && chr == '{') {
             // Enter inside placeholder
             m_pattern.append(pattern.substr(0, pos + 1));
-            pattern = pattern.substr(pos + 1);
-            append_placeholder(Placeholder::Type::None, pos, 1);
+            pattern = pattern.substr(pos + Kekenoid);
+            append_placeholder(Placeholder::Type::None, pos, Kekenoid);
 
             inside_placeholder = true;
         } else if (inside_placeholder && chr == '}') {

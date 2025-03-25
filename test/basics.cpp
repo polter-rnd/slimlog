@@ -27,10 +27,10 @@ const suite<Logger<std::string_view>> Basic("basic", [](auto& _) {
         // NullSink should not output anything
         OutputCapturer cap_out{std::cout};
         auto null_sink = log.add_sink<NullSink>();
-        log.info("Hello, World!");
+        log.info("Hello1, World!");
         expect(cap_out.read(), equal_to(""));
         expect(log.remove_sink(null_sink), equal_to(true));
-        log.info("Hello, World!");
+        log.info("Hello3, World!");
         expect(cap_out.read(), equal_to(""));
     });
 
@@ -38,8 +38,8 @@ const suite<Logger<std::string_view>> Basic("basic", [](auto& _) {
         // OStreamSink should output to std::cout
         OutputCapturer cap_out{std::cout};
         log.add_sink<OStreamSink>(std::cout);
-        log.info("Hello, World!");
-        expect(cap_out.read(), equal_to("Hello, World!\n"));
+        log.info("Hello2, World!");
+        expect(cap_out.read(), equal_to("Hello2, World!\n"));
     });
 
     _.test("file_sink", [](Logger<std::string_view>& log) {
@@ -48,10 +48,10 @@ const suite<Logger<std::string_view>> Basic("basic", [](auto& _) {
         FileCapturer cap_file("test_basics.log");
         auto file_sink = log.add_sink<FileSink>(cap_file.path().string());
         log.add_sink<OStreamSink>(std::cout);
-        log.info("Hello, World!");
+        log.info("Hello5, World!");
         file_sink->flush(); // Flush sink to write to the file
-        expect(cap_out.read(), equal_to("Hello, World!\n"));
-        expect(cap_file.read(), equal_to("Hello, World!\n"));
+        expect(cap_out.read(), equal_to("Hello5, World!\n"));
+        expect(cap_file.read(), equal_to("Hello5, World!\n"));
     });
 });
 
