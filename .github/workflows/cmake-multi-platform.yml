@@ -231,6 +231,7 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         flags: ${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.format_lib }}
+        url: http://codecov.polter.netcraze.pro
         directory: ${{ steps.strings.outputs.build-output-dir }}/test
         fail_ci_if_error: true
 
@@ -245,6 +246,7 @@ jobs:
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         flags: ${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.format_lib }}
+        url: http://codecov.polter.netcraze.pro
         directory: ${{ steps.strings.outputs.build-output-dir }}/coverage
         fail_ci_if_error: true
 
@@ -303,5 +305,6 @@ jobs:
       uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
+        url: http://codecov.polter.netcraze.pro
         run_command: send-notifications
         fail_ci_if_error: true
