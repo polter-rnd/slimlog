@@ -7,6 +7,7 @@
 
 // IWYU pragma: private, include "slimlog/record.h"
 
+// NOLINTNEXTLINE(misc-header-include-cycle)
 #include "slimlog/record.h" // IWYU pragma: associated
 #include "slimlog/util/unicode.h"
 
@@ -31,6 +32,12 @@ RecordStringView<T>::RecordStringView(RecordStringView&& str_view) noexcept
 template<typename T>
 RecordStringView<T>::RecordStringView(std::basic_string_view<T> str_view) noexcept
     : std::basic_string_view<T>(std::move(str_view))
+{
+}
+
+template<typename T>
+RecordStringView<T>::RecordStringView(const std::basic_string<T>& str) noexcept
+    : std::basic_string_view<T>(str)
 {
 }
 

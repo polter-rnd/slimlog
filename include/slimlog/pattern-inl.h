@@ -7,6 +7,7 @@
 
 // IWYU pragma: private, include "slimlog/pattern.h"
 
+// NOLINTNEXTLINE(misc-header-include-cycle)
 #include "slimlog/pattern.h" // IWYU pragma: associated
 #include "slimlog/util/types.h"
 #include "slimlog/util/unicode.h"

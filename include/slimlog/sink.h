@@ -22,6 +22,8 @@
 #include <utility>
 #include <vector>
 
+// IWYU pragma: no_include <string>
+
 namespace SlimLog {
 
 /**
