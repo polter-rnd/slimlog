@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cstddef>
 #include <functional>
+#include <string>
 #include <string_view>
 #include <variant>
 
@@ -49,6 +50,13 @@ public:
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
     RecordStringView(std::basic_string_view<T> str_view) noexcept;
+
+    /**
+     * @brief Constructor from `std::basic_string`.
+     * @param str_view The std::basic_string to construct from.
+     */
+    // NOLINTNEXTLINE(*-explicit-conversions)
+    RecordStringView(const std::basic_string<T>& str) noexcept;
 
     /**
      * @brief Assignment operator.

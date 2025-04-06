@@ -6,7 +6,7 @@
 #pragma once
 
 #include "slimlog/format.h"
-#include "slimlog/level.h"
+#include "slimlog/level.h" // IWYU pragma: export
 #include "slimlog/location.h"
 #include "slimlog/sink.h"
 #include "slimlog/util/types.h"
@@ -268,6 +268,73 @@ public:
     }
 
     /**
+     * @brief Emits a trace message.
+     *
+     * @tparam Args Format argument types. Deduced from arguments.
+     * @param fmt Format string. See `fmt::format` documentation for details.
+     * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
+     */
+    template<typename... Args>
+    auto trace(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    {
+        this->message(Level::Trace, std::move(fmt), std::forward<Args>(args)...);
+    }
+
+    /**
+     * @brief Emits a basic trace message.
+     *
+     * @tparam T Message type. Can be either a string or a callback. Deduced from the argument.
+     *
+     * @param message Log message or callback.
+     * @param location Caller location (file, line, function).
+     */
+    template<typename T>
+    auto trace(T&& message, Location location = Location::current()) const -> void
+    {
+        this->message(Level::Trace, std::forward<T>(message), location);
+    }
+
+    /**
+     * @brief Emits a debug message.
+     *
+     * @tparam Args Format argument types. Deduced from arguments.
+     * @param fmt Format string. See `fmt::format` documentation for details.
+     * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
+     */
+    template<typename... Args>
+    auto debug(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    {
+        this->message(Level::Debug, std::move(fmt), std::forward<Args>(args)...);
+    }
+
+    /**
+     * @brief Emits a basic debug message.
+     *
+     * @tparam T Message type. Can be either a string or a callback. Deduced from the argument.
+     *
+     * @param message Log message or callback.
+     * @param location Caller location (file, line, function).
+     */
+    template<typename T>
+    auto debug(T&& message, Location location = Location::current()) const -> void
+    {
+        this->message(Level::Debug, std::forward<T>(message), location);
+    }
+
+    /**
+     * @brief Emits a warning message.
+     *
+     * @tparam Args Format argument types. Deduced from arguments.
+     * @param fmt Format string. See `fmt::format` documentation for details.
+     * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
+     */
+    template<typename... Args>
+    auto warning(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    {
+        this->message(Level::Warning, std::move(fmt), std::forward<Args>(args)...);
+    }
+
+    /**
      * @brief Emits an informational message.
      *
      * @tparam Args Format argument types. Deduced from arguments.
@@ -295,6 +362,74 @@ public:
     auto info(T&& message, Location location = Location::current()) const -> void
     {
         this->message(Level::Info, std::forward<T>(message), location);
+    }
+
+    /**
+     * @brief Emits a basic warning message.
+     *
+     * @tparam T Message type. Can be either a string or a callback. Deduced from the argument.
+     *
+     * @param message Log message or callback.
+     * @param location Caller location (file, line, function).
+     */
+    template<typename T>
+    auto warning(T&& message, Location location = Location::current()) const -> void
+    {
+        this->message(Level::Warning, std::forward<T>(message), location);
+    }
+
+    /**
+     * @brief Emits an error message.
+     *
+     * @tparam Args Format argument types. Deduced from arguments.
+     * @param fmt Format string. See `fmt::format` documentation for details.
+     * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
+     */
+    template<typename... Args>
+    auto error(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    {
+        this->message(Level::Error, std::move(fmt), std::forward<Args>(args)...);
+    }
+
+    /**
+     * @brief Emits a basic error message.
+     *
+     * @tparam T Message type. Can be either a string or a callback. Deduced from the argument.
+     *
+     * @param message Log message or callback.
+     * @param location Caller location (file, line, function).
+     */
+    template<typename T>
+    auto error(T&& message, Location location = Location::current()) const -> void
+    {
+        this->message(Level::Error, std::forward<T>(message), location);
+    }
+
+    /**
+     * @brief Emits a fatal message.
+     *
+     * @tparam Args Format argument types. Deduced from arguments.
+     * @param fmt Format string. See `fmt::format` documentation for details.
+     * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
+     */
+    template<typename... Args>
+    auto fatal(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    {
+        this->message(Level::Fatal, std::move(fmt), std::forward<Args>(args)...);
+    }
+
+    /**
+     * @brief Emits a basic fatal message.
+     *
+     * @tparam T Message type. Can be either a string or a callback. Deduced from the argument.
+     *
+     * @param message Log message or callback.
+     * @param location Caller location (file, line, function).
+     */
+    template<typename T>
+    auto fatal(T&& message, Location location = Location::current()) const -> void
+    {
+        this->message(Level::Fatal, std::forward<T>(message), location);
     }
 
 private:
