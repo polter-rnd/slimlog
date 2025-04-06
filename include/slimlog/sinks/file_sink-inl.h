@@ -7,11 +7,14 @@
 
 // IWYU pragma: private, include "slimlog/sinks/file_sink.h"
 
+// NOLINTNEXTLINE(misc-header-include-cycle)
 #include "slimlog/sinks/file_sink.h" // IWYU pragma: associated
 
 #include <cerrno>
+#include <cwchar>
 #include <string>
 #include <system_error>
+#include <type_traits>
 
 namespace SlimLog {
 
@@ -35,8 +38,15 @@ auto FileSink<String, Char, BufferSize, Allocator>::message(RecordType& record) 
     FormatBufferType buffer;
     this->format(buffer, record);
     buffer.push_back('\n');
-    if (std::fwrite(buffer.data(), buffer.size(), 1, m_fp.get()) != 1) {
-        throw std::system_error({errno, std::system_category()}, "Failed writing to log file");
+    if constexpr (std::is_same_v<Char, wchar_t>) {
+        buffer.push_back('\0');
+        if (std::fputws(buffer.data(), m_fp.get()) == EOF) {
+            throw std::system_error({errno, std::system_category()}, "Failed writing to log file");
+        }
+    } else {
+        if (std::fwrite(buffer.data(), buffer.size() * sizeof(Char), 1, m_fp.get()) != 1) {
+            throw std::system_error({errno, std::system_category()}, "Failed writing to log file");
+        }
     }
 }
 

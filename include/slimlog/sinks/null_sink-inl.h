@@ -7,6 +7,7 @@
 
 // IWYU pragma: private, include "slimlog/sinks/null_sink.h"
 
+// NOLINTNEXTLINE(misc-header-include-cycle)
 #include "slimlog/sinks/null_sink.h" // IWYU pragma: associated
 
 namespace SlimLog {

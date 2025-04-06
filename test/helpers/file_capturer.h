@@ -6,7 +6,8 @@
 #include <stdexcept>
 #include <string>
 
-class FileCapturer : public std::ifstream {
+template<typename Char>
+class FileCapturer : public std::basic_ifstream<Char> {
 public:
     explicit FileCapturer(const std::filesystem::path& path, bool truncate_file = true)
         : m_path(path)
@@ -19,11 +20,11 @@ public:
             }
         }
 
-        open(path);
-        if (!is_open()) {
+        this->open(path);
+        if (!this->is_open()) {
             throw std::runtime_error("Error opening file" + path.string());
         }
-        seekg(0, std::ios_base::end);
+        this->seekg(0, std::ios_base::end);
     }
 
     [[nodiscard]] auto path() const -> std::filesystem::path
@@ -31,15 +32,15 @@ public:
         return m_path;
     }
 
-    auto read() -> std::string
+    auto read() -> std::basic_string<Char>
     {
-        sync();
-        return {std::istreambuf_iterator<char>(*this), std::istreambuf_iterator<char>()};
+        this->sync();
+        return {std::istreambuf_iterator<Char>(*this), std::istreambuf_iterator<Char>()};
     }
 
     void remove_file()
     {
-        close();
+        this->close();
         std::filesystem::remove(m_path);
     }
 

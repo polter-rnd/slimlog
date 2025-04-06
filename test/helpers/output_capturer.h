@@ -4,11 +4,12 @@
 #include <sstream>
 #include <string>
 
-class OutputCapturer : public std::stringstream {
+template<typename Char>
+class OutputCapturer : public std::basic_stringstream<Char> {
 public:
-    explicit OutputCapturer(std::ostream& stream)
+    explicit OutputCapturer(std::basic_ostream<Char>& stream)
         : m_stream(stream)
-        , m_buf(m_stream.rdbuf(rdbuf()))
+        , m_buf(m_stream.rdbuf(this->rdbuf()))
     {
     }
 
@@ -18,10 +19,10 @@ public:
     auto operator=(OutputCapturer&& other) noexcept -> OutputCapturer& = delete;
     auto operator=(const OutputCapturer& other) -> OutputCapturer& = delete;
 
-    auto read() -> std::string
+    auto read() -> std::basic_string<Char>
     {
-        sync();
-        return {std::istreambuf_iterator<char>(*this), std::istreambuf_iterator<char>()};
+        this->sync();
+        return {std::istreambuf_iterator<Char>(*this), std::istreambuf_iterator<Char>()};
     }
 
     ~OutputCapturer() noexcept override
@@ -30,6 +31,6 @@ public:
     }
 
 private:
-    std::ostream& m_stream;
-    std::streambuf* m_buf;
+    std::basic_ostream<Char>& m_stream;
+    std::basic_streambuf<Char>* m_buf;
 };

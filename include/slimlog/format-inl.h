@@ -7,6 +7,7 @@
 
 // IWYU pragma: private, include "slimlog/format.h"
 
+// NOLINTNEXTLINE(misc-header-include-cycle)
 #include "slimlog/format.h" // IWYU pragma: associated
 
 #ifdef SLIMLOG_FMTLIB

@@ -49,4 +49,4 @@ function(slimlog_test name)
     target_sources(test_${name} PRIVATE ${TEST_HELPERS})
 endfunction()
 
-slimlog_test(basics)
+slimlog_test(basic)
