@@ -131,7 +131,8 @@ public:
      */
     [[nodiscard]] auto time() const -> std::pair<std::chrono::sys_seconds, std::size_t>
     {
-        return m_time_func ? m_time_func() : std::make_pair(std::chrono::sys_seconds{}, 0UL);
+        return m_time_func ? m_time_func()
+                           : std::make_pair(std::chrono::sys_seconds{}, std::size_t{});
     }
 
     /**
