@@ -40,12 +40,22 @@ public:
         // Make sure we get the latest file contents
         m_file.sync();
 
-        // For char type, we can just cast the string
+        // Read content in binary mode
+        std::string content{
+            std::istreambuf_iterator<char>(m_file), std::istreambuf_iterator<char>()};
+
+        // Normalize newlines from \r\n to \n
+        size_t start_pos = 0;
+        while ((start_pos = content.find("\r\n", start_pos)) != std::string::npos) {
+            content.replace(start_pos, 2, "\n");
+            start_pos++;
+        }
+
+        // For char type, we can just return the normalized string
         if constexpr (std::is_same_v<Char, char>) {
-            return {std::istreambuf_iterator<char>(m_file), std::istreambuf_iterator<char>()};
+            return content;
         } else {
-            const std::string content{
-                std::istreambuf_iterator<char>(m_file), std::istreambuf_iterator<char>()};
+            // Convert to the requested character type
             return make_string<Char>(content);
         }
     }
