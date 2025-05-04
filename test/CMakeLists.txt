@@ -9,6 +9,14 @@ fetchcontent_declare(
 )
 fetchcontent_makeavailable(mettle)
 
+fetchcontent_declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    EXCLUDE_FROM_ALL # don't build by default
+    FIND_PACKAGE_ARGS # try find_package() first
+)
+fetchcontent_makeavailable(fmt)
+
 if(ENABLE_SANITIZERS
    AND COMMAND target_enable_sanitizers
    AND TARGET libmettle
@@ -45,7 +53,7 @@ function(slimlog_test name)
     else()
         add_test(NAME test_${name} COMMAND test_${name} --no-subproc -o xunit -f test_${name}.xml)
     endif()
-    target_link_libraries(test_${name} PRIVATE mettle::mettle slimlog::slimlog)
+    target_link_libraries(test_${name} PRIVATE mettle::mettle slimlog::slimlog fmt::fmt)
     target_sources(test_${name} PRIVATE ${TEST_HELPERS})
 endfunction()
 

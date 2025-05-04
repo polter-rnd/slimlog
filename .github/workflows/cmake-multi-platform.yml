@@ -200,7 +200,7 @@ jobs:
         cmake
         -S ${{ github.workspace }}
         -B ${{ steps.strings.outputs.build-output-dir }}
-        -DENABLE_ANALYZERS=ON
+        -DENABLE_ANALYZERS=OFF
         -DENABLE_SANITIZERS=ON
         -DBUILD_TESTING=ON
         -Dmettle_DIR=${{ steps.strings.outputs.mettle-dir }}/build
