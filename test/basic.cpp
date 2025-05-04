@@ -138,7 +138,7 @@ const suite<char, wchar_t> Basic("basic", type_only, [](auto& _) {
         fields.level = make_string<Char>("INFO");
         fields.thread_id = Util::OS::thread_id();
         fields.line = log_line;
-        fields.file = make_string<Char>("basic.cpp");
+        fields.file = make_string<Char>(std::source_location::current().file_name());
         fields.message = message;
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
