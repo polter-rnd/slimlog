@@ -5,30 +5,16 @@
 
 #pragma once
 
+#if __cpp_lib_source_location
+#include <source_location>
+#endif
+
 namespace SlimLog {
 
-/** @cond */
-namespace Detail {
-consteval static auto extract_file_name(const char* path) -> const char*
-{
-    const char* file = path;
-    const char sep =
-#ifdef _WIN32
-        '\\';
+#ifdef __cpp_lib_source_location
+/** @brief Alias for std::source_location. */
+using Location = std::source_location;
 #else
-        '/';
-#endif
-    while (*path != '\0') {
-        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        if (*path++ == sep) {
-            file = path;
-        }
-    }
-    return file;
-}
-} // namespace Detail
-/** @endcond */
-
 /**
  * @brief Represents a specific location in the source code.
  *
@@ -53,7 +39,7 @@ public:
 #if __has_builtin(__builtin_FILE) and __has_builtin(__builtin_FUNCTION)                            \
         and __has_builtin(__builtin_LINE)                                                          \
     or defined(_MSC_VER) and _MSC_VER > 192
-        const char* file = Detail::extract_file_name(__builtin_FILE()),
+        const char* file = __builtin_FILE(),
         const char* function = __builtin_FUNCTION(),
         int line = __builtin_LINE()
 #else
@@ -103,5 +89,6 @@ private:
     const char* m_function{""};
     int m_line{};
 };
+#endif
 
 } // namespace SlimLog
