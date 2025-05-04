@@ -103,25 +103,25 @@ auto Pattern<Char>::format(auto& out, Record<String, Char>& record) -> void
             format_string(out, item.value, m_levels.get(record.level));
             break;
         case Placeholder::Type::File:
-            format_string(out, item.value, record.location.filename);
+            format_string(out, item.value, record.filename);
             break;
         case Placeholder::Type::Function:
-            format_string(out, item.value, record.location.function);
+            format_string(out, item.value, record.function);
             break;
         case Placeholder::Type::Line:
-            format_generic(out, item.value, record.location.line);
+            format_generic(out, item.value, record.line);
             break;
         case Placeholder::Type::Time:
-            format_generic(out, item.value, record.time.local);
+            format_generic(out, item.value, record.time.first);
             break;
         case Placeholder::Type::Msec:
-            format_generic(out, item.value, record.time.nsec / MsecInNsec);
+            format_generic(out, item.value, record.time.second / MsecInNsec);
             break;
         case Placeholder::Type::Usec:
-            format_generic(out, item.value, record.time.nsec / UsecInNsec);
+            format_generic(out, item.value, record.time.second / UsecInNsec);
             break;
         case Placeholder::Type::Nsec:
-            format_generic(out, item.value, record.time.nsec);
+            format_generic(out, item.value, record.time.second);
             break;
         case Placeholder::Type::Thread:
             format_generic(out, item.value, record.thread_id);

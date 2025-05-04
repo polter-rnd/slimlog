@@ -341,10 +341,10 @@ public:
                 evaluated = true;
                 record
                     = {level,
-                       {location.file_name(),
-                        location.function_name(),
-                        static_cast<std::size_t>(location.line())},
-                       std::move(category),
+                       location.file_name(),
+                       location.function_name(),
+                       static_cast<std::size_t>(location.line()),
+                       std::move(category), // NOLINT(*-use-after-move,*-invalid-access-moved)
                        Util::OS::thread_id(),
                        logger->time()};
 

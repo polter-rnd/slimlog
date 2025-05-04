@@ -13,6 +13,7 @@
 #include <functional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 
 namespace SlimLog {
@@ -99,23 +100,6 @@ template<typename Char>
 RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
 
 /**
- * @brief Time tag of the log record.
- */
-struct RecordTime {
-    std::chrono::sys_seconds local; ///< Local time (seconds precision).
-    std::size_t nsec = {}; ///< Event time (nanoseconds part).
-};
-
-/**
- * @brief Source code location.
- */
-struct RecordLocation {
-    RecordStringView<char> filename = {}; ///< File name.
-    RecordStringView<char> function = {}; ///< Function name.
-    std::size_t line = {}; ///< Line number.
-};
-
-/**
  * @brief Represents a log record containing message details.
  *
  * @tparam String String type for storing the message.
@@ -129,10 +113,12 @@ struct Record {
     using StringViewType = RecordStringView<Char>;
 
     Level level = {}; ///< Log level.
-    RecordLocation location = {}; ///< Source code location.
+    RecordStringView<char> filename = {}; ///< File name.
+    RecordStringView<char> function = {}; ///< Function name.
+    std::size_t line = {}; ///< Line number.
     StringViewType category = {}; ///< Log category.
     std::size_t thread_id = {}; ///< Thread ID.
-    RecordTime time = {}; ///< Record time.
+    std::pair<std::chrono::sys_seconds, std::size_t> time; ///< Record time.
     std::variant<StringRefType, StringViewType> message = StringViewType{}; ///< Log message.
 };
 
