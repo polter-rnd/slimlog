@@ -9,6 +9,7 @@
 #include "slimlog/level.h" // IWYU pragma: export
 #include "slimlog/location.h"
 #include "slimlog/sink.h"
+#include "slimlog/util/os.h"
 #include "slimlog/util/types.h"
 
 #include <array>
@@ -44,6 +45,8 @@ public:
     using StringViewType = std::basic_string_view<Char>;
     /** @brief Base sink type for the logger. */
     using SinkType = Sink<String, Char>;
+    /** @brief Time function type for getting the current time. */
+    using TimeFunctionType = std::function<std::pair<std::chrono::sys_seconds, std::size_t>()>;
 
     Logger(const Logger&) = delete;
     Logger(Logger&&) = delete;
@@ -57,15 +60,25 @@ public:
      * @param category Logger category name.
      * @param level Logging level.
      */
-    explicit Logger(StringViewType category, Level level = Level::Info)
+    explicit Logger(
+        StringViewType category,
+        Level level = Level::Info,
+        TimeFunctionType time_func = Util::OS::local_time<std::chrono::system_clock>)
         : m_category(category) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
         , m_level(level)
-        , m_sinks(this)
+        , m_time_func(time_func)
+        , m_sinks(this, nullptr)
     {
     }
 
-    Logger()
-        : Logger(StringViewType{DefaultCategory.data()})
+    Logger(
+        Level level, TimeFunctionType time_func = Util::OS::local_time<std::chrono::system_clock>)
+        : Logger(StringViewType{DefaultCategory.data()}, level, time_func)
+    {
+    }
+
+    Logger(TimeFunctionType time_func = Util::OS::local_time<std::chrono::system_clock>)
+        : Logger(StringViewType{DefaultCategory.data()}, Level::Info, time_func)
     {
     }
 
@@ -104,6 +117,21 @@ public:
     [[nodiscard]] auto category() const -> StringViewType
     {
         return StringViewType{m_category};
+    }
+
+    /**
+     * @brief Gets the current time.
+     *
+     * @return Current time as a pair of local time and nanoseconds.
+     * @note The local time is represented as a `std::chrono::sys_seconds` object.
+     */
+    [[nodiscard]] const auto time() const -> RecordTime
+    {
+        RecordTime time;
+        if (m_time_func) {
+            std::tie(time.local, time.nsec) = m_time_func();
+        }
+        return time;
     }
 
     /**
@@ -435,6 +463,7 @@ public:
 private:
     std::basic_string<Char> m_category;
     LevelDriver<ThreadingPolicy> m_level;
+    TimeFunctionType m_time_func;
     SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator> m_sinks;
     static constexpr std::array<Char, 8> DefaultCategory{'d', 'e', 'f', 'a', 'u', 'l', 't', '\0'};
 };
