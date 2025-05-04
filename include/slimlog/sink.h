@@ -11,6 +11,7 @@
 #include "slimlog/pattern.h"
 #include "slimlog/policy.h"
 #include "slimlog/record.h"
+#include "slimlog/util/os.h"
 #include "slimlog/util/types.h"
 
 #include <cstddef>
@@ -325,7 +326,7 @@ public:
         Args&&... args) const -> void
     {
         FormatBufferType buffer; // NOLINT(misc-const-correctness)
-        RecordType record = create_record(level, std::move(category), location);
+        RecordType record;
 
         // Flag to check that message has been evaluated
         bool evaluated = false;
@@ -338,6 +339,14 @@ public:
 
             if (!evaluated) [[unlikely]] {
                 evaluated = true;
+                record
+                    = {level,
+                       {location.file_name(),
+                        location.function_name(),
+                        static_cast<std::size_t>(location.line())},
+                       std::move(category),
+                       Util::OS::thread_id(),
+                       logger->time()};
 
                 using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
                 using RecordStringViewType = typename RecordType::StringViewType;
@@ -400,19 +409,6 @@ protected:
      * @param child Pointer to the child sink driver.
      */
     auto remove_child(SinkDriver* child) -> void;
-
-    /**
-     * @brief Create a new log record.
-     *
-     * This function creates a new log record with the specified log level, category, and location.
-     *
-     * @param level The log level of the record.
-     * @param category The category or module name associated with the log record.
-     * @param location The source code location where the log record is created.
-     * @return A new log record of type `RecordType`.
-     */
-    static auto // For clang-format < 19
-    create_record(Level level, StringViewType category, Location location) -> RecordType;
 
 private:
     /**

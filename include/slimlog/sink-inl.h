@@ -9,11 +9,9 @@
 
 // NOLINTNEXTLINE(misc-header-include-cycle)
 #include "slimlog/sink.h" // IWYU pragma: associated
-#include "slimlog/util/os.h"
 
 #include <algorithm>
 #include <iterator>
-#include <tuple>
 
 namespace SlimLog {
 
@@ -190,24 +188,6 @@ auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::remove_ch
     if (auto it = std::find(m_children.begin(), m_children.end(), child); it != m_children.end()) {
         m_children.erase(it);
     }
-}
-
-template<
-    typename String,
-    typename Char,
-    typename ThreadingPolicy,
-    std::size_t BufferSize,
-    typename Allocator>
-auto SinkDriver<String, Char, ThreadingPolicy, BufferSize, Allocator>::create_record(
-    Level level, StringViewType category, Location location) -> RecordType
-{
-    RecordType record = {
-        level,
-        {location.file_name(), location.function_name(), static_cast<std::size_t>(location.line())},
-        std::move(category),
-        Util::OS::thread_id()};
-    std::tie(record.time.local, record.time.nsec) = Util::OS::local_time();
-    return record;
 }
 
 template<
