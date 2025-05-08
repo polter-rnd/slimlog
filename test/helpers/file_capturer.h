@@ -57,14 +57,28 @@ public:
         // Make sure we get the latest file contents
         m_file.sync();
 
-        // Simple case: reading as char
+        std::basic_string<Char> decoded;
+        using BufIterator = std::istreambuf_iterator<char>;
         if constexpr (std::is_same_v<Char, char>) {
-            return {std::istreambuf_iterator<char>(m_file), std::istreambuf_iterator<char>()};
+            // Simple case: reading as char
+            decoded = {BufIterator(m_file), BufIterator()};
+        } else {
+            // Handle other character types
+            decoded = decode_content(std::string{BufIterator(m_file), BufIterator()});
         }
 
-        // Handle other character types
-        return decode_content(
-            std::string{std::istreambuf_iterator<char>(m_file), std::istreambuf_iterator<char>()});
+        // Normalize newlines from \r\n to \n
+        std::basic_string<Char> normalized;
+        normalized.reserve(decoded.size());
+        for (size_t i = 0; i < decoded.size(); ++i) {
+            if (decoded[i] == Char{'\r'} && i + 1 < decoded.size()
+                && decoded[i + 1] == Char{'\n'}) {
+                // Skip the \r character
+                continue;
+            }
+            normalized.push_back(decoded[i]);
+        }
+        return normalized;
     }
 
     void remove_file()
