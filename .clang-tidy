@@ -79,6 +79,11 @@ CheckOptions:
     value: true
   - key: readability-magic-numbers.IgnorePowersOf2IntegerValues
     value: true
+  # Frequently used bitwise shifts
+  - key: cppcoreguidelines-avoid-magic-numbers.IgnoredIntegerValues
+    value: 1;2;3;4;8;16;24;32;40;48;56;64
+  - key: readability-magic-numbers.IgnoredIntegerValues
+    value: 1;2;3;4;8;16;24;32;40;48;56;64
   # Workaround for https://github.com/llvm/llvm-project/issues/46097
   - key: readability-identifier-naming.TypeTemplateParameterIgnoredRegexp
     value: expr-type

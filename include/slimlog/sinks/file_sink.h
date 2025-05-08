@@ -71,6 +71,11 @@ protected:
      */
     auto open(std::string_view filename) -> void;
 
+    /**
+     * @brief Writes a BOM (Byte Order Mark) to the log file.
+     */
+    auto write_bom() -> bool;
+
 private:
     std::unique_ptr<FILE, int (*)(FILE*)> m_fp = {nullptr, nullptr};
 };

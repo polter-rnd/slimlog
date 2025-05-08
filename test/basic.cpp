@@ -43,7 +43,7 @@ auto time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
     return {std::chrono::sys_seconds{std::chrono::seconds{Timestamp}}, Nanoseconds};
 }
 
-const suite<char, wchar_t> Basic("basic", type_only, [](auto& _) {
+const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
     using String = std::basic_string<Char>;
     using StringStream = std::basic_ostringstream<Char>;
