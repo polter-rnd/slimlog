@@ -196,13 +196,9 @@ private:
     auto decode_content(std::string_view content) -> std::basic_string<Char>
     {
         // Select conversion method based on BOM and character type
-        if constexpr (
-            std::is_same_v<Char, char16_t>
-            || (std::is_same_v<Char, wchar_t> && sizeof(wchar_t) == 2)) {
+        if constexpr (std::is_same_v<Char, char16_t>) {
             return decode_utf16(content);
-        } else if constexpr (
-            std::is_same_v<Char, char32_t>
-            || (std::is_same_v<Char, wchar_t> && sizeof(wchar_t) == 4)) {
+        } else if constexpr (std::is_same_v<Char, char32_t>) {
             return decode_utf32(content);
         }
 
