@@ -420,9 +420,13 @@ constexpr void Pattern<Char>::write_string(auto& dst, StringView&& src)
     using DataChar = typename std::remove_cvref_t<StringView>::value_type;
     if constexpr (std::is_same_v<DataChar, char> && !std::is_same_v<Char, char>) {
         const auto codepoints = src.codepoints();
-        dst.reserve(dst.size() + codepoints + 1); // Take into account null terminator
+        if constexpr (std::is_same_v<Char, char8_t>) {
+            dst.reserve(dst.size() + src.size() + 1);
+        } else {
+            dst.reserve(dst.size() + codepoints + 1);
+        }
         const std::size_t written
-            = Util::Unicode::from_multibyte(dst.end(), codepoints + 1, src.data(), src.size());
+            = Util::Unicode::from_multibyte(dst.end(), codepoints + 1, src.data(), src.size() + 1);
         dst.resize(dst.size() + written - 1); // Trim null terminator
     } else {
         dst.append(std::forward<StringView>(src));

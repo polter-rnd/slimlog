@@ -237,8 +237,17 @@ constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size
         std::mbstate_t mb = {};
         for (const auto* const end = std::next(begin, len); begin != end; ++codepoints) {
             const auto next = std::mbrlen(begin, end - begin, &mb); // NOLINT(concurrency-mt-unsafe)
+            if (next == 0) {
+                // Null character, finish processing
+                break;
+            }
             if (next == static_cast<std::size_t>(-1)) {
+                // Encoding error occurred
                 throw std::runtime_error("std::mbrlen(): conversion error");
+            }
+            if (next == static_cast<std::size_t>(-2)) {
+                // Incomplete but valid character, go further
+                continue;
             }
             std::advance(begin, next);
         }
@@ -273,7 +282,7 @@ constexpr auto to_ascii(Char chr) -> char
  * @param dest Pointer to destination buffer for the converted string.
  * @param codepoints Number of codepoints to be written to the destination string.
  * @param source Pointer to multi-byte string to be converted.
- * @param source_size Source string length.
+ * @param source_size Source string size including null terminator.
  * @return Number of characters written including null terminator.
  */
 template<typename Char>
