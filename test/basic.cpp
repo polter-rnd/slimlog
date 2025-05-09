@@ -9,7 +9,7 @@
 // Test helpers
 #include "helpers/common.h"
 #include "helpers/file_capturer.h"
-#include "helpers/output_capturer.h"
+#include "helpers/stream_capturer.h"
 
 #include <mettle.hpp>
 
@@ -18,7 +18,6 @@
 #include <cstddef>
 #include <initializer_list>
 #include <source_location>
-#include <sstream>
 #include <string>
 #include <system_error>
 
@@ -46,12 +45,11 @@ auto time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
 const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
     using String = std::basic_string<Char>;
-    using StringStream = std::basic_ostringstream<Char>;
 
     _.test("levels", []() {
-        StringStream oss;
+        StreamCapturer<Char> cap_out;
         Logger<String> log;
-        log.template add_sink<OStreamSink>(oss);
+        log.template add_sink<OStreamSink>(cap_out);
         const auto levels = {
             Level::Trace,
             Level::Debug,
@@ -61,12 +59,11 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
             Level::Fatal,
         };
 
-        std::for_each(levels.begin(), levels.end(), [&log, &levels, &oss](auto& log_level) {
+        std::for_each(levels.begin(), levels.end(), [&log, &levels, &cap_out](auto& log_level) {
             log.set_level(log_level);
 
             const auto message = make_string<Char>("Hello, World!");
             for (const auto msg_level : levels) {
-                OutputCapturer cap_out(oss);
                 log.message(msg_level, message);
                 if (msg_level > log_level) {
                     expect(cap_out.read(), equal_to(String{}));
@@ -86,10 +83,9 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     });
 
     _.test("ostream_sink", []() {
-        StringStream oss;
-        OutputCapturer cap_out{oss};
+        StreamCapturer<Char> cap_out;
         Logger<String> log;
-        auto ostream_sink = log.template add_sink<OStreamSink>(oss);
+        auto ostream_sink = log.template add_sink<OStreamSink>(cap_out);
         const auto message = make_string<Char>("Hello, World!");
 
         log.info(message);
@@ -121,15 +117,14 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
     // Basic pattern test
     _.test("pattern", []() {
-        StringStream oss;
-        OutputCapturer cap_out{oss};
+        StreamCapturer<Char> cap_out;
         const auto pattern = make_string<Char>("({category}) [{level}] "
                                                "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
                                                "#{thread} {file}|{line}: {message}");
         const auto message = make_string<Char>("Hello, World!");
 
         Logger<String> log{time_mock};
-        log.template add_sink<OStreamSink>(oss, pattern);
+        log.template add_sink<OStreamSink>(cap_out, pattern);
         log.info(message);
         const auto log_line = std::source_location::current().line() - 1;
 
@@ -148,13 +143,12 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
     // Additional test with custom pattern
     _.test("custom_pattern", []() {
-        StringStream oss;
-        OutputCapturer cap_out{oss};
+        StreamCapturer<Char> cap_out;
         const auto pattern = make_string<Char>("[{level}]: {message}");
         const auto message = make_string<Char>("Error message");
 
         Logger<String> log;
-        log.template add_sink<OStreamSink>(oss, pattern);
+        log.template add_sink<OStreamSink>(cap_out, pattern);
         log.error(message);
 
         PatternFields<Char> fields;
@@ -166,14 +160,13 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
     // Test with simple {time} format (no format specified)
     _.test("simple_time_pattern", []() {
-        StringStream oss;
-        OutputCapturer cap_out{oss};
+        StreamCapturer<Char> cap_out;
 
         const auto pattern = make_string<Char>("[{level}] {time} - {message}");
         const auto message = make_string<Char>("Warning message");
 
         Logger<String> log{time_mock};
-        log.template add_sink<OStreamSink>(oss, pattern);
+        log.template add_sink<OStreamSink>(cap_out, pattern);
         log.warning(message);
 
         PatternFields<Char> fields;
