@@ -31,7 +31,7 @@ public:
         }
 
         // Open the file in binary mode for all character types
-        m_file.open(path, std::ios::binary);
+        m_file.open(path);
         if (!m_file.is_open()) {
             throw std::runtime_error("Error opening file " + path.string());
         }
@@ -58,28 +58,14 @@ public:
         // Make sure we get the latest file contents
         m_file.sync();
 
-        std::basic_string<Char> decoded;
-        using BufIterator = std::istreambuf_iterator<char>;
+        using StreamIterator = std::istreambuf_iterator<char>;
         if constexpr (std::is_same_v<Char, char>) {
             // Simple case: reading as char
-            decoded = {BufIterator(m_file), BufIterator()};
-        } else {
-            // Handle other character types
-            decoded = decode_content(std::string{BufIterator(m_file), BufIterator()});
+            return {StreamIterator(m_file), StreamIterator()};
         }
 
-        // Normalize newlines from \r\n to \n
-        std::basic_string<Char> normalized;
-        normalized.reserve(decoded.size());
-        for (size_t i = 0; i < decoded.size(); ++i) {
-            if (decoded[i] == Char{'\r'} && i + 1 < decoded.size()
-                && decoded[i + 1] == Char{'\n'}) {
-                // Skip the \r character
-                continue;
-            }
-            normalized.push_back(decoded[i]);
-        }
-        return normalized;
+        // Decode the content based on the character type
+        return decode_content(std::string{StreamIterator(m_file), StreamIterator()});
     }
 
     void remove_file()
