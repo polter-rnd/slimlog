@@ -5,6 +5,7 @@
 #include <array>
 #include <bit>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -16,7 +17,7 @@
 template<typename Char>
 class FileCapturer {
 public:
-    enum class BOM : unsigned char { None, UTF8, UTF16LE, UTF16BE, UTF32LE, UTF32BE };
+    enum class BOM : std::uint8_t { None, UTF8, UTF16LE, UTF16BE, UTF32LE, UTF32BE };
 
     explicit FileCapturer(const std::filesystem::path& path, bool truncate_file = true)
         : m_path(path)
@@ -106,21 +107,21 @@ private:
         }
 
         // Check for different BOMs and set file position accordingly
-        if (static_cast<unsigned char>(bom_buffer[0]) == 0xEF
-            && static_cast<unsigned char>(bom_buffer[1]) == 0xBB
-            && static_cast<unsigned char>(bom_buffer[2]) == 0xBF) {
+        if (static_cast<std::uint8_t>(bom_buffer[0]) == 0xEF
+            && static_cast<std::uint8_t>(bom_buffer[1]) == 0xBB
+            && static_cast<std::uint8_t>(bom_buffer[2]) == 0xBF) {
             // UTF-8 BOM: EF BB BF
             m_file.seekg(static_cast<std::streamoff>(3));
             m_bom = BOM::UTF8;
         } else if (
-            static_cast<unsigned char>(bom_buffer[0]) == 0xFE
-            && static_cast<unsigned char>(bom_buffer[1]) == 0xFF) {
+            static_cast<std::uint8_t>(bom_buffer[0]) == 0xFE
+            && static_cast<std::uint8_t>(bom_buffer[1]) == 0xFF) {
             // UTF-16BE BOM: FE FF
             m_file.seekg(static_cast<std::streamoff>(2));
             m_bom = BOM::UTF16BE;
         } else if (
-            static_cast<unsigned char>(bom_buffer[0]) == 0xFF
-            && static_cast<unsigned char>(bom_buffer[1]) == 0xFE) {
+            static_cast<std::uint8_t>(bom_buffer[0]) == 0xFF
+            && static_cast<std::uint8_t>(bom_buffer[1]) == 0xFE) {
             // Check if it's UTF-16LE or UTF-32LE
             if (bom_buffer[2] == 0 && bom_buffer[3] == 0) {
                 // UTF-32LE BOM: FF FE 00 00
@@ -132,10 +133,10 @@ private:
                 m_bom = BOM::UTF16LE;
             }
         } else if (
-            static_cast<unsigned char>(bom_buffer[0]) == 0x00
-            && static_cast<unsigned char>(bom_buffer[1]) == 0x00
-            && static_cast<unsigned char>(bom_buffer[2]) == 0xFE
-            && static_cast<unsigned char>(bom_buffer[3]) == 0xFF) {
+            static_cast<std::uint8_t>(bom_buffer[0]) == 0x00
+            && static_cast<std::uint8_t>(bom_buffer[1]) == 0x00
+            && static_cast<std::uint8_t>(bom_buffer[2]) == 0xFE
+            && static_cast<std::uint8_t>(bom_buffer[3]) == 0xFF) {
             // UTF-32BE BOM: 00 00 FE FF
             m_file.seekg(static_cast<std::streamoff>(4));
             m_bom = BOM::UTF32BE;
@@ -163,11 +164,11 @@ private:
         for (std::size_t i = 0; i + 1 < content.size(); i += 2) {
             Char ch;
             if (swap_bytes) {
-                ch = static_cast<unsigned>(static_cast<unsigned char>(content[i]) << 8U)
-                    | static_cast<unsigned char>(content[i + 1]);
+                ch = static_cast<std::uint16_t>(static_cast<std::uint8_t>(content[i]) << 8U)
+                    | static_cast<std::uint8_t>(content[i + 1]);
             } else {
-                ch = static_cast<unsigned>(static_cast<unsigned char>(content[i]) << 8U)
-                    | static_cast<unsigned char>(content[i]);
+                ch = static_cast<std::uint16_t>(static_cast<std::uint8_t>(content[i + 1]) << 8U)
+                    | static_cast<std::uint8_t>(content[i]);
             }
             result.push_back(ch);
         }
@@ -191,15 +192,15 @@ private:
         for (std::size_t i = 0; i + 3 < content.size(); i += 4) {
             Char ch;
             if (swap_bytes) {
-                ch = static_cast<unsigned>(static_cast<unsigned char>(content[i]) << 24U)
-                    | static_cast<unsigned>(static_cast<unsigned char>(content[i + 1]) << 16U)
-                    | static_cast<unsigned>(static_cast<unsigned char>(content[i + 2]) << 8U)
-                    | static_cast<unsigned char>(content[i + 3]);
+                ch = static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i]) << 24U)
+                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i + 1]) << 16U)
+                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i + 2]) << 8U)
+                    | static_cast<std::uint8_t>(content[i + 3]);
             } else {
-                ch = static_cast<unsigned>(static_cast<unsigned char>(content[i + 3]) << 24U)
-                    | static_cast<unsigned>(static_cast<unsigned char>(content[i + 2]) << 16U)
-                    | static_cast<unsigned>(static_cast<unsigned char>(content[i + 1]) << 8U)
-                    | static_cast<unsigned char>(content[i]);
+                ch = static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i + 3]) << 24U)
+                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i + 2]) << 16U)
+                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i + 1]) << 8U)
+                    | static_cast<std::uint8_t>(content[i]);
             }
             result.push_back(ch);
         }
