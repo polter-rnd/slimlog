@@ -55,12 +55,11 @@
 template<typename Char>
 inline auto make_string(std::string_view str) -> std::basic_string<Char>
 {
-    // For char, just copy the UTF-8 bytes directly
     if constexpr (std::is_same_v<Char, char>) {
+        // For char, just copy the UTF-8 bytes directly
         return std::string(str);
-    }
-    // For all other types, use proper Unicode conversion
-    else {
+    } else {
+        // For all other types, use proper Unicode conversion
         const size_t codepoints = SlimLog::Util::Unicode::count_codepoints(str.data(), str.size());
         if (codepoints == 0) {
             return {};

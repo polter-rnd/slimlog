@@ -14,6 +14,7 @@
 #include <mettle.hpp>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <initializer_list>
@@ -44,7 +45,7 @@ auto time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
 
 // Generate some test messages with different unicode characters
 template<typename Char>
-auto test_messages() -> std::vector<std::basic_string<Char>>
+auto test_messages() -> std::array<std::basic_string<Char>, 4>
 {
     return {
         make_string<Char>("Simple ASCII message"),
