@@ -17,7 +17,7 @@ public:
 
     auto read() -> std::basic_string<Char>
     {
-        sync();
+        this->sync();
         return {std::istreambuf_iterator<Char>(*this), std::istreambuf_iterator<Char>()};
     }
 

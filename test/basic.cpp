@@ -42,6 +42,17 @@ auto time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
     return {std::chrono::sys_seconds{std::chrono::seconds{Timestamp}}, Nanoseconds};
 }
 
+// Generate some test messages with different unicode characters
+template<typename Char>
+auto test_messages() -> std::vector<std::basic_string<Char>>
+{
+    return {
+        make_string<Char>("Simple ASCII message"),
+        make_string<Char>("Привет, мир!"),
+        make_string<Char>("你好，世界!"),
+        make_string<Char>("Some emojis: 😀, 😁, 😂, 🤣, 😃, 😄, 😅, 😆")};
+};
+
 const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
     using String = std::basic_string<Char>;
@@ -85,14 +96,16 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     _.test("ostream_sink", []() {
         StreamCapturer<Char> cap_out;
         Logger<String> log;
-        auto ostream_sink = log.template add_sink<OStreamSink>(cap_out);
-        const auto message = make_string<Char>("Hello, World!");
 
-        log.info(message);
-        ostream_sink->flush();
-        expect(cap_out.read(), equal_to(message + Char{'\n'}));
+        auto ostream_sink = log.template add_sink<OStreamSink>(cap_out);
+        for (const auto& message : test_messages<Char>()) {
+            log.info(message);
+            ostream_sink->flush();
+            expect(cap_out.read(), equal_to(message + Char{'\n'}));
+        }
+
         expect(log.remove_sink(ostream_sink), equal_to(true));
-        log.info(message);
+        log.info(make_string<Char>("Hello, World!"));
         expect(cap_out.read(), equal_to(String{}));
     });
 
@@ -104,11 +117,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         FileCapturer<Char> cap_file("test_basics.log");
 
         auto file_sink = log.template add_sink<FileSink>(cap_file.path().string());
-        for (const auto& message :
-             {make_string<Char>("Simple ASCII message"),
-              make_string<Char>("Привет, мир!"),
-              make_string<Char>("你好，世界!"),
-              make_string<Char>("Some emojis: 😀, 😁, 😂, 🤣, 😃, 😄, 😅, 😆")}) {
+        for (const auto& message : test_messages<Char>()) {
             log.info(message);
             file_sink->flush();
             expect(cap_file.read(), equal_to(message + Char{'\n'}));
@@ -121,24 +130,25 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         const auto pattern = make_string<Char>("({category}) [{level}] "
                                                "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
                                                "#{thread} {file}|{line}: {message}");
-        const auto message = make_string<Char>("Hello, World!");
 
         Logger<String> log{time_mock};
         log.template add_sink<OStreamSink>(cap_out, pattern);
-        log.info(message);
-        const auto log_line = std::source_location::current().line() - 1;
 
         PatternFields<Char> fields;
         fields.category = make_string<Char>("default");
         fields.level = make_string<Char>("INFO");
         fields.thread_id = Util::OS::thread_id();
-        fields.line = log_line;
         fields.file = make_string<Char>(std::source_location::current().file_name());
-        fields.message = message;
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
 
-        expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        for (const auto& message : test_messages<Char>()) {
+            log.info(message);
+            const auto log_line = std::source_location::current().line() - 1;
+            fields.line = log_line;
+            fields.message = message;
+            expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        }
     });
 
     // Additional test with custom pattern
@@ -149,13 +159,15 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
         Logger<String> log;
         log.template add_sink<OStreamSink>(cap_out, pattern);
-        log.error(message);
 
         PatternFields<Char> fields;
         fields.level = make_string<Char>("ERROR");
-        fields.message = message;
 
-        expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        for (const auto& message : test_messages<Char>()) {
+            log.error(message);
+            fields.message = message;
+            expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        }
     });
 
     // Test with simple {time} format (no format specified)
@@ -167,16 +179,17 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
         Logger<String> log{time_mock};
         log.template add_sink<OStreamSink>(cap_out, pattern);
-        log.warning(message);
 
         PatternFields<Char> fields;
         fields.level = make_string<Char>("WARN");
-        fields.message = message;
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
 
-        // Explicitly convert the pattern to basic_string_view to resolve the conversion issue
-        expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        for (const auto& message : test_messages<Char>()) {
+            log.warning(message);
+            fields.message = message;
+            expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        }
     });
 });
 
