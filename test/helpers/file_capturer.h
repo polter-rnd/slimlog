@@ -4,14 +4,12 @@
 
 #include <array>
 #include <bit>
-#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <type_traits>
 
 template<typename Char>
@@ -60,12 +58,13 @@ public:
 
         using StreamIterator = std::istreambuf_iterator<char>;
         if constexpr (std::is_same_v<Char, char>) {
-            // Simple case: reading as char
             return {StreamIterator(m_file), StreamIterator()};
+        } else if constexpr (std::is_same_v<Char, char16_t>) {
+            return decode_utf16();
+        } else if constexpr (std::is_same_v<Char, char32_t>) {
+            return decode_utf32();
         }
-
-        // Decode the content based on the character type
-        return decode_content(std::string{StreamIterator(m_file), StreamIterator()});
+        return make_string<Char>(std::string{StreamIterator(m_file), StreamIterator()});
     }
 
     void remove_file()
@@ -133,7 +132,7 @@ private:
         // NOLINTEND(*-magic-numbers)
     }
 
-    auto decode_utf16(std::string_view content) -> std::basic_string<Char>
+    auto decode_utf16() -> std::basic_string<Char>
     {
         if (m_bom != BOM::None && m_bom != BOM::UTF16LE && m_bom != BOM::UTF16BE) {
             throw std::runtime_error(
@@ -146,22 +145,23 @@ private:
             || (m_bom == BOM::UTF16LE && std::endian::native == std::endian::big);
 
         std::basic_string<Char> result;
-        result.reserve(content.size() / 2);
-        for (std::size_t i = 0; i + 1 < content.size(); i += 2) {
+        std::array<char, 2> buffer = {0};
+        while (m_file.read(buffer.data(), buffer.size())) {
             Char ch;
             if (swap_bytes) {
-                ch = static_cast<std::uint16_t>(static_cast<std::uint8_t>(content[i]) << 8U)
-                    | static_cast<std::uint8_t>(content[i + 1]);
+                ch = static_cast<std::uint16_t>(static_cast<std::uint8_t>(buffer[0]) << 8U)
+                    | static_cast<std::uint8_t>(buffer[1]);
             } else {
-                ch = static_cast<std::uint16_t>(static_cast<std::uint8_t>(content[i + 1]) << 8U)
-                    | static_cast<std::uint8_t>(content[i]);
+                ch = static_cast<std::uint16_t>(static_cast<std::uint8_t>(buffer[1]) << 8U)
+                    | static_cast<std::uint8_t>(buffer[0]);
             }
             result.push_back(ch);
         }
+        m_file.clear();
         return result;
     }
 
-    auto decode_utf32(std::string_view content) -> std::basic_string<Char>
+    auto decode_utf32() -> std::basic_string<Char>
     {
         if (m_bom != BOM::None && m_bom != BOM::UTF32LE && m_bom != BOM::UTF32BE) {
             throw std::runtime_error(
@@ -174,37 +174,24 @@ private:
             || (m_bom == BOM::UTF32LE && std::endian::native == std::endian::big);
 
         std::basic_string<Char> result;
-        result.reserve(content.size() / 4);
-        for (std::size_t i = 0; i + 3 < content.size(); i += 4) {
+        std::array<char, 4> buffer = {0};
+        while (m_file.read(buffer.data(), buffer.size())) {
             Char ch;
             if (swap_bytes) {
-                ch = static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i]) << 24U)
-                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i + 1]) << 16U)
-                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i + 2]) << 8U)
-                    | static_cast<std::uint8_t>(content[i + 3]);
+                ch = static_cast<std::uint32_t>(static_cast<std::uint8_t>(buffer[0]) << 24U)
+                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(buffer[1]) << 16U)
+                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(buffer[2]) << 8U)
+                    | static_cast<std::uint8_t>(buffer[3]);
             } else {
-                ch = static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i + 3]) << 24U)
-                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i + 2]) << 16U)
-                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(content[i + 1]) << 8U)
-                    | static_cast<std::uint8_t>(content[i]);
+                ch = static_cast<std::uint32_t>(static_cast<std::uint8_t>(buffer[3]) << 24U)
+                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(buffer[2]) << 16U)
+                    | static_cast<std::uint32_t>(static_cast<std::uint8_t>(buffer[1]) << 8U)
+                    | static_cast<std::uint8_t>(buffer[0]);
             }
             result.push_back(ch);
         }
-
+        m_file.clear();
         return result;
-    }
-
-    auto decode_content(std::string_view content) -> std::basic_string<Char>
-    {
-        // Select conversion method based on BOM and character type
-        if constexpr (std::is_same_v<Char, char16_t>) {
-            return decode_utf16(content);
-        } else if constexpr (std::is_same_v<Char, char32_t>) {
-            return decode_utf32(content);
-        }
-
-        // Fall back to generic conversion for other cases
-        return make_string<Char>(content);
     }
 
     std::filesystem::path m_path;
