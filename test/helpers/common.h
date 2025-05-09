@@ -31,7 +31,7 @@
 #define TEST_CHAR8_T
 #endif
 #ifdef SLIMLOG_CHAR16_T
-#define TEST_CHAR16_T , char8_t
+#define TEST_CHAR16_T , char16_t
 #else
 #define TEST_CHAR16_T
 #endif
