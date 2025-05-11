@@ -1,6 +1,6 @@
 /**
  * @file logger.h
- * @brief Contains the definition of the Logger class.
+ * @brief Contains the declaration of the Logger class.
  */
 
 #pragma once
@@ -51,7 +51,7 @@ public:
     /** @brief Base sink type for the logger. */
     using SinkType = Sink<String, Char>;
     /** @brief Time function type for getting the current time. */
-    using TimeFunctionType = std::function<std::pair<std::chrono::sys_seconds, std::size_t>()>;
+    using TimeFunctionType = std::pair<std::chrono::sys_seconds, std::size_t> (*)();
 
     Logger(const Logger&) = delete;
     Logger(Logger&&) = delete;
@@ -59,20 +59,31 @@ public:
     auto operator=(Logger&&) -> Logger& = delete;
 
     /**
-     * @brief Constructs a new Logger object with the specified logging level.
+     * @brief Constructs a new Logger object with the specified category, level and time function.
      *
      * @param category Logger category name.
      * @param level Logging level.
+     * @param time_func Function to get the current time.
      */
     explicit Logger(
         StringViewType category,
         Level level = Level::Info,
-        TimeFunctionType time_func = Util::OS::local_time<std::chrono::system_clock>);
+        TimeFunctionType time_func = Util::OS::local_time);
 
-    explicit Logger(
-        Level level, TimeFunctionType time_func = Util::OS::local_time<std::chrono::system_clock>);
+    /**
+     * @brief Constructs a new Logger object with the specified logging level and time function.
+     *
+     * @param level Logging level.
+     * @param time_func Function to get the current time.
+     */
+    explicit Logger(Level level, TimeFunctionType time_func = Util::OS::local_time);
 
-    explicit Logger(TimeFunctionType time_func = Util::OS::local_time<std::chrono::system_clock>);
+    /**
+     * @brief Constructs a new Logger object with the specified time function.
+     *
+     * @param time_func Function to get the current time.
+     */
+    explicit Logger(TimeFunctionType time_func = Util::OS::local_time);
 
     /**
      * @brief Constructs a new child Logger object.

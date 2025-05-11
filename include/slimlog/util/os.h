@@ -120,14 +120,11 @@ namespace SlimLog::Util::OS {
  * Fetches the current local time, along with the additional nanoseconds,
  * providing higher resolution time data.
  *
- * @tparam Clock Clock type for the time point (default is `std::chrono::system_clock`).
  * @return A pair consisting of the local time and the nanoseconds part.
  */
-template<typename Clock = std::chrono::system_clock>
-[[nodiscard]] inline auto // For clang-format < 19
-local_time() -> std::pair<std::chrono::time_point<Clock, std::chrono::seconds>, std::size_t>
+[[nodiscard]] inline auto local_time() -> std::pair<std::chrono::sys_seconds, std::size_t>
 {
-    static thread_local std::chrono::time_point<Clock, std::chrono::seconds> cached_local;
+    static thread_local std::chrono::sys_seconds cached_local;
     static thread_local std::time_t cached_time;
 
     std::timespec curtime{};
@@ -153,11 +150,11 @@ local_time() -> std::pair<std::chrono::time_point<Clock, std::chrono::seconds>, 
 #endif
 
         constexpr int TmEpoch = 1900;
-        cached_local
-            = std::chrono::time_point<Clock, std::chrono::days>(std::chrono::year_month_day(
-                  std::chrono::year(local_tm.tm_year + TmEpoch),
-                  std::chrono::month(local_tm.tm_mon),
-                  std::chrono::day(local_tm.tm_mday)))
+        cached_local = std::chrono::sys_days( // For clang-format < 19
+                           std::chrono::year_month_day(
+                               std::chrono::year(local_tm.tm_year + TmEpoch),
+                               std::chrono::month(local_tm.tm_mon),
+                               std::chrono::day(local_tm.tm_mday)))
             + std::chrono::hours(local_tm.tm_hour) + std::chrono::minutes(local_tm.tm_min)
             + std::chrono::seconds(local_tm.tm_sec);
     }
