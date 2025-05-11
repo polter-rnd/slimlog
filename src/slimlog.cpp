@@ -1,4 +1,5 @@
 #include "slimlog/format.h"
+#include "slimlog/logger.h"
 #include "slimlog/pattern.h"
 #include "slimlog/policy.h"
 #include "slimlog/record.h"
@@ -9,6 +10,7 @@
 #ifndef SLIMLOG_HEADER_ONLY
 // IWYU pragma: begin_keep
 #include "slimlog/format-inl.h"
+#include "slimlog/logger-inl.h"
 #include "slimlog/pattern-inl.h"
 #include "slimlog/record-inl.h"
 #include "slimlog/sink-inl.h"
@@ -24,8 +26,8 @@
 
 namespace SlimLog {
 // char
-template class SinkDriver<std::string, char, SingleThreadedPolicy>;
-template class SinkDriver<std::string, char, MultiThreadedPolicy>;
+template class Logger<std::string, char, SingleThreadedPolicy>;
+template class Logger<std::string, char, MultiThreadedPolicy>;
 template class FormattableSink<std::string>;
 template class FileSink<std::string>;
 template class OStreamSink<std::string>;
@@ -40,8 +42,8 @@ template class FormatValue<std::chrono::sys_seconds, char>;
 #endif
 
 // wchar_t
-template class SinkDriver<std::wstring, wchar_t, SingleThreadedPolicy>;
-template class SinkDriver<std::wstring, wchar_t, MultiThreadedPolicy>;
+template class Logger<std::wstring, wchar_t, SingleThreadedPolicy>;
+template class Logger<std::wstring, wchar_t, MultiThreadedPolicy>;
 template class FormattableSink<std::wstring>;
 template class FileSink<std::wstring>;
 template class OStreamSink<std::wstring>;
@@ -57,8 +59,8 @@ template class FormatValue<std::chrono::sys_seconds, wchar_t>;
 
 // char8_t
 #ifdef SLIMLOG_CHAR8_T
-template class SinkDriver<std::u8string, char8_t, SingleThreadedPolicy>;
-template class SinkDriver<std::u8string, char8_t, MultiThreadedPolicy>;
+template class Logger<std::u8string, char8_t, SingleThreadedPolicy>;
+template class Logger<std::u8string, char8_t, MultiThreadedPolicy>;
 template class FormattableSink<std::u8string>;
 template class FileSink<std::u8string>;
 template class OStreamSink<std::u8string>;
@@ -71,8 +73,8 @@ template class CachedFormatter<std::chrono::sys_seconds, char8_t>;
 
 // char16_t
 #ifdef SLIMLOG_CHAR16_T
-template class SinkDriver<std::u16string, char16_t, SingleThreadedPolicy>;
-template class SinkDriver<std::u16string, char16_t, MultiThreadedPolicy>;
+template class Logger<std::u16string, char16_t, SingleThreadedPolicy>;
+template class Logger<std::u16string, char16_t, MultiThreadedPolicy>;
 template class FormattableSink<std::u16string>;
 template class FileSink<std::u16string>;
 template class OStreamSink<std::u16string>;
@@ -85,8 +87,8 @@ template class CachedFormatter<std::chrono::sys_seconds, char16_t>;
 
 // char32_t
 #ifdef SLIMLOG_CHAR32_T
-template class SinkDriver<std::u32string, char32_t, SingleThreadedPolicy>;
-template class SinkDriver<std::u32string, char32_t, MultiThreadedPolicy>;
+template class Logger<std::u32string, char32_t, SingleThreadedPolicy>;
+template class Logger<std::u32string, char32_t, MultiThreadedPolicy>;
 template class FormattableSink<std::u32string>;
 template class FileSink<std::u32string>;
 template class OStreamSink<std::u32string>;
