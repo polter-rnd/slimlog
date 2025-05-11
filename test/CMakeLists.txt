@@ -26,6 +26,13 @@ endif()
 
 file(GLOB TEST_HELPERS ${PROJECT_SOURCE_DIR}/test/helpers/*.h)
 
+set(TEST_LINK_LIBRARIES mettle::mettle slimlog::slimlog)
+if(ENABLE_FMTLIB)
+    set(TEST_LINK_LIBRARIES ${TEST_LINK_LIBRARIES} fmt::fmt)
+else()
+    set(TEST_LINK_LIBRARIES ${TEST_LINK_LIBRARIES} fmt::fmt-header-only)
+endif()
+
 function(slimlog_test name)
     add_executable(test_${name} ${name}.cpp)
 
@@ -53,7 +60,7 @@ function(slimlog_test name)
     else()
         add_test(NAME test_${name} COMMAND test_${name} --no-subproc -o xunit -f test_${name}.xml)
     endif()
-    target_link_libraries(test_${name} PRIVATE mettle::mettle slimlog::slimlog fmt::fmt)
+    target_link_libraries(test_${name} PRIVATE ${TEST_LINK_LIBRARIES})
     target_sources(test_${name} PRIVATE ${TEST_HELPERS})
 endfunction()
 

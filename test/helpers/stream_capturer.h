@@ -15,6 +15,11 @@ public:
     {
     }
 
+    StreamCapturer(const StreamCapturer&) = default;
+    StreamCapturer(StreamCapturer&&) = default;
+    auto operator=(const StreamCapturer&) -> StreamCapturer& = default;
+    auto operator=(StreamCapturer&&) -> StreamCapturer& = default;
+
     auto read() -> std::basic_string<Char>
     {
         this->sync();
