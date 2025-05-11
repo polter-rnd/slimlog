@@ -299,7 +299,7 @@ from_multibyte(Char* dest, std::size_t codepoints, const char* source, std::size
 #else
         // NOLINTNEXTLINE(concurrency-mt-unsafe)
         written = std::mbsrtowcs(dest, &source, codepoints, &state);
-        if (written == static_cast<std::size_t>(-1)) {
+        if (written == std::numeric_limits<std::size_t>::max()) {
             throw std::runtime_error("std::mbsrtowcs(): conversion error");
         }
         *std::next(dest, written++) = '\0';

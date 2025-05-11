@@ -78,11 +78,13 @@ public:
      *
      * @param record The log record to process.
      */
+    // NOLINTNEXTLINE(portability-template-virtual-member-function)
     virtual auto message(RecordType& record) -> void = 0;
 
     /**
      * @brief Flushes any buffered log messages.
      */
+    // NOLINTNEXTLINE(portability-template-virtual-member-function)
     virtual auto flush() -> void = 0;
 };
 
