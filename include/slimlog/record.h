@@ -55,7 +55,7 @@ public:
 
     /**
      * @brief Constructor from `std::basic_string`.
-     * @param str_view The std::basic_string to construct from.
+     * @param str The std::basic_string to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
     RecordStringView(const std::basic_string<T>& str) noexcept;
