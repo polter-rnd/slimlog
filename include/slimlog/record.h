@@ -5,11 +5,10 @@
 
 #pragma once
 
-#include "slimlog/level.h"
-
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <string_view>
@@ -17,6 +16,8 @@
 #include <variant>
 
 namespace SlimLog {
+
+enum class Level : std::uint8_t;
 
 /**
  * @brief Record string view type.

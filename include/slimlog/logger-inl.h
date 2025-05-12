@@ -28,8 +28,8 @@ Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
     : m_category(category) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
     , m_level(level)
 {
-    if (time_func) {
-        m_time_func = std::move(time_func);
+    if (time_func != nullptr) {
+        m_time_func = time_func;
     } else {
         m_time_func = []() { return std::make_pair(std::chrono::sys_seconds{}, std::size_t{}); };
     }
