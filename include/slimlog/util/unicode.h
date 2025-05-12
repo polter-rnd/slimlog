@@ -287,18 +287,18 @@ constexpr auto to_ascii(Char chr) -> char
  */
 template<typename Char>
 constexpr auto
-from_multibyte(Char* dest, std::size_t codepoints, const char* source, std::size_t source_size)
+from_multibyte(Char* dest, std::size_t dest_size, const char* source, std::size_t source_size)
 {
     std::size_t written = 0;
     if constexpr (std::is_same_v<Char, wchar_t>) {
         std::mbstate_t state = {};
 #if defined(_WIN32) and defined(__STDC_WANT_SECURE_LIB__)
-        if (mbsrtowcs_s(&written, dest, codepoints, &source, codepoints - 1, &state) != 0) {
+        if (mbsrtowcs_s(&written, dest, dest_size, &source, dest_size - 1, &state) != 0) {
             throw std::runtime_error("mbsrtowcs_s(): conversion error");
         }
 #else
         // NOLINTNEXTLINE(concurrency-mt-unsafe)
-        written = std::mbsrtowcs(dest, &source, codepoints, &state);
+        written = std::mbsrtowcs(dest, &source, dest_size, &state);
         if (written == std::numeric_limits<std::size_t>::max()) {
             throw std::runtime_error("std::mbsrtowcs(): conversion error");
         }
@@ -306,7 +306,7 @@ from_multibyte(Char* dest, std::size_t codepoints, const char* source, std::size
 #endif
     } else {
         Detail::FromMultibyte<Char> dispatcher;
-        while (source_size > 0) {
+        while (source_size > 0 && written < dest_size - 1) {
             Char wchr;
             const int next = dispatcher.get(&wchr, source, source_size);
             switch (next) {
