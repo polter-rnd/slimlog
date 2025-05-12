@@ -8,7 +8,7 @@
 #include "slimlog/format.h"
 #include "slimlog/location.h"
 #include "slimlog/record.h"
-#include "slimlog/sink.h"
+#include "slimlog/sink.h" // IWYU pragma: export
 #include "slimlog/threading.h" // IWYU pragma: export
 #include "slimlog/util/os.h"
 #include "slimlog/util/types.h"
@@ -258,7 +258,7 @@ public:
 
         const typename ThreadingPolicy::ReadLock lock(m_mutex);
         for (const auto& [sink, logger] : m_effective_sinks) {
-            if (static_cast<Level>(m_level) < level) [[unlikely]] {
+            if (static_cast<Level>(logger->m_level) < level) [[unlikely]] {
                 continue;
             }
 
@@ -271,7 +271,7 @@ public:
                        static_cast<std::size_t>(location.line()),
                        m_category,
                        Util::OS::thread_id(),
-                       m_time_func()};
+                       logger->m_time_func()};
 
                 using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
                 using RecordStringViewType = typename RecordType::StringViewType;
@@ -529,17 +529,17 @@ private:
 
     /**
      * @brief Updates the effective sinks for the particular logger.
-     * @param driver Pointer to the logger to update.
+     * @param logger Pointer to the logger to update.
      * @return Pointer to the next logger to be updated.
      */
-    auto update_effective_sinks(Logger* driver) -> Logger*;
+    auto update_effective_sinks(Logger* logger) -> Logger*;
 
     std::basic_string<Char> m_category;
     AtomicWrapper<Level, ThreadingPolicy> m_level;
     TimeFunctionType m_time_func;
     Logger* m_parent = nullptr;
     std::vector<Logger*> m_children;
-    std::unordered_map<SinkType*, const Logger*> m_effective_sinks;
+    std::vector<std::pair<SinkType*, const Logger*>> m_effective_sinks;
     std::unordered_map<std::shared_ptr<SinkType>, bool> m_sinks;
     mutable ThreadingPolicy::Mutex m_mutex;
     static constexpr std::array<Char, 8> DefaultCategory{'d', 'e', 'f', 'a', 'u', 'l', 't', '\0'};
