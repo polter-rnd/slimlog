@@ -66,11 +66,11 @@ inline auto make_string(std::string_view str) -> std::basic_string<Char>
         }
 
         // Allocate buffer with space for characters + null terminator
-        std::vector<Char> buffer(str.size() + 1);
+        std::vector<Char> buffer((std::is_same_v<Char, char8_t> ? str.size() : codepoints) + 1);
 
         // Convert UTF-8 string to target character type
         const auto written = SlimLog::Util::Unicode::from_multibyte(
-            buffer.data(), codepoints + 1, str.data(), str.size() + 1);
+            buffer.data(), buffer.size(), str.data(), str.size() + 1);
 
         // Create string from buffer (excluding null terminator)
         return std::basic_string<Char>(buffer.data(), written - 1);
