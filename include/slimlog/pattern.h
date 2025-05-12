@@ -6,7 +6,6 @@
 #pragma once
 
 #include "slimlog/format.h"
-#include "slimlog/level.h"
 #include "slimlog/record.h"
 
 #include <array>

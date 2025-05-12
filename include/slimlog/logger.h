@@ -6,17 +6,17 @@
 #pragma once
 
 #include "slimlog/format.h"
-#include "slimlog/level.h" // IWYU pragma: export
 #include "slimlog/location.h"
 #include "slimlog/record.h"
 #include "slimlog/sink.h"
+#include "slimlog/threading.h" // IWYU pragma: export
 #include "slimlog/util/os.h"
 #include "slimlog/util/types.h"
 
 #include <array>
 #include <chrono>
 #include <cstddef>
-#include <functional>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -26,6 +26,20 @@
 #include <vector>
 
 namespace SlimLog {
+
+/**
+ * @brief Logging level enumeration.
+ *
+ * Specifies the severity of log events.
+ */
+enum class Level : std::uint8_t {
+    Fatal, ///< Very severe error events leading to application abort.
+    Error, ///< Error events that might still allow continuation.
+    Warning, ///< Potentially harmful situations.
+    Info, ///< Informational messages about application progress.
+    Debug, ///< Detailed debug information.
+    Trace ///< Trace messages for method entry and exit.
+};
 
 /**
  * @brief Logger front-end class.
@@ -521,7 +535,7 @@ private:
     auto update_effective_sinks(Logger* driver) -> Logger*;
 
     std::basic_string<Char> m_category;
-    LevelDriver<ThreadingPolicy> m_level;
+    AtomicWrapper<Level, ThreadingPolicy> m_level;
     TimeFunctionType m_time_func;
     Logger* m_parent = nullptr;
     std::vector<Logger*> m_children;
