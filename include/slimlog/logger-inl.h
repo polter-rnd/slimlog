@@ -289,34 +289,44 @@ template<
     std::size_t BufferSize,
     typename Allocator>
 auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_effective_sinks(
-    Logger* driver) -> Logger*
+    Logger* logger) -> Logger*
 {
     typename ThreadingPolicy::ReadLock parent_lock;
-    Logger* parent = driver->m_parent;
+    Logger* parent = logger->m_parent;
     if (parent) {
         if (parent != this) {
             // Avoid deadlock when locking parent which is already write-locked
             parent_lock = typename ThreadingPolicy::ReadLock(parent->m_mutex);
         }
-        driver->m_effective_sinks = parent->m_effective_sinks;
+        logger->m_effective_sinks = parent->m_effective_sinks;
     } else {
-        driver->m_effective_sinks.clear();
+        logger->m_effective_sinks.clear();
     }
 
     // Update the current node's effective sinks
-    for (const auto& [sink, enabled] : driver->m_sinks) {
+    for (const auto& [sink, enabled] : logger->m_sinks) {
+        const auto it = std::find_if(
+            logger->m_effective_sinks.begin(),
+            logger->m_effective_sinks.end(),
+            [&sink](const auto& pair) { return pair.first == sink.get(); });
+        const bool found = it != logger->m_effective_sinks.end();
+
         if (enabled) {
-            driver->m_effective_sinks.insert_or_assign(sink.get(), driver);
-        } else {
-            driver->m_effective_sinks.erase(sink.get());
+            if (found) {
+                it->second = logger;
+            } else {
+                logger->m_effective_sinks.emplace_back(sink.get(), logger);
+            }
+        } else if (found) {
+            logger->m_effective_sinks.erase(it);
         }
     }
 
     // Find the next node in level order
     Logger* next = nullptr;
-    if (driver->m_children.empty()) {
+    if (logger->m_children.empty()) {
         // Move to the next sibling or parent's sibling
-        Logger* prev = driver;
+        Logger* prev = logger;
         while (parent && next == nullptr) {
             if (auto it = std::find(parent->m_children.begin(), parent->m_children.end(), prev);
                 std::distance(it, parent->m_children.end()) > 1) {
@@ -327,7 +337,7 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_effect
         }
     } else {
         // Nove to next level
-        next = driver->m_children.front();
+        next = logger->m_children.front();
     }
 
     return next;
