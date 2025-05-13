@@ -5,11 +5,10 @@
 
 #pragma once
 
-#include "slimlog/level.h"
-
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <string>
 #include <string_view>
@@ -17,6 +16,8 @@
 #include <variant>
 
 namespace SlimLog {
+
+enum class Level : std::uint8_t;
 
 /**
  * @brief Record string view type.
@@ -54,7 +55,7 @@ public:
 
     /**
      * @brief Constructor from `std::basic_string`.
-     * @param str_view The std::basic_string to construct from.
+     * @param str The std::basic_string to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
     RecordStringView(const std::basic_string<T>& str) noexcept;

@@ -9,16 +9,16 @@
 // Test helpers
 #include "helpers/common.h"
 #include "helpers/file_capturer.h"
-#include "helpers/output_capturer.h"
+#include "helpers/stream_capturer.h"
 
 #include <mettle.hpp>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <initializer_list>
 #include <source_location>
-#include <sstream>
 #include <string>
 #include <system_error>
 
@@ -43,15 +43,25 @@ auto time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
     return {std::chrono::sys_seconds{std::chrono::seconds{Timestamp}}, Nanoseconds};
 }
 
-const suite<char, wchar_t> Basic("basic", type_only, [](auto& _) {
+// Generate some test messages with different unicode characters
+template<typename Char>
+auto test_messages() -> std::array<std::basic_string<Char>, 4>
+{
+    return {
+        make_string<Char>("Simple ASCII message"),
+        make_string<Char>("Привет, мир!"),
+        make_string<Char>("你好，世界!"),
+        make_string<Char>("Some emojis: 😀, 😁, 😂, 🤣, 😃, 😄, 😅, 😆")};
+};
+
+const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
     using String = std::basic_string<Char>;
-    using StringStream = std::basic_ostringstream<Char>;
 
     _.test("levels", []() {
-        StringStream oss;
+        StreamCapturer<Char> cap_out;
         Logger<String> log;
-        log.template add_sink<OStreamSink>(oss);
+        log.template add_sink<OStreamSink>(cap_out);
         const auto levels = {
             Level::Trace,
             Level::Debug,
@@ -61,12 +71,11 @@ const suite<char, wchar_t> Basic("basic", type_only, [](auto& _) {
             Level::Fatal,
         };
 
-        std::for_each(levels.begin(), levels.end(), [&log, &levels, &oss](auto& log_level) {
+        std::for_each(levels.begin(), levels.end(), [&log, &levels, &cap_out](auto& log_level) {
             log.set_level(log_level);
 
             const auto message = make_string<Char>("Hello, World!");
             for (const auto msg_level : levels) {
-                OutputCapturer cap_out(oss);
                 log.message(msg_level, message);
                 if (msg_level > log_level) {
                     expect(cap_out.read(), equal_to(String{}));
@@ -86,17 +95,18 @@ const suite<char, wchar_t> Basic("basic", type_only, [](auto& _) {
     });
 
     _.test("ostream_sink", []() {
-        StringStream oss;
-        OutputCapturer cap_out{oss};
+        StreamCapturer<Char> cap_out;
         Logger<String> log;
-        auto ostream_sink = log.template add_sink<OStreamSink>(oss);
-        const auto message = make_string<Char>("Hello, World!");
 
-        log.info(message);
-        ostream_sink->flush();
-        expect(cap_out.read(), equal_to(message + Char{'\n'}));
+        auto ostream_sink = log.template add_sink<OStreamSink>(cap_out);
+        for (const auto& message : test_messages<Char>()) {
+            log.info(message);
+            ostream_sink->flush();
+            expect(cap_out.read(), equal_to(message + Char{'\n'}));
+        }
+
         expect(log.remove_sink(ostream_sink), equal_to(true));
-        log.info(message);
+        log.info(make_string<Char>("Hello, World!"));
         expect(cap_out.read(), equal_to(String{}));
     });
 
@@ -108,11 +118,7 @@ const suite<char, wchar_t> Basic("basic", type_only, [](auto& _) {
         FileCapturer<Char> cap_file("test_basics.log");
 
         auto file_sink = log.template add_sink<FileSink>(cap_file.path().string());
-        for (const auto& message :
-             {make_string<Char>("Simple ASCII message"),
-              make_string<Char>("Привет, мир!"),
-              make_string<Char>("你好，世界!"),
-              make_string<Char>("Some emojis: 😀, 😁, 😂, 🤣, 😃, 😄, 😅, 😆")}) {
+        for (const auto& message : test_messages<Char>()) {
             log.info(message);
             file_sink->flush();
             expect(cap_file.read(), equal_to(message + Char{'\n'}));
@@ -121,69 +127,70 @@ const suite<char, wchar_t> Basic("basic", type_only, [](auto& _) {
 
     // Basic pattern test
     _.test("pattern", []() {
-        StringStream oss;
-        OutputCapturer cap_out{oss};
+        StreamCapturer<Char> cap_out;
         const auto pattern = make_string<Char>("({category}) [{level}] "
                                                "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
                                                "#{thread} {file}|{line}: {message}");
-        const auto message = make_string<Char>("Hello, World!");
 
         Logger<String> log{time_mock};
-        log.template add_sink<OStreamSink>(oss, pattern);
-        log.info(message);
-        const auto log_line = std::source_location::current().line() - 1;
+        log.template add_sink<OStreamSink>(cap_out, pattern);
 
         PatternFields<Char> fields;
         fields.category = make_string<Char>("default");
         fields.level = make_string<Char>("INFO");
         fields.thread_id = Util::OS::thread_id();
-        fields.line = log_line;
         fields.file = make_string<Char>(std::source_location::current().file_name());
-        fields.message = message;
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
 
-        expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        for (const auto& message : test_messages<Char>()) {
+            log.info(message);
+            const auto log_line = std::source_location::current().line() - 1;
+            fields.line = log_line;
+            fields.message = message;
+            expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        }
     });
 
     // Additional test with custom pattern
     _.test("custom_pattern", []() {
-        StringStream oss;
-        OutputCapturer cap_out{oss};
+        StreamCapturer<Char> cap_out;
         const auto pattern = make_string<Char>("[{level}]: {message}");
         const auto message = make_string<Char>("Error message");
 
         Logger<String> log;
-        log.template add_sink<OStreamSink>(oss, pattern);
-        log.error(message);
+        log.template add_sink<OStreamSink>(cap_out, pattern);
 
         PatternFields<Char> fields;
         fields.level = make_string<Char>("ERROR");
-        fields.message = message;
 
-        expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        for (const auto& message : test_messages<Char>()) {
+            log.error(message);
+            fields.message = message;
+            expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        }
     });
 
     // Test with simple {time} format (no format specified)
     _.test("simple_time_pattern", []() {
-        StringStream oss;
-        OutputCapturer cap_out{oss};
+        StreamCapturer<Char> cap_out;
 
         const auto pattern = make_string<Char>("[{level}] {time} - {message}");
         const auto message = make_string<Char>("Warning message");
 
         Logger<String> log{time_mock};
-        log.template add_sink<OStreamSink>(oss, pattern);
-        log.warning(message);
+        log.template add_sink<OStreamSink>(cap_out, pattern);
 
         PatternFields<Char> fields;
         fields.level = make_string<Char>("WARN");
-        fields.message = message;
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
 
-        // Explicitly convert the pattern to basic_string_view to resolve the conversion issue
-        expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        for (const auto& message : test_messages<Char>()) {
+            log.warning(message);
+            fields.message = message;
+            expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        }
     });
 });
 
