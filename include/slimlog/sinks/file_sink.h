@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "slimlog/sink.h" // IWYU pragma: export
+#include "slimlog/sink.h"
 #include "slimlog/util/types.h"
 
 #include <cstdio>
@@ -70,6 +70,11 @@ protected:
      * @param filename Log file name.
      */
     auto open(std::string_view filename) -> void;
+
+    /**
+     * @brief Writes a BOM (Byte Order Mark) to the log file.
+     */
+    auto write_bom() -> bool;
 
 private:
     std::unique_ptr<FILE, int (*)(FILE*)> m_fp = {nullptr, nullptr};

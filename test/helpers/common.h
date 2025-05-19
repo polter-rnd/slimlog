@@ -19,6 +19,29 @@
 #include <type_traits>
 #include <vector>
 
+/*
+ * Macro to define the character types used for testing.
+ * This is used to create a list of character types for template specialization.
+ * The types are defined based on the presence of char8_t, char16_t, and char32_t.
+ * If these types are not available, only char and wchar_t are used.
+ */
+#ifdef SLIMLOG_CHAR8_T
+#define TEST_CHAR8_T , char8_t
+#else
+#define TEST_CHAR8_T
+#endif
+#ifdef SLIMLOG_CHAR16_T
+#define TEST_CHAR16_T , char16_t
+#else
+#define TEST_CHAR16_T
+#endif
+#ifdef SLIMLOG_CHAR32_T
+#define TEST_CHAR32_T , char32_t
+#else
+#define TEST_CHAR32_T
+#endif
+#define SLIMLOG_CHAR_TYPES char, wchar_t TEST_CHAR8_T TEST_CHAR16_T TEST_CHAR32_T
+
 /**
  * @brief Creates a basic string with the specified character type from a string literal
  *
@@ -32,27 +55,25 @@
 template<typename Char>
 inline auto make_string(std::string_view str) -> std::basic_string<Char>
 {
-    // For char, just copy the UTF-8 bytes directly
     if constexpr (std::is_same_v<Char, char>) {
+        // For char, just copy the UTF-8 bytes directly
         return std::string(str);
-    }
-    // For all other types, use proper Unicode conversion
-    else {
+    } else {
+        // For all other types, use proper Unicode conversion
         const size_t codepoints = SlimLog::Util::Unicode::count_codepoints(str.data(), str.size());
-
         if (codepoints == 0) {
             return {};
         }
 
         // Allocate buffer with space for characters + null terminator
-        std::vector<Char> buffer(codepoints + 1);
+        std::vector<Char> buffer((std::is_same_v<Char, char8_t> ? str.size() : codepoints) + 1);
 
         // Convert UTF-8 string to target character type
-        SlimLog::Util::Unicode::from_multibyte(
-            buffer.data(), codepoints + 1, str.data(), str.size());
+        const auto written = SlimLog::Util::Unicode::from_multibyte(
+            buffer.data(), buffer.size(), str.data(), str.size() + 1);
 
         // Create string from buffer (excluding null terminator)
-        return std::basic_string<Char>(buffer.data(), codepoints);
+        return std::basic_string<Char>(buffer.data(), written - 1);
     }
 }
 
@@ -82,9 +103,12 @@ template<typename Char>
 static auto pattern_format(std::basic_string_view<Char> pattern, const PatternFields<Char>& fields)
     -> std::basic_string<Char>
 {
-    // Use fmt::vformat with the appropriate context type for any char type
+#if FMT_VERSION < 110000
+    using FormatContext = fmt::buffer_context<Char>;
+#else
     using Appender = fmt::basic_appender<Char>;
     using FormatContext = fmt::basic_format_context<Appender, Char>;
+#endif
 
     constexpr std::size_t MsecInNsec = 1000000;
     constexpr std::size_t UsecInNsec = 1000;
