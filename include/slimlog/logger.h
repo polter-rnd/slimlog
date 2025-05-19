@@ -6,8 +6,7 @@
 #pragma once
 
 #include "slimlog/format.h"
-#include "slimlog/location.h"
-#include "slimlog/record.h"
+#include "slimlog/record.h" // IWYU pragma: export
 #include "slimlog/sink.h" // IWYU pragma: export
 #include "slimlog/threading.h" // IWYU pragma: export
 #include "slimlog/util/os.h"
@@ -16,7 +15,6 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -26,20 +24,6 @@
 #include <vector>
 
 namespace SlimLog {
-
-/**
- * @brief Logging level enumeration.
- *
- * Specifies the severity of log events.
- */
-enum class Level : std::uint8_t {
-    Fatal, ///< Very severe error events leading to application abort.
-    Error, ///< Error events that might still allow continuation.
-    Warning, ///< Potentially harmful situations.
-    Info, ///< Informational messages about application progress.
-    Debug, ///< Detailed debug information.
-    Trace ///< Trace messages for method entry and exit.
-};
 
 /**
  * @brief Logger front-end class.

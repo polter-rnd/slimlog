@@ -1,7 +1,6 @@
 #include "slimlog/format.h"
 #include "slimlog/logger.h"
 #include "slimlog/pattern.h"
-#include "slimlog/record.h"
 #include "slimlog/sinks/file_sink.h"
 #include "slimlog/sinks/null_sink.h"
 #include "slimlog/sinks/ostream_sink.h"
