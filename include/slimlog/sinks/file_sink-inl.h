@@ -68,8 +68,9 @@ auto FileSink<String, Char, BufferSize, Allocator>::write_bom() -> bool
         // UTF-8 BOM
         static constexpr std::array<std::uint8_t, 3> Bom = {0xEF, 0xBB, 0xBF};
         return std::fwrite(Bom.data(), Bom.size(), 1, m_fp.get()) == 1;
+    } else {
+        return true;
     }
-    return true;
 }
 
 template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
