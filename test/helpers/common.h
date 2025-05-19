@@ -103,9 +103,12 @@ template<typename Char>
 static auto pattern_format(std::basic_string_view<Char> pattern, const PatternFields<Char>& fields)
     -> std::basic_string<Char>
 {
-    // Use fmt::vformat with the appropriate context type for any char type
+#if FMT_VERSION < 110000
+    using FormatContext = fmt::buffer_context<Char>;
+#else
     using Appender = fmt::basic_appender<Char>;
     using FormatContext = fmt::basic_format_context<Appender, Char>;
+#endif
 
     constexpr std::size_t MsecInNsec = 1000000;
     constexpr std::size_t UsecInNsec = 1000;
