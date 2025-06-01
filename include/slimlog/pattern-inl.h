@@ -432,7 +432,7 @@ constexpr void Pattern<Char>::write_string(auto& dst, StringView&& src)
 template<typename Char>
 template<typename StringView>
 constexpr void Pattern<Char>::write_string_padded(
-    auto& dst, StringView&& src, const Placeholder::StringSpecs& specs)
+    auto& dst, StringView&& src, const typename Placeholder::StringSpecs& specs)
 {
     const auto spec_width = Util::Types::to_unsigned(specs.width);
     const auto codepoints = src.codepoints();
