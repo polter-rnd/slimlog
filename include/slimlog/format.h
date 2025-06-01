@@ -30,6 +30,10 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <version> // IWYU pragma: keep
+#if __cpp_lib_format < 202207L
+#include <string>
+#endif
 
 namespace SlimLog {
 
@@ -48,7 +52,11 @@ using FormatParseContext = fmt::basic_format_parse_context<Char>;
 #else
 /** @brief Alias for std::basic_format_string. */
 template<typename T, typename... Args>
-using FormatString = std::basic_format_string<T, Args...>;
+#if __cpp_lib_format < 202207L
+using FormatString = std::basic_string<T>;
+#else
+using FormatString = std::basic_format_string<T>;
+#endif
 /** @brief Alias for \a std::format_error. */
 using FormatError = std::format_error;
 /** @brief Alias for \a std::formatter. */

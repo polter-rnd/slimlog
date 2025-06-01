@@ -359,8 +359,10 @@ private:
      * @param specs String specifications, including alignment and fill character.
      */
     template<typename StringView>
-    constexpr static void
-    write_string_padded(auto& dst, StringView&& src, const Placeholder::StringSpecs& specs);
+    constexpr static void write_string_padded(
+        auto& dst, // For clang-format < 19
+        StringView&& src,
+        const typename Placeholder::StringSpecs& specs);
 
     std::basic_string<Char> m_pattern;
     std::vector<Placeholder> m_placeholders;
