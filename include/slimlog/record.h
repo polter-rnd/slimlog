@@ -14,6 +14,7 @@
 #include <string_view>
 #include <utility>
 #include <variant>
+#include <version> // IWYU pragma: keep
 
 #if __cpp_lib_source_location
 #include <source_location>

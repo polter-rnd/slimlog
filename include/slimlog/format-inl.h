@@ -17,6 +17,7 @@
 #include <fmt/core.h>
 #endif
 // IWYU pragma: no_include <chrono>
+#include <iterator>
 #else
 #include <array>
 #endif

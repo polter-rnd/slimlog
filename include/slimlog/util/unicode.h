@@ -209,8 +209,8 @@ auto write_codepoint(Char* dest, std::size_t dest_size, std::uint32_t codepoint)
         if (dest_size > 1) {
             Char high = static_cast<Char>(0xD800 + ((codepoint - 0x10000) >> 10U));
             Char low = static_cast<Char>(0xDC00 + ((codepoint - 0x10000) & 0x3FFU));
-            *dest = high;
-            *(dest + 1) = low;
+            dest[0] = high;
+            dest[1] = low;
             return 2;
         }
         // NOLINTEND(*-magic-numbers)

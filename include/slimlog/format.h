@@ -170,9 +170,7 @@ public:
     template<typename ContiguousRange>
     void append(const ContiguousRange& range) // cppcheck-suppress duplInheritedMember
     {
-        // TODO: Suppress cppcoreguidelines-pro-bounds-pointer-arithmetic check in .clang-tidy
-        // NOLINTNEXTLINE(bugprone-suspicious-stringview-data-usage)
-        append(range.data(), std::next(range.data(), range.size()));
+        append(range.data(), range.data() + range.size());
     }
 
     /**
@@ -188,7 +186,7 @@ public:
         const auto buf_size = this->size();
         const auto count = Util::Types::to_unsigned(end - begin);
         this->resize(buf_size + count);
-        std::uninitialized_copy_n(begin, count, std::next(this->begin(), buf_size));
+        std::uninitialized_copy_n(begin, count, this->begin() + buf_size);
     }
 
     /**
