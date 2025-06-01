@@ -50,18 +50,22 @@ public:
 
     auto read() -> std::basic_string<Char>
     {
-        // Read the BOM if not already done
-        parse_bom();
-
         // Make sure we get the latest file contents
         m_file.sync();
+
+        // Read the BOM if not already done
+        parse_bom();
 
         using StreamIterator = std::istreambuf_iterator<char>;
         if constexpr (std::is_same_v<Char, char>) {
             return {StreamIterator(m_file), StreamIterator()};
-        } else if constexpr (std::is_same_v<Char, char16_t>) {
+        } else if constexpr (
+            std::is_same_v<Char, char16_t>
+            || (sizeof(Char) == 2 && std::is_same_v<Char, wchar_t>)) {
             return decode_utf16();
-        } else if constexpr (std::is_same_v<Char, char32_t>) {
+        } else if constexpr (
+            std::is_same_v<Char, char32_t>
+            || (sizeof(Char) == 4 && std::is_same_v<Char, wchar_t>)) {
             return decode_utf32();
         }
         return make_string<Char>(std::string{StreamIterator(m_file), StreamIterator()});

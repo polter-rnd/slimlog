@@ -55,25 +55,30 @@
 template<typename Char>
 inline auto make_string(std::string_view str) -> std::basic_string<Char>
 {
+    if (str.empty()) {
+        return {};
+    }
+
     if constexpr (std::is_same_v<Char, char>) {
         // For char, just copy the UTF-8 bytes directly
         return std::string(str);
     } else {
-        // For all other types, use proper Unicode conversion
-        const size_t codepoints = SlimLog::Util::Unicode::count_codepoints(str.data(), str.size());
-        if (codepoints == 0) {
+        // Calculate destination buffer size based on target character encoding:
+        // - UTF-8 (1 byte): same size as source (byte-for-byte copy)
+        // - UTF-16 (2 bytes): double codepoints (potential surrogate pairs)
+        // - UTF-32 (4 bytes): same as codepoints (one-to-one mapping)
+        const auto dest_size = sizeof(Char) == 1
+            ? str.size()
+            : SlimLog::Util::Unicode::count_codepoints(str.data(), str.size())
+                * (sizeof(Char) == 2 ? 2 : 1);
+        if (dest_size == 0) {
             return {};
         }
 
-        // Allocate buffer with space for characters + null terminator
-        std::vector<Char> buffer((std::is_same_v<Char, char8_t> ? str.size() : codepoints) + 1);
-
-        // Convert UTF-8 string to target character type
-        const auto written = SlimLog::Util::Unicode::from_multibyte(
-            buffer.data(), buffer.size(), str.data(), str.size() + 1);
-
-        // Create string from buffer (excluding null terminator)
-        return std::basic_string<Char>(buffer.data(), written - 1);
+        std::vector<Char> buffer(dest_size);
+        const auto written = SlimLog::Util::Unicode::from_utf8(
+            buffer.data(), buffer.size(), str.data(), str.size());
+        return std::basic_string<Char>(buffer.data(), written);
     }
 }
 

@@ -5,94 +5,16 @@
 
 #pragma once
 
-#include "slimlog/util/types.h"
-
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#if defined(__cpp_unicode_characters) or defined(__cpp_char8_t)
-#include <cuchar> // IWYU pragma: keep
-#endif
-#include <cwchar>
-#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <type_traits>
 
 namespace SlimLog::Util::Unicode {
-
-/** @cond */
-namespace Detail {
-
-// Fallback functions to detect missing ones from stdlib
-namespace Fallback {
-#ifdef __cpp_char8_t
-template<typename... Args>
-inline auto mbrtoc8(Args... /*unused*/) -> std::nullptr_t
-{
-    return nullptr;
-};
-#endif
-#ifdef __cpp_unicode_characters
-template<typename... Args>
-inline auto mbrtoc16(Args... /*unused*/) -> std::nullptr_t
-{
-    return nullptr;
-};
-template<typename... Args>
-inline auto mbrtoc32(Args... /*unused*/) -> std::nullptr_t
-{
-    return nullptr;
-};
-#endif
-} // namespace Fallback
-
-template<typename Char>
-struct FromMultibyte {
-    auto get(Char* chr, const char* str, std::size_t len) -> int
-    {
-        using namespace Fallback;
-        // NOLINTBEGIN(concurrency-mt-unsafe)
-        if constexpr (std::is_same_v<Char, wchar_t>) {
-            return handle(mbrtowc(chr, str, len, &m_state));
-#ifdef __cpp_char8_t
-        } else if constexpr (std::is_same_v<Char, char8_t>) {
-            return handle(mbrtoc8(chr, str, len, &m_state));
-#endif
-#ifdef __cpp_unicode_characters
-        } else if constexpr (std::is_same_v<Char, char16_t>) {
-            return handle(mbrtoc16(chr, str, len, &m_state));
-        } else if constexpr (std::is_same_v<Char, char32_t>) {
-            return handle(mbrtoc32(chr, str, len, &m_state));
-#endif
-        } else {
-            static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
-            return -1;
-        }
-        // NOLINTEND(concurrency-mt-unsafe)
-    }
-
-    static auto handle(std::size_t res) -> int
-    {
-        return static_cast<int>(res);
-    }
-
-    template<typename T = std::nullptr_t>
-    static auto handle(T /*unused*/) -> int
-    {
-        static_assert(
-            Util::Types::AlwaysFalse<Char>{},
-            "C++ stdlib does not support conversion to given character type");
-        return -1;
-    }
-
-private:
-    std::mbstate_t m_state = {};
-};
-
-} // namespace Detail
-/** @endcond */
 
 /**
  * @brief Calculates the length of a Unicode code point starting from the given pointer.
@@ -146,6 +68,7 @@ constexpr auto code_point_length(const Char* begin) -> int
  * If, after decoding one or more bytes the state 0 (accept) is reached again,
  * then the decoded Unicode character value is available through the codep parameter.
  * If the state 1 (reject) is entered, that state will never be exited unless the caller intervenes.
+ * Returns some other positive value if more bytes have to be read.
  *
  * @param[in,out] state  The state of the decoding.
  * @param[in,out] codep  Codepoint (valid only if resulting state is 0).
@@ -217,39 +140,17 @@ constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size
 {
     if constexpr (sizeof(Char) != 1) {
         return len;
-#ifdef __cpp_char8_t
-    } else if constexpr (std::is_same_v<Char, char8_t>) {
+    } else {
         std::uint8_t state = 0;
         std::size_t codepoints = 0;
         std::uint32_t codepoint = 0;
-        for (const auto* const end = std::next(begin, len); begin != end; std::advance(begin, 1)) {
+        for (const auto* const end = begin + len; begin != end; ++begin) {
             utf8_decode(state, codepoint, static_cast<std::uint8_t>(*begin));
             if (state == 0) {
                 ++codepoints;
             } else if (state == 1) {
                 throw std::runtime_error("utf8_decode(): conversion error");
             }
-        }
-        return codepoints;
-#endif
-    } else {
-        std::size_t codepoints = 0;
-        std::mbstate_t mb = {};
-        for (const auto* const end = std::next(begin, len); begin != end; ++codepoints) {
-            const auto next = std::mbrlen(begin, end - begin, &mb); // NOLINT(concurrency-mt-unsafe)
-            if (next == 0) {
-                // Null character, finish processing
-                break;
-            }
-            if (next == static_cast<std::size_t>(-1)) {
-                // Encoding error occurred
-                throw std::runtime_error("std::mbrlen(): conversion error");
-            }
-            if (next == static_cast<std::size_t>(-2)) {
-                // Incomplete but valid character, go further
-                continue;
-            }
-            std::advance(begin, next);
         }
         return codepoints;
     }
@@ -273,74 +174,114 @@ constexpr auto to_ascii(Char chr) -> char
 }
 
 /**
- * @brief Converts a null-terminated multibyte string to a singlebyte character sequence.
+ * @brief Writes a Unicode code point to a destination buffer.
  *
- * Destination buffer has to be capable of storing at least @p codepoints + 1 characters
- * including null terminator.
+ * This function handles the conversion of Unicode code points to their proper
+ * representation in different character encoding formats:
+ * - For UTF-16 and Windows wchar_t (2 bytes): Handles surrogate pairs for code points
+ *   above the Basic Multilingual Plane (> 0xFFFF)
+ * - For UTF-32 and other wchar_t implementations: Direct code point assignment
  *
- * @tparam Char Character type of the destination string.
- * @param dest Pointer to destination buffer for the converted string.
- * @param codepoints Number of codepoints to be written to the destination string.
- * @param source Pointer to multi-byte string to be converted.
- * @param source_size Source string size including null terminator.
- * @return Number of characters written including null terminator.
+ * @tparam Char The character type of the destination buffer (char16_t, char32_t, wchar_t)
+ * @param dest Pointer to the destination buffer
+ * @param dest_size Total size of the destination buffer in characters
+ * @param codepoint Unicode code point to write (as a 32-bit unsigned integer)
+ *
+ * @return Number of characters written (1 for most code points, 2 for surrogate pairs,
+ *         0 if there's not enough space in the buffer)
  */
 template<typename Char>
-constexpr auto
-from_multibyte(Char* dest, std::size_t dest_size, const char* source, std::size_t source_size)
+auto write_codepoint(Char* dest, std::size_t dest_size, std::uint32_t codepoint) -> std::size_t
 {
-    std::size_t written = 0;
-    if constexpr (std::is_same_v<Char, wchar_t>) {
-        std::mbstate_t state = {};
-#if defined(_WIN32) and defined(__STDC_WANT_SECURE_LIB__)
-        if (mbsrtowcs_s(&written, dest, dest_size, &source, dest_size - 1, &state) != 0) {
-            throw std::runtime_error("mbsrtowcs_s(): conversion error");
+    if (dest_size == 0 || dest == nullptr) {
+        return 0;
+    }
+
+    if constexpr (
+        std::is_same_v<Char, char16_t> || (std::is_same_v<Char, wchar_t> && sizeof(Char) == 2)) {
+        // NOLINTBEGIN(*-magic-numbers)
+        // For UTF-16 and 2-byte wchar_t, handle surrogate pairs for codepoints above 0xFFFF
+        if (codepoint <= 0xFFFF) {
+            *dest = static_cast<Char>(codepoint);
+            return 1;
         }
-#else
-        // NOLINTNEXTLINE(concurrency-mt-unsafe)
-        written = std::mbsrtowcs(dest, &source, dest_size, &state);
-        if (written == std::numeric_limits<std::size_t>::max()) {
-            throw std::runtime_error("std::mbsrtowcs(): conversion error");
+        // Supplementary planes - needs surrogate pair
+        if (dest_size > 1) {
+            Char high = static_cast<Char>(0xD800 + ((codepoint - 0x10000) >> 10U));
+            Char low = static_cast<Char>(0xDC00 + ((codepoint - 0x10000) & 0x3FFU));
+            *dest = high;
+            *(dest + 1) = low;
+            return 2;
         }
-        *std::next(dest, written++) = '\0';
-#endif
+        // NOLINTEND(*-magic-numbers)
     } else {
-        Detail::FromMultibyte<Char> dispatcher;
-        while (source_size > 0 && written < dest_size - 1) {
-            Char wchr;
-            const int next = dispatcher.get(&wchr, source, source_size);
-            switch (next) {
-            case 0:
-                // Null character, finish processing
-                source_size = 0;
-                break;
-            case -1:
-                // Encoding error occured
-                throw std::runtime_error("std::mbrtocN(): conversion error");
-                break;
-            case -2:
-                // Incomplete but valid character, go further
-                break;
-            case -3:
-                // Next character from surrogate pair was processed
-                *dest = wchr;
-                ++written;
-                std::advance(dest, 1);
-                break;
-            default:
-                // Successfuly processed
-                *dest = wchr;
-                ++written;
-                std::advance(dest, 1);
-                std::advance(source, next);
-                source_size -= next;
+        // For char32_t and 4-byte wchar_t, direct codepoint conversion
+        *dest = static_cast<Char>(codepoint);
+        return 1;
+    }
+    return 0;
+}
+
+/**
+ * @brief Converts a UTF-8 string to a character sequence without null termination.
+ *
+ * Destination buffer has to be capable of storing at least @p dest_size characters.
+ * No null terminator is added to the destination buffer.
+ *
+ * @tparam Char Character type of the destination buffer.
+ * @param dest Pointer to destination buffer for the converted data.
+ * @param dest_size Size of the destination buffer in characters.
+ * @param source Pointer to UTF-8 data to be converted.
+ * @param source_size Source data size in bytes.
+ * @return Number of characters written (without null terminator).
+ */
+template<typename Char>
+auto from_utf8(Char* dest, std::size_t dest_size, const char* source, std::size_t source_size)
+    -> std::size_t
+{
+    if (source == nullptr || dest == nullptr || source_size == 0 || dest_size == 0) {
+        return 0;
+    }
+
+    if constexpr (std::is_same_v<Char, char> || std::is_same_v<Char, char8_t>) {
+        // For char, just copy the UTF-8 bytes directly
+        const std::size_t to_copy = std::min(dest_size, source_size);
+        std::copy_n(source, to_copy, dest);
+        return to_copy;
+    } else {
+        // For wchar_t, char16_t, and char32_t, decode UTF-8 directly to codepoints
+        std::size_t written = 0;
+
+        // Process UTF-8 bytes to extract codepoints
+        std::uint8_t state = 0;
+        std::uint32_t codepoint = 0;
+        for (const char* end = source + source_size; source != end; ++source) {
+            utf8_decode(state, codepoint, static_cast<std::uint8_t>(*source));
+            if (state == 0) {
+                // If state is 0, we have a complete codepoint
+                const auto res = write_codepoint<Char>(dest, dest_size - written, codepoint);
+                if (res == 0) {
+                    break;
+                }
+                dest += res;
+                written += res;
+            } else if (state == 1) [[unlikely]] {
+                // If state is 1, we have an invalid sequence
                 break;
             }
+            // For any other state value, we're in the middle of a multi-byte sequence
+            // Just continue to the next byte
         }
-        *dest = '\0';
-        ++written;
+
+        // Check if we ended in the middle of a sequence
+        if (state != 0 && written < dest_size) [[unlikely]] {
+            // Add replacement character for incomplete sequence
+            constexpr std::uint32_t Replacement = 0xFFFD;
+            written += write_codepoint<Char>(dest, dest_size - written, Replacement);
+        }
+
+        return written;
     }
-    return written;
 }
 
 } // namespace SlimLog::Util::Unicode
