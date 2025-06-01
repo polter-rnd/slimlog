@@ -15,7 +15,6 @@
 #include <algorithm>
 #include <climits>
 #include <functional>
-#include <iterator>
 #include <limits>
 #include <variant>
 
@@ -289,7 +288,7 @@ constexpr auto Pattern<Char>::parse_nonnegative_int( // For clang-format < 19
     // Check for overflow.
     constexpr auto MaxInt = std::numeric_limits<int>::max();
     return num_digits == Digits10 + 1
-            && prev * Base + static_cast<unsigned>(*std::prev(ptr) - '0') <= MaxInt
+            && prev * Base + static_cast<unsigned>(ptr[-1] - '0') <= MaxInt
         ? static_cast<int>(value)
         : error_value;
 }
@@ -301,7 +300,7 @@ constexpr auto Pattern<Char>::parse_align( // For clang-format < 19
     Placeholder::StringSpecs& specs) -> const Char*
 {
     auto align = Placeholder::StringSpecs::Align::None;
-    auto* ptr = std::next(begin, Util::Unicode::code_point_length(begin));
+    auto* ptr = begin + Util::Unicode::code_point_length(begin);
     if (end - ptr <= 0) {
         ptr = begin;
     }
@@ -330,9 +329,9 @@ constexpr auto Pattern<Char>::parse_align( // For clang-format < 19
                 }
                 specs.fill
                     = std::basic_string_view<Char>(begin, Util::Types::to_unsigned(ptr - begin));
-                begin = std::next(ptr);
+                begin = ptr + 1;
             } else {
-                std::advance(begin, 1);
+                ++begin;
             }
             break;
         }
@@ -387,10 +386,10 @@ auto Pattern<Char>::get_string_specs(StringViewType value) -> Placeholder::Strin
     typename Placeholder::StringSpecs specs = {};
     if (!value.empty()) {
         const auto* begin = value.data();
-        const auto* end = std::next(begin, value.size());
+        const auto* end = begin + value.size();
         const auto* fmt = parse_align(begin, end, specs);
         if (auto chr = Util::Unicode::to_ascii(*fmt); chr != '}') {
-            const int width = parse_nonnegative_int(fmt, std::prev(end), -1);
+            const int width = parse_nonnegative_int(fmt, end - 1, -1);
             if (width == -1) {
                 throw FormatError("format field width is too big");
             }
@@ -399,7 +398,7 @@ auto Pattern<Char>::get_string_specs(StringViewType value) -> Placeholder::Strin
             case '}':
                 break;
             case 's':
-                if (Util::Unicode::to_ascii(*std::next(fmt)) != '}') {
+                if (Util::Unicode::to_ascii(fmt[1]) != '}') {
                     throw FormatError("missing '}' in format string");
                 }
                 break;
@@ -419,11 +418,19 @@ constexpr void Pattern<Char>::write_string(auto& dst, StringView&& src)
 {
     using DataChar = typename std::remove_cvref_t<StringView>::value_type;
     if constexpr (std::is_same_v<DataChar, char> && !std::is_same_v<Char, char>) {
-        const auto buf_size = (std::is_same_v<Char, char8_t> ? src.size() : src.codepoints()) + 1;
-        dst.reserve(dst.size() + buf_size);
-        const std::size_t written
-            = Util::Unicode::from_multibyte(dst.end(), buf_size, src.data(), src.size() + 1);
-        dst.resize(dst.size() + written - 1); // Trim null terminator
+        // Calculate destination buffer size based on target character encoding:
+        // - UTF-8 (1 byte): same size as source (byte-for-byte copy)
+        // - UTF-16 (2 bytes): double codepoints (potential surrogate pairs)
+        // - UTF-32 (4 bytes): same as codepoints (one-to-one mapping)
+        const auto dest_size
+            = sizeof(Char) == 1 ? src.size() : src.codepoints() * (sizeof(Char) == 2 ? 2 : 1);
+        if (dest_size == 0) {
+            return;
+        }
+
+        dst.reserve(dst.size() + dest_size);
+        const auto written = Util::Unicode::from_utf8(dst.end(), dest_size, src.data(), src.size());
+        dst.resize(dst.size() + written);
     } else {
         dst.append(std::forward<StringView>(src));
     }
@@ -442,7 +449,7 @@ constexpr void Pattern<Char>::write_string_padded(
     // supported in constexpr functions.
     const char* shifts = "\x1f\x1f\x00\x01";
     const auto left_padding
-        = padding >> static_cast<unsigned>(*std::next(shifts, static_cast<int>(specs.align)));
+        = padding >> static_cast<unsigned>(shifts[static_cast<int>(specs.align)]);
     const auto right_padding = padding - left_padding;
 
     // Reserve exact amount for data + padding
@@ -453,7 +460,7 @@ constexpr void Pattern<Char>::write_string_padded(
         = [](auto& dst, std::basic_string_view<Char> fill, std::size_t fill_len) {
               const auto* src = fill.data();
               auto block_size = fill.size();
-              auto* dest = std::prev(dst.end(), fill_len * block_size);
+              auto* dest = dst.end() - (fill_len * block_size);
 
               if (block_size > 1) {
                   // Copy first block
@@ -461,11 +468,11 @@ constexpr void Pattern<Char>::write_string_padded(
 
                   // Copy other blocks recursively via O(n*log(N)) calls
                   const auto* start = dest;
-                  const auto* end = std::next(start, fill_len * block_size);
-                  auto* current = std::next(dest, block_size);
-                  while (std::next(current, block_size) < end) {
+                  const auto* end = start + (fill_len * block_size);
+                  auto* current = dest + block_size;
+                  while ((current + block_size) < end) {
                       std::copy_n(start, block_size, current);
-                      std::advance(current, block_size);
+                      current += block_size;
                       block_size *= 2;
                   }
 

@@ -20,8 +20,6 @@
 #endif
 #else
 #include "slimlog/util/types.h"
-
-#include <iterator>
 #endif
 
 namespace SlimLog::Util {
@@ -69,7 +67,7 @@ public:
      */
     auto end() noexcept -> T*
     {
-        return std::next(m_ptr, m_size);
+        return m_ptr + m_size;
     }
 
     /**
@@ -179,7 +177,7 @@ public:
     constexpr void push_back(const T& value)
     {
         try_reserve(m_size + 1);
-        *std::next(m_ptr, m_size++) = value;
+        m_ptr[m_size++] = value;
     }
 
     /**
@@ -203,16 +201,16 @@ public:
                 count = free_cap;
             }
             if constexpr (std::is_same_v<T, U>) {
-                std::uninitialized_copy_n(begin, count, std::next(m_ptr, m_size));
+                std::uninitialized_copy_n(begin, count, m_ptr + m_size);
             } else {
-                T* out = std::next(m_ptr, m_size);
+                T* out = m_ptr + m_size;
                 for (std::size_t i = 0; i < count; ++i) {
-                    *std::next(out, i) = *std::next(begin, i);
+                    out[i] = begin[i];
                 }
             }
 
             m_size += count;
-            std::advance(begin, count);
+            begin += count;
         }
     }
 
