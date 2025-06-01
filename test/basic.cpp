@@ -14,13 +14,13 @@
 #include <mettle.hpp>
 
 #include <algorithm>
-#include <array>
 #include <chrono>
 #include <cstddef>
 #include <initializer_list>
 #include <source_location>
 #include <string>
 #include <system_error>
+#include <vector>
 
 // IWYU pragma: no_include <utility>
 // IWYU pragma: no_include <fstream>
@@ -45,13 +45,14 @@ auto time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
 
 // Generate some test messages with different unicode characters
 template<typename Char>
-auto test_messages() -> std::array<std::basic_string<Char>, 4>
+auto test_messages() -> std::vector<std::basic_string<Char>>
 {
     return {
         make_string<Char>("Simple ASCII message"),
         make_string<Char>("Привет, мир!"),
         make_string<Char>("你好，世界!"),
-        make_string<Char>("Some emojis: 😀, 😁, 😂, 🤣, 😃, 😄, 😅, 😆")};
+        make_string<Char>("Some emojis: 😀, 😁, 😂, 🤣, 😃, 😄, 😅, 😆"),
+        make_string<Char>("Mathematical symbols: 𝕄𝕒𝕥𝕙 𝔽𝕦𝕟𝕔𝕥𝕚𝕠𝕟𝕤 𝕒𝕟𝕕 𝔾𝕣𝕒𝕡𝕙𝕤 ∮")};
 };
 
 const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
@@ -127,13 +128,13 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
     // Basic pattern test
     _.test("pattern", []() {
-        StreamCapturer<Char> cap_out;
+        FileCapturer<Char> cap_file("test_basics.log");
         const auto pattern = make_string<Char>("({category}) [{level}] "
                                                "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
                                                "#{thread} {file}|{line}: {message}");
 
         Logger<String> log{time_mock};
-        log.template add_sink<OStreamSink>(cap_out, pattern);
+        auto file_sink = log.template add_sink<FileSink>(cap_file.path().string(), pattern);
 
         PatternFields<Char> fields;
         fields.category = make_string<Char>("default");
@@ -145,10 +146,10 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
         for (const auto& message : test_messages<Char>()) {
             log.info(message);
-            const auto log_line = std::source_location::current().line() - 1;
-            fields.line = log_line;
+            fields.line = std::source_location::current().line() - 1;
             fields.message = message;
-            expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+            file_sink->flush();
+            expect(cap_file.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
         }
     });
 
