@@ -60,7 +60,7 @@ struct MultiThreadedPolicy final {
  * @tparam ThreadingPolicy Threading policy (SingleThreadedPolicy or MultiThreadedPolicy)
  */
 template<typename T, typename ThreadingPolicy>
-class AtomicWrapper final { };
+class AtomicWrapper final {};
 
 /**
  * @brief Single-threaded specialized implementation of AtomicWrapper.

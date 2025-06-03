@@ -183,9 +183,7 @@ private:
 template<class T>
 concept IsFormattableSink = requires(const T& arg) {
     []<typename String, typename Char, std::size_t BufferSize, typename Allocator>(
-        const FormattableSink<String, Char, BufferSize, Allocator>&) {
-        /* For clang-format < 19 */
-    }(arg);
+        const FormattableSink<String, Char, BufferSize, Allocator>&) {}(arg);
 };
 
 } // namespace SlimLog

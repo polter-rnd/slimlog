@@ -263,10 +263,8 @@ void Pattern<Char>::format_generic(auto& out, const auto& item, T data)
 }
 
 template<typename Char>
-constexpr auto Pattern<Char>::parse_nonnegative_int( // For clang-format < 19
-    const Char*& begin,
-    const Char* end,
-    int error_value) noexcept -> int
+constexpr auto Pattern<Char>::parse_nonnegative_int(
+    const Char*& begin, const Char* end, int error_value) noexcept -> int
 {
     unsigned value = 0;
     unsigned prev = 0;
@@ -294,10 +292,8 @@ constexpr auto Pattern<Char>::parse_nonnegative_int( // For clang-format < 19
 }
 
 template<typename Char>
-constexpr auto Pattern<Char>::parse_align( // For clang-format < 19
-    const Char* begin,
-    const Char* end,
-    Placeholder::StringSpecs& specs) -> const Char*
+constexpr auto Pattern<Char>::parse_align(
+    const Char* begin, const Char* end, Placeholder::StringSpecs& specs) -> const Char*
 {
     auto align = Placeholder::StringSpecs::Align::None;
     auto* ptr = begin + Util::Unicode::code_point_length(begin);

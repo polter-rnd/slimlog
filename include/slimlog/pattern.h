@@ -297,8 +297,8 @@ private:
      * @param error_value The default value to return in case of a conversion error.
      * @return The parsed integer, or error_value if the conversion fails.
      */
-    static constexpr auto
-    parse_nonnegative_int(const Char*& begin, const Char* end, int error_value) noexcept -> int;
+    static constexpr auto parse_nonnegative_int(
+        const Char*& begin, const Char* end, int error_value) noexcept -> int;
 
     /**
      * @brief Parses alignment (^, <, >) and fill character from the formatting field.
@@ -311,8 +311,8 @@ private:
      * @param specs Reference to the output specs structure to be updated.
      * @return Pointer to the past-the-end of the processed characters.
      */
-    static constexpr auto
-    parse_align(const Char* begin, const Char* end, Placeholder::StringSpecs& specs) -> const Char*;
+    static constexpr auto parse_align(
+        const Char* begin, const Char* end, Placeholder::StringSpecs& specs) -> const Char*;
 
     /**
      * @brief Append a pattern placeholder to the list of placeholders.
@@ -360,9 +360,7 @@ private:
      */
     template<typename StringView>
     constexpr static void write_string_padded(
-        auto& dst, // For clang-format < 19
-        StringView&& src,
-        const typename Placeholder::StringSpecs& specs);
+        auto& dst, StringView&& src, const typename Placeholder::StringSpecs& specs);
 
     std::basic_string<Char> m_pattern;
     std::vector<Placeholder> m_placeholders;
