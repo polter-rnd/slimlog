@@ -204,8 +204,8 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-[[nodiscard]] auto // For clang-format < 19
-Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::level() const -> Level
+[[nodiscard]] auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::level() const
+    -> Level
 {
     return static_cast<Level>(m_level);
 }

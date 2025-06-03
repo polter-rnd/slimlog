@@ -41,7 +41,7 @@ struct Overloaded : Ts... {
  * ```
  */
 template<typename>
-struct AlwaysFalse : std::false_type { };
+struct AlwaysFalse : std::false_type {};
 
 /// @cond
 template<typename T>
