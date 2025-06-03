@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.23...3.26)
 
+if(BUILD_TESTING)
+    list(APPEND VCPKG_MANIFEST_FEATURES "testing")
+endif()
+
 project(
     "slimlog"
     VERSION 0.1.0

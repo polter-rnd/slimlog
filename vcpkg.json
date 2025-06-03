@@ -1,0 +1,21 @@
+{
+    "name": "slimlog",
+    "features": {
+        "fmt": {
+            "description": "Enables the fmt library for formatted output.",
+            "dependencies": [
+                "fmt"
+            ]
+        },
+        "testing": {
+            "description": "Dependencies needed for the tests.",
+            "dependencies": [
+                "boost-program-options",
+                "boost-iostreams"
+            ]
+        }
+    },
+    "default-features": [
+        "fmt"
+    ]
+}
