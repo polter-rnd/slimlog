@@ -65,3 +65,4 @@ function(slimlog_test name)
 endfunction()
 
 slimlog_test(basic)
+slimlog_test(unicode)
