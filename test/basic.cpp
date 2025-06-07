@@ -3,7 +3,6 @@
 #include "slimlog/sinks/file_sink.h"
 #include "slimlog/sinks/null_sink.h"
 #include "slimlog/sinks/ostream_sink.h"
-#include "slimlog/util/locale.h"
 #include "slimlog/util/os.h"
 
 // Test helpers
@@ -30,9 +29,6 @@ namespace {
 
 using namespace mettle;
 using namespace SlimLog;
-
-// Set global locale for correct Unicode handling
-const Util::Locale::ScopedGlobalLocale GLocale{""};
 
 // Mock time function
 auto time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
