@@ -40,7 +40,7 @@ jobs:
       CMAKE_BUILD_TYPE: Debug
       # Set the commit hashes for dependent tools
       IWYU_COMMIT: 30e221fad0967aa6bcb279600127748ed3dab7ad
-      METTLE_COMMIT: 37f7ff840ed2ab9be7e5f0d44be97a601686d8db
+      METTLE_COMMIT: e09f978049f5739f1415e5f457e5d6001c651efb
 
     runs-on: ${{ matrix.os }}
 
