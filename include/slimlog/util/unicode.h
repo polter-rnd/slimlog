@@ -275,13 +275,6 @@ auto from_utf8(Char* dest, std::size_t dest_size, const char* source, std::size_
             // Just continue to the next byte
         }
 
-        // Check if we ended in the middle of a sequence
-        if (state != 0 && written < dest_size) [[unlikely]] {
-            // Add replacement character for incomplete sequence
-            constexpr std::uint32_t Replacement = 0xFFFD;
-            written += write_codepoint<Char>(dest, dest_size - written, Replacement);
-        }
-
         return written;
     }
 }
