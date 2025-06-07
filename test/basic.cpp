@@ -59,6 +59,125 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
     using String = std::basic_string<Char>;
 
+    // Test empty message
+    _.test("empty_message", []() {
+        StreamCapturer<Char> cap_out;
+        Logger<String> log;
+        log.template add_sink<OStreamSink>(cap_out);
+
+        const auto empty_message = String{};
+        log.info(empty_message);
+
+        expect(cap_out.read(), equal_to(String{Char{'\n'}}));
+    });
+
+    // Test logger categories
+    _.test("categories", []() {
+        StreamCapturer<Char> cap_out;
+        const auto pattern = make_string<Char>("[{category}] {message}");
+
+        const auto default_category = make_string<Char>("default");
+        const auto custom_category = make_string<Char>("my_module");
+
+        Logger<String> default_log;
+        Logger<String> custom_log{custom_category};
+
+        default_log.template add_sink<OStreamSink>(cap_out, pattern);
+        custom_log.template add_sink<OStreamSink>(cap_out, pattern);
+
+        const auto message = make_string<Char>("Test message");
+
+        default_log.info(message);
+        expect(cap_out.read(), equal_to(make_string<Char>("[default] ") + message + Char{'\n'}));
+
+        custom_log.info(message);
+        expect(cap_out.read(), equal_to(make_string<Char>("[my_module] ") + message + Char{'\n'}));
+    });
+
+    // Test convenience logging methods
+    _.test("convenience_methods", []() {
+        StreamCapturer<Char> cap_out;
+        const auto pattern = make_string<Char>("[{level}] {message}");
+
+        Logger<String> log(Level::Trace);
+        log.template add_sink<OStreamSink>(cap_out, pattern);
+
+        const auto message = make_string<Char>("Test message");
+
+        log.trace(message);
+        expect(cap_out.read(), equal_to(make_string<Char>("[TRACE] ") + message + Char{'\n'}));
+
+        log.debug(message);
+        expect(cap_out.read(), equal_to(make_string<Char>("[DEBUG] ") + message + Char{'\n'}));
+
+        log.info(message);
+        expect(cap_out.read(), equal_to(make_string<Char>("[INFO] ") + message + Char{'\n'}));
+
+        log.warning(message);
+        expect(cap_out.read(), equal_to(make_string<Char>("[WARN] ") + message + Char{'\n'}));
+
+        log.error(message);
+        expect(cap_out.read(), equal_to(make_string<Char>("[ERROR] ") + message + Char{'\n'}));
+
+        log.fatal(message);
+        expect(cap_out.read(), equal_to(make_string<Char>("[FATAL] ") + message + Char{'\n'}));
+    });
+
+    // Test multiple sinks
+    _.test("multiple_sinks", []() {
+        StreamCapturer<Char> cap_out1;
+        StreamCapturer<Char> cap_out2;
+
+        Logger<String> log;
+        auto sink1 = log.template add_sink<OStreamSink>(cap_out1);
+        auto sink2 = log.template add_sink<OStreamSink>(cap_out2);
+
+        const auto message = make_string<Char>("Multi-sink message");
+
+        log.info(message);
+
+        // Both sinks should receive the same message
+        expect(cap_out1.read(), equal_to(message + Char{'\n'}));
+        expect(cap_out2.read(), equal_to(message + Char{'\n'}));
+
+        // Remove one sink
+        expect(log.remove_sink(sink1), equal_to(true));
+
+        log.info(message);
+
+        // Only second sink should receive the message
+        expect(cap_out1.read(), equal_to(String{}));
+        expect(cap_out2.read(), equal_to(message + Char{'\n'}));
+
+        // Remove last sink
+        expect(log.remove_sink(sink2), equal_to(true));
+
+        log.info(message);
+
+        // No sinks should receive the message now
+        expect(cap_out1.read(), equal_to(String{}));
+        expect(cap_out2.read(), equal_to(String{}));
+    });
+
+    // Test sink management
+    _.test("sink_management", []() {
+        Logger<String> log;
+        StreamCapturer<Char> cap_out;
+
+        // Add sink
+        auto sink = log.template add_sink<OStreamSink>(cap_out);
+        expect(sink, is_not(nullptr));
+
+        // Remove existing sink
+        expect(log.remove_sink(sink), equal_to(true));
+
+        // Try to remove the same sink again
+        expect(log.remove_sink(sink), equal_to(false));
+
+        // Try to remove null sink
+        expect(log.remove_sink(nullptr), equal_to(false));
+    });
+
     _.test("levels", []() {
         StreamCapturer<Char> cap_out;
         Logger<String> log;
@@ -105,10 +224,6 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
             ostream_sink->flush();
             expect(cap_out.read(), equal_to(message + Char{'\n'}));
         }
-
-        expect(log.remove_sink(ostream_sink), equal_to(true));
-        log.info(make_string<Char>("Hello, World!"));
-        expect(cap_out.read(), equal_to(String{}));
     });
 
     _.test("file_sink", []() {
@@ -150,25 +265,6 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
             fields.message = message;
             file_sink->flush();
             expect(cap_file.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
-        }
-    });
-
-    // Additional test with custom pattern
-    _.test("custom_pattern", []() {
-        StreamCapturer<Char> cap_out;
-        const auto pattern = make_string<Char>("[{level}]: {message}");
-        const auto message = make_string<Char>("Error message");
-
-        Logger<String> log;
-        log.template add_sink<OStreamSink>(cap_out, pattern);
-
-        PatternFields<Char> fields;
-        fields.level = make_string<Char>("ERROR");
-
-        for (const auto& message : test_messages<Char>()) {
-            log.error(message);
-            fields.message = message;
-            expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
         }
     });
 
