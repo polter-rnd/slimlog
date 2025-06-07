@@ -11,7 +11,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
-#include <stdexcept>
 #include <type_traits>
 
 namespace SlimLog::Util::Unicode {
@@ -134,6 +133,9 @@ inline auto utf8_decode(std::uint8_t& state, std::uint32_t& codep, const std::ui
  * @param begin Pointer to the start of the Unicode sequence.
  * @param len Number of code units in the sequence.
  * @return The number of Unicode code points in the sequence.
+ *
+ * @note This function assumes that the input is valid UTF-8 encoded data.
+ *       If the input contains invalid sequences, it will stop counting at the first invalid byte.
  */
 template<typename Char>
 constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size_t
@@ -149,7 +151,7 @@ constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size
             if (state == 0) {
                 ++codepoints;
             } else if (state == 1) {
-                throw std::runtime_error("utf8_decode(): conversion error");
+                break; // Invalid sequence, stop counting
             }
         }
         return codepoints;
