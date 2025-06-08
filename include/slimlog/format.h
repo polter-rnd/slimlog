@@ -20,6 +20,10 @@
 #include <fmt/xchar.h> // IWYU pragma: keep
 #else
 #include <format>
+#include <version> // IWYU pragma: keep
+#if __cpp_lib_format < 202207L
+#include <string>
+#endif
 #endif
 
 #include <concepts>
@@ -30,10 +34,6 @@
 #include <string_view>
 #include <type_traits>
 #include <utility>
-#include <version> // IWYU pragma: keep
-#if __cpp_lib_format < 202207L
-#include <string>
-#endif
 
 namespace SlimLog {
 

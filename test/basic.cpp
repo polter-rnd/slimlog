@@ -16,7 +16,6 @@
 #include <chrono>
 #include <cstddef>
 #include <initializer_list>
-#include <memory>
 #include <source_location>
 #include <string>
 #include <system_error>
@@ -24,6 +23,7 @@
 
 // IWYU pragma: no_include <utility>
 // IWYU pragma: no_include <fstream>
+// IWYU pragma: no_include <memory>
 // clazy:excludeall=clazy-non-pod-global-static
 
 namespace {

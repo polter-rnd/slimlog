@@ -43,7 +43,7 @@ template<
     typename Allocator>
 Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
     Level level, TimeFunctionType time_func)
-    : Logger(StringViewType{DefaultCategory.data()}, level, std::move(time_func))
+    : Logger(StringViewType{DefaultCategory.data()}, level, time_func)
 {
 }
 
@@ -54,7 +54,7 @@ template<
     std::size_t BufferSize,
     typename Allocator>
 Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(TimeFunctionType time_func)
-    : Logger(StringViewType{DefaultCategory.data()}, Level::Info, std::move(time_func))
+    : Logger(StringViewType{DefaultCategory.data()}, Level::Info, time_func)
 {
 }
 
