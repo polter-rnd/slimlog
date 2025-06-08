@@ -133,7 +133,7 @@ public:
     /**
      * @brief Clears this buffer.
      */
-    void clear()
+    constexpr void clear()
     {
         m_size = 0;
     }
@@ -471,7 +471,13 @@ protected:
         T* old_data = self.data();
         T* new_data = self.m_allocator.allocate(new_capacity);
         // The following code doesn't throw, so the raw pointer above doesn't leak.
-        std::uninitialized_copy_n(old_data, self.size(), new_data);
+        if (std::is_constant_evaluated()) {
+            // In constexpr context, use simple copy since objects are already constructed
+            std::copy_n(old_data, self.size(), new_data);
+        } else {
+            // In runtime context, use uninitialized_copy_n for proper construction
+            std::uninitialized_copy_n(old_data, self.size(), new_data);
+        }
         self.set(new_data, new_capacity);
         // Deallocate must not throw according to the standard, but even if it does,
         // the buffer already uses the new storage and will deallocate it in destructor.
@@ -506,7 +512,11 @@ private:
         // NOLINTBEGIN(*-array-to-pointer-decay,*-no-array-decay)
         if (data == other.m_store) {
             this->set(m_store, capacity);
-            std::uninitialized_copy_n(other.m_store, size, m_store);
+            if (std::is_constant_evaluated()) {
+                std::copy_n(other.m_store, size, m_store);
+            } else {
+                std::uninitialized_copy_n(other.m_store, size, m_store);
+            }
         } else {
             this->set(data, capacity);
             // Set pointer to the inline array so that delete is not called

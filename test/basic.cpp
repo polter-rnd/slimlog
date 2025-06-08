@@ -16,6 +16,7 @@
 #include <chrono>
 #include <cstddef>
 #include <initializer_list>
+#include <memory>
 #include <source_location>
 #include <string>
 #include <system_error>
@@ -38,18 +39,6 @@ auto time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
     constexpr auto Nanoseconds = 123456; // nanoseconds
     return {std::chrono::sys_seconds{std::chrono::seconds{Timestamp}}, Nanoseconds};
 }
-
-// Generate some test messages with different unicode characters
-template<typename Char>
-auto test_messages() -> std::vector<std::basic_string<Char>>
-{
-    return {
-        make_string<Char>("Simple ASCII message"),
-        make_string<Char>("Привет, мир!"),
-        make_string<Char>("你好，世界!"),
-        make_string<Char>("Some emojis: 😀, 😁, 😂, 🤣, 😃, 😄, 😅, 😆"),
-        make_string<Char>("Mathematical symbols: 𝕄𝕒𝕥𝕙 𝔽𝕦𝕟𝕔𝕥𝕚𝕠𝕟𝕤 𝕒𝕟𝕕 𝔾𝕣𝕒𝕡𝕙𝕤 ∮")};
-};
 
 const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
@@ -215,7 +204,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         Logger<String> log;
 
         auto ostream_sink = log.template add_sink<OStreamSink>(cap_out);
-        for (const auto& message : test_messages<Char>()) {
+        for (const auto& message : unicode_strings<Char>()) {
             log.info(message);
             ostream_sink->flush();
             expect(cap_out.read(), equal_to(message + Char{'\n'}));
@@ -230,7 +219,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         FileCapturer<Char> cap_file("test_basics.log");
 
         auto file_sink = log.template add_sink<FileSink>(cap_file.path().string());
-        for (const auto& message : test_messages<Char>()) {
+        for (const auto& message : unicode_strings<Char>()) {
             log.info(message);
             file_sink->flush();
             expect(cap_file.read(), equal_to(message + Char{'\n'}));
@@ -255,7 +244,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
 
-        for (const auto& message : test_messages<Char>()) {
+        for (const auto& message : unicode_strings<Char>()) {
             log.info(message);
             fields.line = std::source_location::current().line() - 1;
             fields.message = message;
@@ -279,7 +268,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
 
-        for (const auto& message : test_messages<Char>()) {
+        for (const auto& message : unicode_strings<Char>()) {
             log.warning(message);
             fields.message = message;
             expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));

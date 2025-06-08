@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "slimlog/util/unicode.h"
 
@@ -81,6 +81,27 @@ inline auto make_string(std::string_view str) -> std::basic_string<Char>
         return std::basic_string<Char>(buffer.data(), written);
     }
 }
+
+/**
+ * @brief Returns a collection of test strings with various Unicode characters
+ *
+ * This function provides a set of strings containing different types of Unicode content
+ * for testing purposes, including ASCII text, Cyrillic, Chinese characters, emojis,
+ * and mathematical symbols.
+ *
+ * @tparam Char The character type for the output strings
+ * @return A vector of basic_string objects containing Unicode test data
+ */
+template<typename Char>
+auto unicode_strings() -> std::vector<std::basic_string<Char>>
+{
+    return {
+        make_string<Char>("Simple ASCII message"),
+        make_string<Char>("Привет, мир!"),
+        make_string<Char>("你好，世界!"),
+        make_string<Char>("Some emojis: 😀, 😁, 😂, 🤣, 😃, 😄, 😅, 😆"),
+        make_string<Char>("Mathematical symbols: 𝕄𝕒𝕥𝕙 𝔽𝕦𝕟𝕔𝕥𝕚𝕠𝕟𝕤 𝕒𝕟𝕕 𝔾𝕣𝕒𝕡𝕙𝕤 ∮")};
+};
 
 /**
  * @brief Structure for holding log message pattern fields
