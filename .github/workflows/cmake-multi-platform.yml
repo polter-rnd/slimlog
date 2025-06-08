@@ -137,10 +137,11 @@ jobs:
     - name: Install apt dependencies (Linux)
       if: runner.os == 'Linux'
       run: >
-        sudo apt-get install -y libc++-dev libc++abi-dev clang-tidy cppcheck gcovr
+        sudo apt-get install -y
+        clang-tidy cppcheck gcovr
+        ${{ matrix.c_compiler == 'clang' && 'libc++-dev libc++abi-dev' || '' }}
 
     - name: Cache vcpkg
-      if: runner.os != 'MacOS'
       id: cache-vcpkg
       uses: actions/cache@v4
       with:
@@ -150,7 +151,7 @@ jobs:
     - name: Install brew dependencies (MacOS)
       if: runner.os == 'MacOS'
       run: >
-        brew install ${{ matrix.format_lib == 'std' && '' || 'fmt' }} boost gcovr
+        brew install cppcheck gcovr
 
     - name: Cache include-what-you-use
       id: cache-iwyu
@@ -205,7 +206,7 @@ jobs:
         cmake
         -S ${{ github.workspace }}
         -B ${{ steps.strings.outputs.build-output-dir }}
-        -DENABLE_ANALYZERS=OFF
+        -DENABLE_ANALYZERS=ON
         -DENABLE_SANITIZERS=ON
         -DBUILD_TESTING=ON
         -Dmettle_DIR=${{ steps.strings.outputs.mettle-dir }}/build
