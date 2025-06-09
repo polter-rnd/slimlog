@@ -1,6 +1,8 @@
 // SlimLog
 #include "slimlog/util/unicode.h"
 
+#include "helpers/common.h"
+
 #include <mettle.hpp>
 
 #include <array>
@@ -15,7 +17,67 @@ namespace {
 using namespace mettle;
 using namespace SlimLog::Util::Unicode;
 
+// Constexpr test helpers - these will only compile if the functions are truly constexpr
+constexpr auto test_constexpr_code_point_length() -> bool
+{
+    // Test with ASCII characters
+    constexpr char ascii[] = "Hello";
+    static_assert(code_point_length(ascii) == 1);
+    static_assert(code_point_length(ascii + 1) == 1);
+
+    // Test with wide characters
+    constexpr wchar_t wide[] = L"Hello";
+    static_assert(code_point_length(wide) == 1);
+
+    constexpr char16_t utf16[] = u"Hello";
+    static_assert(code_point_length(utf16) == 1);
+
+    constexpr char32_t utf32[] = U"Hello";
+    static_assert(code_point_length(utf32) == 1);
+
+    return true;
+}
+
+constexpr auto test_constexpr_count_codepoints() -> bool
+{
+    // Test with ASCII
+    constexpr char ascii[] = "Hello";
+    static_assert(count_codepoints(ascii, 5) == 5);
+
+    // Test with wide characters
+    constexpr wchar_t wide[] = L"Hello";
+    static_assert(count_codepoints(wide, 5) == 5);
+
+    constexpr char16_t utf16[] = u"Hello";
+    static_assert(count_codepoints(utf16, 5) == 5);
+
+    constexpr char32_t utf32[] = U"Hello";
+    static_assert(count_codepoints(utf32, 5) == 5);
+
+    return true;
+}
+
+constexpr auto test_constexpr_to_ascii() -> bool
+{
+    static_assert(to_ascii('A') == 'A');
+    static_assert(to_ascii('z') == 'z');
+    static_assert(to_ascii('0') == '0');
+    static_assert(to_ascii(' ') == ' ');
+    static_assert(to_ascii(127) == static_cast<char>(127));
+    static_assert(to_ascii(255) == static_cast<char>(255));
+    static_assert(to_ascii(256) == '\0');
+    static_assert(to_ascii(1000) == '\0');
+    static_assert(to_ascii(0x1F600) == '\0');
+    return true;
+}
+
+// Runtime test suite for Unicode utilities
 const suite<> Unicode("unicode", [](auto& _) {
+    // Compile-time verification
+    static_assert(test_constexpr_code_point_length());
+    static_assert(test_constexpr_count_codepoints());
+    static_assert(test_constexpr_to_ascii());
+
     // Test code_point_length function
     _.test("code_point_length", []() {
         // ASCII characters (1 byte)
@@ -61,23 +123,23 @@ const suite<> Unicode("unicode", [](auto& _) {
 
         // Test 2-byte UTF-8 sequence: 'П' (U+041F -> 0xD0 0x9F)
         state = 0;
-        expect(utf8_decode(state, codepoint, 0xD0), not_equal_to(0)); // First byte
-        expect(utf8_decode(state, codepoint, 0x9F), equal_to(0)); // Second byte
+        expect(utf8_decode(state, codepoint, 0xD0), greater(1));
+        expect(utf8_decode(state, codepoint, 0x9F), equal_to(0));
         expect(codepoint, equal_to(0x041FU));
 
         // Test 3-byte UTF-8 sequence: '你' (U+4F60 -> 0xE4 0xBD 0xA0)
         state = 0;
-        expect(utf8_decode(state, codepoint, 0xE4), not_equal_to(0)); // First byte
-        expect(utf8_decode(state, codepoint, 0xBD), not_equal_to(0)); // Second byte
-        expect(utf8_decode(state, codepoint, 0xA0), equal_to(0)); // Third byte
+        expect(utf8_decode(state, codepoint, 0xE4), greater(1));
+        expect(utf8_decode(state, codepoint, 0xBD), greater(1));
+        expect(utf8_decode(state, codepoint, 0xA0), equal_to(0));
         expect(codepoint, equal_to(0x4F60U));
 
         // Test 4-byte UTF-8 sequence: '😀' (U+1F600 -> 0xF0 0x9F 0x98 0x80)
         state = 0;
-        expect(utf8_decode(state, codepoint, 0xF0), not_equal_to(0)); // First byte
-        expect(utf8_decode(state, codepoint, 0x9F), not_equal_to(0)); // Second byte
-        expect(utf8_decode(state, codepoint, 0x98), not_equal_to(0)); // Third byte
-        expect(utf8_decode(state, codepoint, 0x80), equal_to(0)); // Fourth byte
+        expect(utf8_decode(state, codepoint, 0xF0), greater(1));
+        expect(utf8_decode(state, codepoint, 0x9F), greater(1));
+        expect(utf8_decode(state, codepoint, 0x98), greater(1));
+        expect(utf8_decode(state, codepoint, 0x80), equal_to(0));
         expect(codepoint, equal_to(0x1F600U));
 
         // Test invalid UTF-8 sequence

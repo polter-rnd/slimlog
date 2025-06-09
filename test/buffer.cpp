@@ -31,6 +31,7 @@ namespace {
 using namespace mettle;
 using namespace SlimLog::Util;
 
+// Custom allocator that limits the maximum allocation size
 template<typename T, std::size_t MaxSize = 1000>
 struct LimitedAllocator {
     using value_type = T; // NOLINT(readability-identifier-naming)
@@ -56,11 +57,60 @@ struct LimitedAllocator {
     }
 };
 
+// Constexpr test helpers - these will only compile if the functions are truly constexpr
+template<typename Char>
+constexpr auto test_constexpr_basic() -> bool
+{
+    using BufferType = MemoryBuffer<Char, 256>;
+    BufferType buffer;
+    buffer.push_back(Char{'A'});
+    buffer.resize(5);
+    buffer[1] = Char{'B'};
+    auto* data = buffer.data();
+    data[2] = Char{'C'};
+    return buffer.size() == 5 && buffer[0] == Char{'A'} && buffer[1] == Char{'B'}
+    && buffer[2] == Char{'C'} && buffer.capacity() == 256;
+}
+
+template<typename Char>
+constexpr auto test_constexpr_move() -> bool
+{
+    using BufferType = MemoryBuffer<Char, 256>;
+    BufferType original;
+    original.push_back(Char{'M'});
+    BufferType moved(std::move(original));
+    return moved.size() == 1 && moved[0] == Char{'M'};
+}
+
+#if !defined(SLIMLOG_FMTLIB) || FMT_VERSION >= 110100
+template<typename Char>
+constexpr auto test_constexpr_clear() -> bool
+{
+    using BufferType = MemoryBuffer<Char, 256>;
+    BufferType buffer;
+    buffer.push_back(Char{'X'});
+    buffer.clear();
+    return buffer.size() == 0;
+}
+#else
+template<typename Char>
+constexpr auto test_constexpr_clear() -> bool
+{
+    return true; // clear method is not constexpr in fmtlib < 11.1
+}
+#endif
+
+// Runtime test suite for MemoryBuffer
 const suite<SLIMLOG_CHAR_TYPES> BufferTests("buffer", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
     using String = std::basic_string<Char>;
     using StringView = std::basic_string_view<Char>;
     using BufferType = MemoryBuffer<Char, 256>;
+
+    // Test constexpr capabilities (compile-time evaluation)
+    static_assert(test_constexpr_basic<Char>());
+    static_assert(test_constexpr_move<Char>());
+    static_assert(test_constexpr_clear<Char>());
 
     // Test default construction
     _.test("default_construction", []() {
@@ -256,45 +306,6 @@ const suite<SLIMLOG_CHAR_TYPES> BufferTests("buffer", type_only, [](auto& _) {
             expect(buffer.size(), equal_to(str.size()));
             expect(StringView(buffer.data(), buffer.size()), equal_to(str));
         }
-    });
-
-    // Test constexpr capabilities (compile-time evaluation)
-    _.test("constexpr", []() {
-        // Test basic constexpr operations - just prove they work at compile time
-        constexpr auto TestBasic = []() constexpr {
-            BufferType buffer;
-            buffer.push_back(Char{'A'});
-            buffer.resize(5);
-            buffer[1] = Char{'B'};
-            auto* data = buffer.data();
-            data[2] = Char{'C'};
-            return buffer.size() == 5 && buffer[0] == Char{'A'} && buffer[1] == Char{'B'}
-            && buffer[2] == Char{'C'} && buffer.capacity() >= 256;
-        };
-        constexpr bool BasicResult = TestBasic();
-        expect(BasicResult, equal_to(true));
-
-#if !defined(SLIMLOG_FMTLIB) || FMT_VERSION >= 110100
-        // Test constexpr clear (version-dependent)
-        constexpr auto TestClear = []() constexpr {
-            BufferType buffer;
-            buffer.push_back(Char{'X'});
-            buffer.clear();
-            return buffer.size() == 0;
-        };
-        constexpr bool ClearResult = TestClear();
-        expect(ClearResult, equal_to(true));
-#endif
-
-        // Test constexpr move
-        constexpr auto TestMove = []() constexpr {
-            BufferType original;
-            original.push_back(Char{'M'});
-            BufferType moved(std::move(original));
-            return moved.size() == 1 && moved[0] == Char{'M'};
-        };
-        constexpr bool MoveResult = TestMove();
-        expect(MoveResult, equal_to(true));
     });
 
     // Test edge cases

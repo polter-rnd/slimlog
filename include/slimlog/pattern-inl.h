@@ -441,8 +441,8 @@ constexpr void Pattern<Char>::write_string_padded(
     const auto codepoints = src.codepoints();
     const auto padding = spec_width > codepoints ? spec_width - codepoints : 0;
 
-    // Shifts are encoded as string literals because constexpr is not
-    // supported in constexpr functions.
+    // Shifts are encoded as string literals because
+    // static is not supported in constexpr functions.
     const char* shifts = "\x1f\x1f\x00\x01";
     const auto left_padding
         = padding >> static_cast<unsigned>(shifts[static_cast<int>(specs.align)]);

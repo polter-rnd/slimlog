@@ -75,10 +75,11 @@ inline auto make_string(std::string_view str) -> std::basic_string<Char>
             return {};
         }
 
-        std::vector<Char> buffer(dest_size);
+        std::basic_string<Char> buffer(dest_size, Char{});
         const auto written = SlimLog::Util::Unicode::from_utf8(
             buffer.data(), buffer.size(), str.data(), str.size());
-        return std::basic_string<Char>(buffer.data(), written);
+        buffer.resize(written);
+        return buffer;
     }
 }
 
