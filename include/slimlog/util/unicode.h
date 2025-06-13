@@ -10,6 +10,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <string>
+#include <string_view>
 #include <type_traits>
 
 namespace SlimLog::Util::Unicode {
@@ -78,7 +80,7 @@ constexpr auto code_point_length(const Char* begin) -> int
  * @copyright Copyright (c) 2008-2009 Bjoern Hoehrmann <bjoern@hoehrmann.de>
  * @sa http://bjoern.hoehrmann.de/utf-8/decoder/dfa/
  */
-inline constexpr auto utf8_decode(
+constexpr auto utf8_decode(
     std::uint8_t& state, std::uint32_t& codep, const std::uint8_t byte) noexcept -> std::uint8_t
 {
     // UTF-8 DFA transition table as string literal - 400 bytes total
@@ -292,6 +294,47 @@ auto from_utf8(Char* dest, std::size_t dest_size, const char* source, std::size_
         }
 
         return written;
+    }
+}
+
+/**
+ * @brief Creates a basic string with the specified character type from a string literal
+ *
+ * This helper properly handles UTF-8 input including multi-byte sequences like emojis,
+ * and converts them correctly to the requested character type.
+ *
+ * @tparam Char The character type for the output string
+ * @param str The string literal to convert (UTF-8 encoded)
+ * @return A basic_string with the requested character type
+ */
+template<typename Char>
+auto from_utf8(std::string_view str) -> std::basic_string<Char>
+{
+    if (str.empty()) {
+        return {};
+    }
+
+    if constexpr (std::is_same_v<Char, char>) {
+        // For char, just copy the UTF-8 bytes directly
+        return std::string(str);
+    } else {
+        // Calculate destination buffer size based on target character encoding:
+        // - UTF-8 (1 byte): same size as source (byte-for-byte copy)
+        // - UTF-16 (2 bytes): double codepoints (potential surrogate pairs)
+        // - UTF-32 (4 bytes): same as codepoints (one-to-one mapping)
+        const auto dest_size = sizeof(Char) == 1
+            ? str.size()
+            : SlimLog::Util::Unicode::count_codepoints(str.data(), str.size())
+                * (sizeof(Char) == 2 ? 2 : 1);
+        if (dest_size == 0) {
+            return {};
+        }
+
+        std::basic_string<Char> buffer(dest_size, Char{});
+        const auto written = SlimLog::Util::Unicode::from_utf8(
+            buffer.data(), buffer.size(), str.data(), str.size());
+        buffer.resize(written);
+        return buffer;
     }
 }
 
