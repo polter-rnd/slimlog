@@ -1,6 +1,7 @@
 #pragma once
 
 #include "common.h"
+#include "slimlog/util/unicode.h"
 
 #include <array>
 #include <bit>

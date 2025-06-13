@@ -4,6 +4,7 @@
     { include: [ "<bits/types/mbstate_t.h>", "private", "<cuchar>", "public" ] },
     # Mappings for libc++ which are missing from built-in mappings
     { include: [ "@<__ostream/.*>", "private", "<ostream>", "public" ] },
+    { include: [ "@<__new/.*>", "private", "<new>", "public" ] },
     { include: [ "<__locale>", "private", "<locale>", "public" ] },
     # Bug on stdlibc++: std::nullptr_t is not from <version>
     { symbol: [ "std::nullptr_t", "private", "<cstddef>", "public" ] },

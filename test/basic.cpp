@@ -4,6 +4,7 @@
 #include "slimlog/sinks/null_sink.h"
 #include "slimlog/sinks/ostream_sink.h"
 #include "slimlog/util/os.h"
+#include "slimlog/util/unicode.h"
 
 // Test helpers
 #include "helpers/common.h"
@@ -19,11 +20,11 @@
 #include <source_location>
 #include <string>
 #include <system_error>
-#include <vector>
 
 // IWYU pragma: no_include <utility>
 // IWYU pragma: no_include <fstream>
 // IWYU pragma: no_include <memory>
+// IWYU pragma: no_include <vector>
 // clazy:excludeall=clazy-non-pod-global-static
 
 namespace {
