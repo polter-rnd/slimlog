@@ -133,7 +133,7 @@ const suite<SLIMLOG_CHAR_TYPES> BufferTests("buffer", type_only, [](auto& _) {
     // Test move operations with stack storage
     _.test("move_stack", []() {
         BufferType original;
-        const auto test_string = make_string<Char>("Hello, World!");
+        const auto test_string = from_utf8<Char>("Hello, World!");
         original.append(test_string);
         const auto original_size = original.size();
 
@@ -155,7 +155,7 @@ const suite<SLIMLOG_CHAR_TYPES> BufferTests("buffer", type_only, [](auto& _) {
         using SmallBufferType = MemoryBuffer<Char, 4>; // Very small stack
         SmallBufferType original;
         const auto large_string
-            = make_string<Char>("This string exceeds 4 chars and forces heap allocation");
+            = from_utf8<Char>("This string exceeds 4 chars and forces heap allocation");
         original.append(large_string);
 
         // Verify heap allocation occurred
@@ -186,15 +186,15 @@ const suite<SLIMLOG_CHAR_TYPES> BufferTests("buffer", type_only, [](auto& _) {
         expect(buffer[0], equal_to(Char{'A'}));
 
         // Append string
-        buffer.append(make_string<Char>("BCD"));
+        buffer.append(from_utf8<Char>("BCD"));
         expect(buffer.size(), equal_to(4U));
-        expect(StringView(buffer.data(), buffer.size()), equal_to(make_string<Char>("ABCD")));
+        expect(StringView(buffer.data(), buffer.size()), equal_to(from_utf8<Char>("ABCD")));
     });
 
     // Test clear operation
     _.test("clear", []() {
         BufferType buffer;
-        const auto test_string = make_string<Char>("Hello, World!");
+        const auto test_string = from_utf8<Char>("Hello, World!");
         buffer.append(test_string);
 
         expect(buffer.size(), greater(0U));
@@ -214,7 +214,7 @@ const suite<SLIMLOG_CHAR_TYPES> BufferTests("buffer", type_only, [](auto& _) {
 
         // Should not reallocate when appending within reserved capacity
         const auto* original_data = buffer.data();
-        const auto test_string = make_string<Char>("Test");
+        const auto test_string = from_utf8<Char>("Test");
         buffer.append(test_string);
         expect(buffer.data(), equal_to(original_data));
     });
@@ -230,18 +230,18 @@ const suite<SLIMLOG_CHAR_TYPES> BufferTests("buffer", type_only, [](auto& _) {
 
         // Fill with known value
         std::fill(buffer.begin(), buffer.end(), Char{'X'});
-        expect(StringView(buffer.data(), buffer.size()), equal_to(make_string<Char>("XXXXXXXXXX")));
+        expect(StringView(buffer.data(), buffer.size()), equal_to(from_utf8<Char>("XXXXXXXXXX")));
 
         // Resize to smaller size
         buffer.resize(5);
         expect(buffer.size(), equal_to(5U));
-        expect(StringView(buffer.data(), buffer.size()), equal_to(make_string<Char>("XXXXX")));
+        expect(StringView(buffer.data(), buffer.size()), equal_to(from_utf8<Char>("XXXXX")));
     });
 
     // Test iterator operations
     _.test("iterators", []() {
         BufferType buffer;
-        const auto test_string = make_string<Char>("Hello");
+        const auto test_string = from_utf8<Char>("Hello");
         buffer.append(test_string);
 
         // Test iterators
@@ -267,8 +267,8 @@ const suite<SLIMLOG_CHAR_TYPES> BufferTests("buffer", type_only, [](auto& _) {
         const auto* original_data = buffer.data();
 
         // Fill beyond initial capacity to force reallocation
-        const auto long_string = make_string<Char>(
-            "This is a very long string that should exceed the initial capacity");
+        const auto long_string
+            = from_utf8<Char>("This is a very long string that should exceed the initial capacity");
         buffer.append(long_string);
 
         // Data pointer should change after reallocation

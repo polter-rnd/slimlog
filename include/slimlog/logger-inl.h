@@ -11,6 +11,7 @@
 #include "slimlog/logger.h" // IWYU pragma: associated
 
 #include <algorithm>
+#include <exception>
 #include <iterator>
 
 namespace SlimLog {
@@ -95,12 +96,16 @@ template<
     typename Allocator>
 Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::~Logger()
 {
-    const typename ThreadingPolicy::WriteLock lock(m_mutex);
-    for (auto* child : m_children) {
-        child->set_parent(m_parent);
-    }
-    if (m_parent) {
-        m_parent->remove_child(this);
+    try {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        for (auto* child : m_children) {
+            child->set_parent(m_parent);
+        }
+        if (m_parent) {
+            m_parent->remove_child(this);
+        }
+    } catch (...) {
+        std::terminate();
     }
 }
 
