@@ -1,6 +1,8 @@
 // SlimLog
 #include "slimlog/util/buffer.h"
 
+#include "slimlog/util/unicode.h"
+
 // Test helpers
 #include "helpers/common.h"
 
@@ -8,12 +10,10 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <functional>
 #include <iterator>
 #include <new>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #ifdef SLIMLOG_FMTLIB
 #if __has_include(<fmt/base.h>)
@@ -25,6 +25,8 @@
 // IWYU pragma: no_include <fmt/base.h>
 // IWYU pragma: no_include <fmt/core.h>
 #endif
+
+// IWYU pragma: no_include <vector>
 
 namespace {
 

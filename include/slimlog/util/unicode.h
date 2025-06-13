@@ -324,15 +324,13 @@ auto from_utf8(std::string_view str) -> std::basic_string<Char>
         // - UTF-32 (4 bytes): same as codepoints (one-to-one mapping)
         const auto dest_size = sizeof(Char) == 1
             ? str.size()
-            : SlimLog::Util::Unicode::count_codepoints(str.data(), str.size())
-                * (sizeof(Char) == 2 ? 2 : 1);
+            : count_codepoints(str.data(), str.size()) * (sizeof(Char) == 2 ? 2 : 1);
         if (dest_size == 0) {
             return {};
         }
 
         std::basic_string<Char> buffer(dest_size, Char{});
-        const auto written = SlimLog::Util::Unicode::from_utf8(
-            buffer.data(), buffer.size(), str.data(), str.size());
+        const auto written = from_utf8(buffer.data(), buffer.size(), str.data(), str.size());
         buffer.resize(written);
         return buffer;
     }
