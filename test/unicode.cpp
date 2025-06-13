@@ -21,19 +21,19 @@ using namespace SlimLog::Util::Unicode;
 constexpr auto test_constexpr_code_point_length() -> bool
 {
     // Test with ASCII characters
-    constexpr char ascii[] = "Hello";
-    static_assert(code_point_length(ascii) == 1);
-    static_assert(code_point_length(ascii + 1) == 1);
+    constexpr char Ascii[] = "Hello";
+    static_assert(code_point_length(Ascii) == 1);
+    static_assert(code_point_length(Ascii + 1) == 1);
 
     // Test with wide characters
-    constexpr wchar_t wide[] = L"Hello";
-    static_assert(code_point_length(wide) == 1);
+    constexpr wchar_t Wide[] = L"Hello";
+    static_assert(code_point_length(Wide) == 1);
 
-    constexpr char16_t utf16[] = u"Hello";
-    static_assert(code_point_length(utf16) == 1);
+    constexpr char16_t Utf16[] = u"Hello";
+    static_assert(code_point_length(Utf16) == 1);
 
-    constexpr char32_t utf32[] = U"Hello";
-    static_assert(code_point_length(utf32) == 1);
+    constexpr char32_t Utf32[] = U"Hello";
+    static_assert(code_point_length(Utf32) == 1);
 
     return true;
 }
@@ -41,18 +41,18 @@ constexpr auto test_constexpr_code_point_length() -> bool
 constexpr auto test_constexpr_count_codepoints() -> bool
 {
     // Test with ASCII
-    constexpr char ascii[] = "Hello";
-    static_assert(count_codepoints(ascii, 5) == 5);
+    constexpr char Ascii[] = "Hello";
+    static_assert(count_codepoints(Ascii, 5) == 5);
 
     // Test with wide characters
-    constexpr wchar_t wide[] = L"Hello";
-    static_assert(count_codepoints(wide, 5) == 5);
+    constexpr wchar_t Wide[] = L"Hello";
+    static_assert(count_codepoints(Wide, 5) == 5);
 
-    constexpr char16_t utf16[] = u"Hello";
-    static_assert(count_codepoints(utf16, 5) == 5);
+    constexpr char16_t Utf16[] = u"Hello";
+    static_assert(count_codepoints(Utf16, 5) == 5);
 
-    constexpr char32_t utf32[] = U"Hello";
-    static_assert(count_codepoints(utf32, 5) == 5);
+    constexpr char32_t Utf32[] = U"Hello";
+    static_assert(count_codepoints(Utf32, 5) == 5);
 
     return true;
 }

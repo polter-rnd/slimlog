@@ -261,6 +261,7 @@ public:
                 using RecordStringViewType = typename RecordType::StringViewType;
                 if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
                     // Callable with buffer argument: message will be stored in buffer.
+                    // NOLINTNEXTLINE(*-use-after-move,*-invalid-access-moved)
                     callback(buffer, std::forward<Args>(args)...);
                     record.message = RecordStringViewType{buffer.data(), buffer.size()};
                 } else if constexpr (std::is_invocable_v<T, Args...>) {
