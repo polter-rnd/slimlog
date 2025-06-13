@@ -68,7 +68,7 @@ public:
             || (sizeof(Char) == 4 && std::is_same_v<Char, wchar_t>)) {
             return decode_utf32();
         }
-        return make_string<Char>(std::string{StreamIterator(m_file), StreamIterator()});
+        return from_utf8<Char>(std::string{StreamIterator(m_file), StreamIterator()});
     }
 
     void remove_file()

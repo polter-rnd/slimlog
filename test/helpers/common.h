@@ -42,46 +42,7 @@
 #endif
 #define SLIMLOG_CHAR_TYPES char, wchar_t TEST_CHAR8_T TEST_CHAR16_T TEST_CHAR32_T
 
-/**
- * @brief Creates a basic string with the specified character type from a string literal
- *
- * This helper properly handles UTF-8 input including multi-byte sequences like emojis,
- * and converts them correctly to the requested character type.
- *
- * @tparam Char The character type for the output string
- * @param str The string literal to convert (UTF-8 encoded)
- * @return A basic_string with the requested character type
- */
-template<typename Char>
-inline auto make_string(std::string_view str) -> std::basic_string<Char>
-{
-    if (str.empty()) {
-        return {};
-    }
-
-    if constexpr (std::is_same_v<Char, char>) {
-        // For char, just copy the UTF-8 bytes directly
-        return std::string(str);
-    } else {
-        // Calculate destination buffer size based on target character encoding:
-        // - UTF-8 (1 byte): same size as source (byte-for-byte copy)
-        // - UTF-16 (2 bytes): double codepoints (potential surrogate pairs)
-        // - UTF-32 (4 bytes): same as codepoints (one-to-one mapping)
-        const auto dest_size = sizeof(Char) == 1
-            ? str.size()
-            : SlimLog::Util::Unicode::count_codepoints(str.data(), str.size())
-                * (sizeof(Char) == 2 ? 2 : 1);
-        if (dest_size == 0) {
-            return {};
-        }
-
-        std::basic_string<Char> buffer(dest_size, Char{});
-        const auto written = SlimLog::Util::Unicode::from_utf8(
-            buffer.data(), buffer.size(), str.data(), str.size());
-        buffer.resize(written);
-        return buffer;
-    }
-}
+using SlimLog::Util::Unicode::from_utf8;
 
 /**
  * @brief Returns a collection of test strings with various Unicode characters
@@ -97,11 +58,11 @@ template<typename Char>
 auto unicode_strings() -> std::vector<std::basic_string<Char>>
 {
     return {
-        make_string<Char>("Simple ASCII message"),
-        make_string<Char>("Привет, мир!"),
-        make_string<Char>("你好，世界!"),
-        make_string<Char>("Some emojis: 😀, 😁, 😂, 🤣, 😃, 😄, 😅, 😆"),
-        make_string<Char>("Mathematical symbols: 𝕄𝕒𝕥𝕙 𝔽𝕦𝕟𝕔𝕥𝕚𝕠𝕟𝕤 𝕒𝕟𝕕 𝔾𝕣𝕒𝕡𝕙𝕤 ∮")};
+        from_utf8<Char>("Simple ASCII message"),
+        from_utf8<Char>("Привет, мир!"),
+        from_utf8<Char>("你好，世界!"),
+        from_utf8<Char>("Some emojis: 😀, 😁, 😂, 🤣, 😃, 😄, 😅, 😆"),
+        from_utf8<Char>("Mathematical symbols: 𝕄𝕒𝕥𝕙 𝔽𝕦𝕟𝕔𝕥𝕚𝕠𝕟𝕤 𝕒𝕟𝕕 𝔾𝕣𝕒𝕡𝕙𝕤 ∮")};
 };
 
 /**
@@ -141,16 +102,16 @@ static auto pattern_format(std::basic_string_view<Char> pattern, const PatternFi
     constexpr std::size_t UsecInNsec = 1000;
 
     fmt::dynamic_format_arg_store<FormatContext> args;
-    args.push_back(fmt::arg(make_string<Char>("category").c_str(), fields.category));
-    args.push_back(fmt::arg(make_string<Char>("level").c_str(), fields.level));
-    args.push_back(fmt::arg(make_string<Char>("thread").c_str(), fields.thread_id));
-    args.push_back(fmt::arg(make_string<Char>("file").c_str(), fields.file));
-    args.push_back(fmt::arg(make_string<Char>("line").c_str(), fields.line));
-    args.push_back(fmt::arg(make_string<Char>("message").c_str(), fields.message));
-    args.push_back(fmt::arg(make_string<Char>("time").c_str(), fields.time));
-    args.push_back(fmt::arg(make_string<Char>("msec").c_str(), fields.nsec / MsecInNsec));
-    args.push_back(fmt::arg(make_string<Char>("usec").c_str(), fields.nsec / UsecInNsec));
-    args.push_back(fmt::arg(make_string<Char>("nsec").c_str(), fields.nsec));
+    args.push_back(fmt::arg(from_utf8<Char>("category").c_str(), fields.category));
+    args.push_back(fmt::arg(from_utf8<Char>("level").c_str(), fields.level));
+    args.push_back(fmt::arg(from_utf8<Char>("thread").c_str(), fields.thread_id));
+    args.push_back(fmt::arg(from_utf8<Char>("file").c_str(), fields.file));
+    args.push_back(fmt::arg(from_utf8<Char>("line").c_str(), fields.line));
+    args.push_back(fmt::arg(from_utf8<Char>("message").c_str(), fields.message));
+    args.push_back(fmt::arg(from_utf8<Char>("time").c_str(), fields.time));
+    args.push_back(fmt::arg(from_utf8<Char>("msec").c_str(), fields.nsec / MsecInNsec));
+    args.push_back(fmt::arg(from_utf8<Char>("usec").c_str(), fields.nsec / UsecInNsec));
+    args.push_back(fmt::arg(from_utf8<Char>("nsec").c_str(), fields.nsec));
 
     return fmt::vformat(
         fmt::basic_string_view<Char>{pattern}, fmt::basic_format_args<FormatContext>{args});

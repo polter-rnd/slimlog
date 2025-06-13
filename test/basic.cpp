@@ -59,10 +59,10 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     // Test logger categories
     _.test("categories", []() {
         StreamCapturer<Char> cap_out;
-        const auto pattern = make_string<Char>("[{category}] {message}");
+        const auto pattern = from_utf8<Char>("[{category}] {message}");
 
-        const auto default_category = make_string<Char>("default");
-        const auto custom_category = make_string<Char>("my_module");
+        const auto default_category = from_utf8<Char>("default");
+        const auto custom_category = from_utf8<Char>("my_module");
 
         Logger<String> default_log;
         Logger<String> custom_log{custom_category};
@@ -70,42 +70,42 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         default_log.template add_sink<OStreamSink>(cap_out, pattern);
         custom_log.template add_sink<OStreamSink>(cap_out, pattern);
 
-        const auto message = make_string<Char>("Test message");
+        const auto message = from_utf8<Char>("Test message");
 
         default_log.info(message);
-        expect(cap_out.read(), equal_to(make_string<Char>("[default] ") + message + Char{'\n'}));
+        expect(cap_out.read(), equal_to(from_utf8<Char>("[default] ") + message + Char{'\n'}));
 
         custom_log.info(message);
-        expect(cap_out.read(), equal_to(make_string<Char>("[my_module] ") + message + Char{'\n'}));
+        expect(cap_out.read(), equal_to(from_utf8<Char>("[my_module] ") + message + Char{'\n'}));
     });
 
     // Test convenience logging methods
     _.test("convenience_methods", []() {
         StreamCapturer<Char> cap_out;
-        const auto pattern = make_string<Char>("[{level}] {message}");
+        const auto pattern = from_utf8<Char>("[{level}] {message}");
 
         Logger<String> log(Level::Trace);
         log.template add_sink<OStreamSink>(cap_out, pattern);
 
-        const auto message = make_string<Char>("Test message");
+        const auto message = from_utf8<Char>("Test message");
 
         log.trace(message);
-        expect(cap_out.read(), equal_to(make_string<Char>("[TRACE] ") + message + Char{'\n'}));
+        expect(cap_out.read(), equal_to(from_utf8<Char>("[TRACE] ") + message + Char{'\n'}));
 
         log.debug(message);
-        expect(cap_out.read(), equal_to(make_string<Char>("[DEBUG] ") + message + Char{'\n'}));
+        expect(cap_out.read(), equal_to(from_utf8<Char>("[DEBUG] ") + message + Char{'\n'}));
 
         log.info(message);
-        expect(cap_out.read(), equal_to(make_string<Char>("[INFO] ") + message + Char{'\n'}));
+        expect(cap_out.read(), equal_to(from_utf8<Char>("[INFO] ") + message + Char{'\n'}));
 
         log.warning(message);
-        expect(cap_out.read(), equal_to(make_string<Char>("[WARN] ") + message + Char{'\n'}));
+        expect(cap_out.read(), equal_to(from_utf8<Char>("[WARN] ") + message + Char{'\n'}));
 
         log.error(message);
-        expect(cap_out.read(), equal_to(make_string<Char>("[ERROR] ") + message + Char{'\n'}));
+        expect(cap_out.read(), equal_to(from_utf8<Char>("[ERROR] ") + message + Char{'\n'}));
 
         log.fatal(message);
-        expect(cap_out.read(), equal_to(make_string<Char>("[FATAL] ") + message + Char{'\n'}));
+        expect(cap_out.read(), equal_to(from_utf8<Char>("[FATAL] ") + message + Char{'\n'}));
     });
 
     // Test multiple sinks
@@ -117,7 +117,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         auto sink1 = log.template add_sink<OStreamSink>(cap_out1);
         auto sink2 = log.template add_sink<OStreamSink>(cap_out2);
 
-        const auto message = make_string<Char>("Multi-sink message");
+        const auto message = from_utf8<Char>("Multi-sink message");
 
         log.info(message);
 
@@ -179,7 +179,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         std::for_each(levels.begin(), levels.end(), [&log, &levels, &cap_out](auto& log_level) {
             log.set_level(log_level);
 
-            const auto message = make_string<Char>("Hello, World!");
+            const auto message = from_utf8<Char>("Hello, World!");
             for (const auto msg_level : levels) {
                 log.message(msg_level, message);
                 if (msg_level > log_level) {
@@ -194,7 +194,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     _.test("null_sink", []() {
         Logger<String> log;
         auto null_sink = log.template add_sink<NullSink>();
-        log.info(make_string<Char>("Hello, World!"));
+        log.info(from_utf8<Char>("Hello, World!"));
         null_sink->flush();
         expect(log.remove_sink(null_sink), equal_to(true));
     });
@@ -229,18 +229,18 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     // Basic pattern test
     _.test("pattern", []() {
         FileCapturer<Char> cap_file("test_basics.log");
-        const auto pattern = make_string<Char>("({category}) [{level}] "
-                                               "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
-                                               "#{thread} {file}|{line}: {message}");
+        const auto pattern = from_utf8<Char>("({category}) [{level}] "
+                                             "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
+                                             "#{thread} {file}|{line}: {message}");
 
         Logger<String> log{time_mock};
         auto file_sink = log.template add_sink<FileSink>(cap_file.path().string(), pattern);
 
         PatternFields<Char> fields;
-        fields.category = make_string<Char>("default");
-        fields.level = make_string<Char>("INFO");
+        fields.category = from_utf8<Char>("default");
+        fields.level = from_utf8<Char>("INFO");
         fields.thread_id = Util::OS::thread_id();
-        fields.file = make_string<Char>(std::source_location::current().file_name());
+        fields.file = from_utf8<Char>(std::source_location::current().file_name());
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
 
@@ -257,14 +257,14 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     _.test("simple_time_pattern", []() {
         StreamCapturer<Char> cap_out;
 
-        const auto pattern = make_string<Char>("[{level}] {time} - {message}");
-        const auto message = make_string<Char>("Warning message");
+        const auto pattern = from_utf8<Char>("[{level}] {time} - {message}");
+        const auto message = from_utf8<Char>("Warning message");
 
         Logger<String> log{time_mock};
         log.template add_sink<OStreamSink>(cap_out, pattern);
 
         PatternFields<Char> fields;
-        fields.level = make_string<Char>("WARN");
+        fields.level = from_utf8<Char>("WARN");
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
 
