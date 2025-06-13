@@ -21,14 +21,18 @@
 #else
 #include <format>
 #include <version> // IWYU pragma: keep
-#if __cpp_lib_format < 202207L
+#if defined(_MSC_VER) and _MSC_VER < 1935
 #include <string>
 #endif
 #endif
 
+#if !defined(FMT_VERSION) or FMT_VERSION < 110000
+// Needed only for std::back_inserter
+#include <iterator>
+#endif
+
 #include <concepts>
 #include <cstring>
-#include <iterator>
 #include <memory>
 #include <optional>
 #include <string_view>
@@ -38,9 +42,26 @@
 namespace SlimLog {
 
 #ifdef SLIMLOG_FMTLIB
+#if FMT_VERSION < 110100
 /** @brief Alias for \a fmt::basic_format_string. */
 template<typename T, typename... Args>
 using FormatString = fmt::basic_format_string<T, Args...>;
+#else
+/** @cond */
+template<typename Char, typename... Args>
+struct FormatStringImpl {
+    using Type = fmt::basic_format_string<Char, Args...>;
+};
+
+template<typename... Args>
+struct FormatStringImpl<char, Args...> {
+    using Type = fmt::fstring<Args...>;
+};
+/** @endcond */
+/** @brief Alias for \a fmt::fstring or \a fmt::basic_format_string. */
+template<typename Char, typename... Args>
+using FormatString = typename FormatStringImpl<Char, Args...>::Type;
+#endif
 /** @brief Alias for \a fmt::format_error. */
 using FormatError = fmt::format_error;
 /** @brief Alias for \a fmt::formatter. */
@@ -52,10 +73,11 @@ using FormatParseContext = fmt::basic_format_parse_context<Char>;
 #else
 /** @brief Alias for std::basic_format_string. */
 template<typename T, typename... Args>
-#if __cpp_lib_format < 202207L
+#if defined(_MSC_VER) and _MSC_VER < 1935
+// std::basic_format_string is not exposed in MSVC before 17.5
 using FormatString = std::basic_string<T>;
 #else
-using FormatString = std::basic_format_string<T>;
+using FormatString = std::basic_format_string<T, Args...>;
 #endif
 /** @brief Alias for \a std::format_error. */
 using FormatError = std::format_error;
@@ -204,14 +226,24 @@ public:
         if constexpr (std::is_same_v<Char, char>) {
             fmt::format_to(fmt::appender(*this), std::move(fmt), std::forward<Args>(args)...);
         } else {
+#if FMT_VERSION < 110000
             fmt::format_to(
                 std::back_inserter(*this),
-#if FMT_VERSION < 110000
                 static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
-#else
-                std::move(fmt),
-#endif
                 std::forward<Args>(args)...);
+#else
+            if constexpr (std::is_same_v<Char, wchar_t>) {
+                fmt::format_to(
+                    fmt::basic_appender<wchar_t>(*this),
+                    std::move(fmt),
+                    std::forward<Args>(args)...);
+            } else {
+                fmt::format_to(
+                    fmt::basic_appender<Char>(*this),
+                    static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                    std::forward<Args>(args)...);
+            }
+#endif
         }
 #else
         std::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);
@@ -233,7 +265,22 @@ public:
         if constexpr (std::is_same_v<Char, char>) {
             fmt::vformat_to(fmt::appender(*this), std::move(fmt), std::forward<Args>(args));
         } else {
-            fmt::vformat_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args));
+#if FMT_VERSION < 110000
+            fmt::vformat_to(
+                std::back_inserter(*this),
+                static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                std::forward<Args>(args));
+#else
+            if constexpr (std::is_same_v<Char, wchar_t>) {
+                fmt::vformat_to(
+                    fmt::basic_appender<wchar_t>(*this), std::move(fmt), std::forward<Args>(args));
+            } else {
+                fmt::vformat_to(
+                    fmt::basic_appender<Char>(*this),
+                    static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                    std::forward<Args>(args));
+            }
+#endif
         }
 #else
         std::vformat_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args));
