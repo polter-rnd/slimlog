@@ -131,7 +131,7 @@ inline constexpr auto utf8_decode(
     const std::size_t index
         = 256U + (static_cast<std::size_t>(state) * 16U) + static_cast<std::size_t>(type);
     if (!std::is_constant_evaluated()) {
-        assert(index < sizeof(utf8_dfa));
+        assert(index < 400);
     }
     state = utf8_dfa[index];
     // NOLINTEND(cppcoreguidelines-pro-bounds-constant-array-index,*-magic-numbers)
