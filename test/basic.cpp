@@ -1,4 +1,5 @@
 // SlimLog
+#include "slimlog/format.h"
 #include "slimlog/logger.h"
 #include "slimlog/sinks/file_sink.h"
 #include "slimlog/sinks/null_sink.h"
@@ -14,12 +15,21 @@
 #include <mettle.hpp>
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <initializer_list>
 #include <source_location>
 #include <string>
 #include <system_error>
+#include <type_traits>
+
+#ifdef SLIMLOG_FMTLIB
+#include <fmt/format.h>
+#include <fmt/xchar.h> // IWYU pragma: keep
+#else
+#include <format>
+#endif
 
 // IWYU pragma: no_include <utility>
 // IWYU pragma: no_include <fstream>
@@ -273,6 +283,52 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         for (const auto& message : unicode_strings<Char>()) {
             log.warning(message);
             fields.message = message;
+            expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+        }
+    });
+
+    // Test formatted message with multiple types
+    _.test("format", []() {
+        StreamCapturer<Char> cap_out;
+
+        const auto pattern = from_utf8<Char>("[{level}] {time} - {message}");
+
+        Logger<String> log{time_mock};
+        log.template add_sink<OStreamSink>(cap_out, pattern);
+
+        PatternFields<Char> fields;
+        fields.level = from_utf8<Char>("INFO");
+        fields.time = time_mock().first;
+        fields.nsec = time_mock().second;
+
+        static constexpr std::array<Char, 57> FmtMessage{
+            'M', 'e', 's', 's', 'a', 'g', 'e', ' ', 'f', 'r', 'o', 'm', ' ', '{', '}',
+            ':', ' ', '{', ':', '_', '>', '5', '0', '}', ' ', 'T', 'h', 'e', ' ', 'a',
+            'n', 's', 'w', 'e', 'r', ' ', 'i', 's', ' ', '{', ':', '#', 'x', '}', ',',
+            ' ', '1', '0', '/', '3', '=', '{', ':', '.', '3', '}', '\0'};
+        for (const auto& message : unicode_strings<Char>()) {
+            static auto date = std::chrono::sys_days(std::chrono::year{2050} / 6 / 15);
+            static auto int_num = 66;
+            static auto dbl_num = 10.0 / 3;
+
+            log.info(
+                FormatString<
+                    Char,
+                    std::add_lvalue_reference_t<decltype(date)>,
+                    std::add_lvalue_reference_t<decltype(message)>,
+                    std::add_lvalue_reference_t<decltype(int_num)>,
+                    std::add_lvalue_reference_t<decltype(dbl_num)>>(FmtMessage.data()),
+                date,
+                message,
+                int_num,
+                dbl_num);
+            fields.message =
+#ifdef SLIMLOG_FMTLIB
+                fmt::format(FmtMessage.data(), date, message, int_num, dbl_num);
+#else
+                std::format(FmtMessage.data(), date, message, int_num, dbl_num);
+#endif
+            // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
             expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
         }
     });
