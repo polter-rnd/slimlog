@@ -67,7 +67,7 @@ void CachedFormatter<T, Char>::format(Out& out, T value) const
         m_buffer.clear();
 #ifdef SLIMLOG_FMTLIB
         // Shortcut for numeric types without formatting
-        if constexpr (std::is_arithmetic_v<T>) {
+        if constexpr (std::is_arithmetic_v<T> && std::is_integral_v<T>) {
             if (m_empty) [[likely]] {
                 m_buffer.append(fmt::format_int(*m_value));
                 out.append(m_buffer);
