@@ -64,6 +64,7 @@ add_library(slimlog-header-only INTERFACE)
 add_library(slimlog::slimlog-header-only ALIAS slimlog-header-only)
 
 target_compile_features(slimlog-header-only INTERFACE cxx_std_20)
+target_compile_options(slimlog-header-only INTERFACE $<$<CXX_COMPILER_ID:MSVC>:/utf-8>)
 target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_HEADER_ONLY)
 
 target_include_directories(
