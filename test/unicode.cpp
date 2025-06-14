@@ -86,17 +86,17 @@ const suite<> Unicode("unicode", [](auto& _) {
         expect(code_point_length(ascii + 1), equal_to(1));
 
         // UTF-8 2-byte characters (Cyrillic)
-        const char cyrillic[] = u8"Привет";
+        const char cyrillic[] = u8"\u041F\u0440\u0438\u0432\u0435\u0442"; // "Привет"
         expect(code_point_length(cyrillic), equal_to(2)); // П
         expect(code_point_length(cyrillic + 2), equal_to(2)); // р
 
         // UTF-8 3-byte characters (Chinese)
-        const char chinese[] = u8"你好";
+        const char chinese[] = u8"\u4F60\u597D"; // "你好"
         expect(code_point_length(chinese), equal_to(3)); // 你
         expect(code_point_length(chinese + 3), equal_to(3)); // 好
 
         // UTF-8 4-byte characters (emojis)
-        const char emoji[] = u8"😀😁";
+        const char emoji[] = u8"\U0001F600\U0001F601"; // "😀😁"
         expect(code_point_length(emoji), equal_to(4)); // 😀
         expect(code_point_length(emoji + 4), equal_to(4)); // 😁
 
@@ -154,17 +154,17 @@ const suite<> Unicode("unicode", [](auto& _) {
         expect(count_codepoints(ascii, 5), equal_to(5U));
 
         // Mixed UTF-8 string: "Hello, 世界!"
-        const char mixed[] = u8"Hello, 世界!";
+        const char mixed[] = u8"Hello, \u4E16\u754C!";
         expect(
             count_codepoints(mixed, sizeof(mixed) - 1),
             equal_to(10U)); // 7 ASCII + 2 Chinese + 1 ASCII
 
         // Pure Cyrillic: "Привет"
-        const char cyrillic[] = u8"Привет";
+        const char cyrillic[] = u8"\u041F\u0440\u0438\u0432\u0435\u0442";
         expect(count_codepoints(cyrillic, sizeof(cyrillic) - 1), equal_to(6U));
 
         // Emojis: "😀😁😂"
-        const char emojis[] = u8"😀😁😂";
+        const char emojis[] = u8"\U0001F600\U0001F601\U0001F602";
         expect(count_codepoints(emojis, sizeof(emojis) - 1), equal_to(3U));
 
         // Empty string
@@ -215,12 +215,12 @@ const suite<> Unicode("unicode", [](auto& _) {
             // Unicode character
             written = write_codepoint(buffer.data(), buffer.size(), 0x4F60); // '你'
             expect(written, equal_to(1U));
-            expect(buffer[0], equal_to(U'你'));
+            expect(buffer[0], equal_to(U'\u4F60'));
 
             // Emoji
             written = write_codepoint(buffer.data(), buffer.size(), 0x1F600); // '😀'
             expect(written, equal_to(1U));
-            expect(buffer[0], equal_to(U'😀'));
+            expect(buffer[0], equal_to(U'\U0001F600'));
         }
 
         // Test with char16_t (surrogate pairs for high codepoints)
@@ -230,7 +230,7 @@ const suite<> Unicode("unicode", [](auto& _) {
             // BMP character (no surrogate needed)
             auto written = write_codepoint(buffer.data(), buffer.size(), 0x4F60); // '你'
             expect(written, equal_to(1U));
-            expect(buffer[0], equal_to(u'你'));
+            expect(buffer[0], equal_to(u'\u4F60'));
 
             // Supplementary plane character (needs surrogate pair)
             written = write_codepoint(buffer.data(), buffer.size(), 0x1F600); // '😀'
@@ -260,7 +260,7 @@ const suite<> Unicode("unicode", [](auto& _) {
     _.test("from_utf8", []() {
         // Test conversion to char (should be direct copy)
         {
-            const char source[] = u8"Hello, 世界!";
+            const char source[] = u8"Hello, \u4E16\u754C!"; // "Hello, 世界!"
             std::array<char, 20> dest{};
 
             auto written = from_utf8(dest.data(), dest.size(), source, sizeof(source) - 1);
@@ -270,19 +270,19 @@ const suite<> Unicode("unicode", [](auto& _) {
 
         // Test conversion to char32_t
         {
-            const char source[] = u8"A你😀";
+            const char source[] = u8"A\u4F60\U0001F600"; // "A你😀"
             std::array<char32_t, 10> dest{};
 
             auto written = from_utf8(dest.data(), dest.size(), source, sizeof(source) - 1);
             expect(written, equal_to(3U)); // 3 codepoints
             expect(dest[0], equal_to(U'A'));
-            expect(dest[1], equal_to(U'你'));
-            expect(dest[2], equal_to(U'😀'));
+            expect(dest[1], equal_to(U'\u4F60'));
+            expect(dest[2], equal_to(U'\U0001F600'));
         }
 
         // Test conversion to char16_t (with surrogate pairs)
         {
-            const char source[] = u8"A😀";
+            const char source[] = u8"A\U0001F600"; // "A😀"
             std::array<char16_t, 10> dest{};
 
             auto written = from_utf8(dest.data(), dest.size(), source, sizeof(source) - 1);
