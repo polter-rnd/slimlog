@@ -11,6 +11,7 @@
 #include <string>
 
 // IWYU pragma: no_include <utility>
+// clazy:excludeall=non-pod-global-static
 
 namespace {
 
