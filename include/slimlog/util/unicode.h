@@ -234,12 +234,12 @@ auto write_codepoint(Char* dest, std::size_t dest_size, std::uint32_t codepoint)
             return 2;
         }
         // NOLINTEND(*-magic-numbers)
+        return 0;
     } else {
         // For char32_t and 4-byte wchar_t, direct codepoint conversion
         *dest = static_cast<Char>(codepoint);
         return 1;
     }
-    return 0;
 }
 
 /**
