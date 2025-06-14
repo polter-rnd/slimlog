@@ -230,9 +230,9 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     // Basic pattern test
     _.test("pattern", []() {
         FileCapturer<Char> cap_file("test_basics.log");
-        const auto pattern = from_utf8<Char>("({category}) [{level}] "
+        const auto pattern = from_utf8<Char>("({category}) [{level:>10}] "
                                              "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
-                                             "#{thread} {file}|{line}: {message}");
+                                             "#{thread} {function} {file}|{line}: {message}");
 
         Logger<String> log{time_mock};
         auto file_sink = log.template add_sink<FileSink>(cap_file.path().string(), pattern);
@@ -241,6 +241,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         fields.category = from_utf8<Char>("default");
         fields.level = from_utf8<Char>("INFO");
         fields.thread_id = Util::OS::thread_id();
+        fields.function = from_utf8<Char>(std::source_location::current().function_name());
         fields.file = from_utf8<Char>(std::source_location::current().file_name());
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
