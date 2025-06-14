@@ -72,6 +72,7 @@ template<typename Char>
 struct PatternFields {
     std::basic_string<Char> category{};
     std::basic_string<Char> level{};
+    std::basic_string<Char> function{};
     std::basic_string<Char> file{};
     std::basic_string<Char> message{};
     std::chrono::sys_seconds time;
@@ -104,6 +105,7 @@ static auto pattern_format(std::basic_string_view<Char> pattern, const PatternFi
     args.push_back(fmt::arg(from_utf8<Char>("category").c_str(), fields.category));
     args.push_back(fmt::arg(from_utf8<Char>("level").c_str(), fields.level));
     args.push_back(fmt::arg(from_utf8<Char>("thread").c_str(), fields.thread_id));
+    args.push_back(fmt::arg(from_utf8<Char>("function").c_str(), fields.function));
     args.push_back(fmt::arg(from_utf8<Char>("file").c_str(), fields.file));
     args.push_back(fmt::arg(from_utf8<Char>("line").c_str(), fields.line));
     args.push_back(fmt::arg(from_utf8<Char>("message").c_str(), fields.message));
