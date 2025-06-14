@@ -35,7 +35,7 @@
 // IWYU pragma: no_include <fstream>
 // IWYU pragma: no_include <memory>
 // IWYU pragma: no_include <vector>
-// clazy:excludeall=clazy-non-pod-global-static
+// clazy:excludeall=non-pod-global-static
 
 namespace {
 
