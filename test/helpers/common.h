@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "slimlog/util/unicode.h"
 
@@ -16,6 +16,7 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 /*
