@@ -21,9 +21,6 @@
 #else
 #include <format>
 #include <version> // IWYU pragma: keep
-#if defined(_MSC_VER) and _MSC_VER < 1935
-#include <string>
-#endif
 #endif
 
 #if !defined(FMT_VERSION) or FMT_VERSION < 110000
@@ -74,8 +71,8 @@ using FormatParseContext = fmt::basic_format_parse_context<Char>;
 /** @brief Alias for std::basic_format_string. */
 template<typename T, typename... Args>
 #if defined(_MSC_VER) and _MSC_VER < 1935
-// std::basic_format_string is not exposed in MSVC before 17.5
-using FormatString = std::basic_string<T>;
+// Hack: std::basic_format_string is not exposed in MSVC before 17.5
+using FormatString = std::_Basic_format_string<T, Args...>;
 #else
 using FormatString = std::basic_format_string<T, Args...>;
 #endif
