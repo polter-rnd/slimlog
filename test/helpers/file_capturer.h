@@ -18,7 +18,7 @@ class FileCapturer {
 public:
     enum class BOM : std::uint8_t { None, UTF8, UTF16LE, UTF16BE, UTF32LE, UTF32BE };
 
-    explicit FileCapturer(const std::filesystem::path& path, bool truncate_file = true)
+    explicit FileCapturer(const std::filesystem::path& path, bool truncate_file = false)
         : m_path(path)
     {
         if (truncate_file) {
@@ -29,14 +29,11 @@ public:
             }
         }
 
-        // Open the file in binary mode for all character types
-        m_file.open(path);
-        if (!m_file.is_open()) {
-            throw std::runtime_error("Error opening file " + path.string());
+        m_file.open(m_path);
+        if (m_file.is_open()) {
+            parse_bom();
+            m_file.seekg(0, std::ios_base::end);
         }
-
-        // Read the BOM if present
-        parse_bom();
     }
 
     [[nodiscard]] auto path() const -> std::filesystem::path
@@ -51,8 +48,16 @@ public:
 
     auto read() -> std::basic_string<Char>
     {
-        // Make sure we get the latest file contents
-        m_file.sync();
+        // Open the file in binary mode for all character types
+        if (!m_file.is_open()) {
+            m_file.open(m_path);
+            if (!m_file.is_open()) {
+                throw std::runtime_error("Error opening file " + m_path.string());
+            }
+        } else {
+            // Make sure we get the latest file contents
+            m_file.sync();
+        }
 
         // Read the BOM if not already done
         parse_bom();

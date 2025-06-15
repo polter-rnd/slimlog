@@ -18,6 +18,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <filesystem>
 #include <initializer_list>
 #include <source_location>
 #include <string>
@@ -54,6 +55,9 @@ auto time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
 const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
     using String = std::basic_string<Char>;
+
+    static auto log_filename = get_log_filename<Char>("basic");
+    std::filesystem::remove(log_filename);
 
     // Test empty message
     _.test("empty_message", []() {
@@ -227,7 +231,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         // Check that invalid path throws an error
         expect([&log]() { log.template add_sink<FileSink>(""); }, thrown<std::system_error>());
         // Check that valid path works
-        FileCapturer<Char> cap_file("test_basics.log");
+        FileCapturer<Char> cap_file(log_filename);
 
         auto file_sink = log.template add_sink<FileSink>(cap_file.path().string());
         for (const auto& message : unicode_strings<Char>()) {
@@ -239,7 +243,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
     // Basic pattern test
     _.test("pattern", []() {
-        FileCapturer<Char> cap_file("test_basics.log");
+        FileCapturer<Char> cap_file(log_filename);
         const auto pattern = from_utf8<Char>("({category}) [{level:>10}] "
                                              "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
                                              "#{thread} {function} {file}|{line}: {message}");
@@ -290,11 +294,13 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     // Test formatted message with multiple types
     _.test("format", []() {
         StreamCapturer<Char> cap_out;
+        const FileCapturer<Char> cap_file(log_filename);
 
         const auto pattern = from_utf8<Char>("[{level}] {time} - {message}");
 
         Logger<String> log{time_mock};
         log.template add_sink<OStreamSink>(cap_out, pattern);
+        log.template add_sink<FileSink>(cap_file.path().string(), pattern);
 
         PatternFields<Char> fields;
         fields.level = from_utf8<Char>("INFO");
