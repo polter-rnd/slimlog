@@ -44,6 +44,32 @@
 using SlimLog::Util::Unicode::from_utf8;
 
 /**
+ * @brief Returns a log filename based on the test name and character type
+ * @param test_name The name of the test
+ * @tparam Char The character type for the log filename
+ * @return A string representing the log filename
+ */
+template<typename Char>
+constexpr auto get_log_filename(std::string_view test_name) -> std::string
+{
+    auto log_filename = "test_" + std::string(test_name);
+    if constexpr (std::is_same_v<Char, char>) {
+        log_filename += ".char.log";
+    } else if constexpr (std::is_same_v<Char, char8_t>) {
+        log_filename += ".char8_t.log";
+    } else if constexpr (std::is_same_v<Char, char16_t>) {
+        log_filename += ".char16_t.log";
+    } else if constexpr (std::is_same_v<Char, char32_t>) {
+        log_filename += ".char32_t.log";
+    } else if constexpr (std::is_same_v<Char, wchar_t>) {
+        log_filename += ".wchar_t.log";
+    } else {
+        log_filename += ".unknown.log";
+    }
+    return log_filename;
+}
+
+/**
  * @brief Returns a collection of test strings with various Unicode characters
  *
  * This function provides a set of strings containing different types of Unicode content
