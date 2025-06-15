@@ -305,7 +305,8 @@ public:
     template<typename... Args>
     void message(Level level, Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const
     {
-        auto callback = [&fmt = fmt.fmt()](auto& buffer, Args&&... args) {
+        using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
+        auto callback = [&fmt = fmt.fmt()](FormatBufferType& buffer, Args&&... args) {
             buffer.format(fmt, std::forward<Args>(args)...);
         };
 
