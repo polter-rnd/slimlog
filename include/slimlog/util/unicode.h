@@ -7,12 +7,14 @@
 
 #include <algorithm>
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 
 namespace SlimLog::Util::Unicode {
 
@@ -249,14 +251,16 @@ auto write_codepoint(Char* dest, std::size_t dest_size, std::uint32_t codepoint)
  * No null terminator is added to the destination buffer.
  *
  * @tparam Char Character type of the destination buffer.
+ * @tparam T Character type of the source UTF-8 data (char or char8_t).
  * @param dest Pointer to destination buffer for the converted data.
  * @param dest_size Size of the destination buffer in characters.
  * @param source Pointer to UTF-8 data to be converted.
  * @param source_size Source data size in bytes.
  * @return Number of characters written (without null terminator).
  */
-template<typename Char>
-auto from_utf8(Char* dest, std::size_t dest_size, const char* source, std::size_t source_size)
+template<typename Char, typename T>
+    requires(std::same_as<T, char> || std::same_as<T, char8_t>)
+auto from_utf8(Char* dest, std::size_t dest_size, const T* source, std::size_t source_size)
     -> std::size_t
 {
     if (source == nullptr || dest == nullptr || source_size == 0 || dest_size == 0) {
@@ -275,7 +279,7 @@ auto from_utf8(Char* dest, std::size_t dest_size, const char* source, std::size_
         // Process UTF-8 bytes to extract codepoints
         std::uint8_t state = 0;
         std::uint32_t codepoint = 0;
-        for (const char* end = source + source_size; source != end; ++source) {
+        for (const T* end = source + source_size; source != end; ++source) {
             utf8_decode(state, codepoint, static_cast<std::uint8_t>(*source));
             if (state == 0) {
                 // If state is 0, we have a complete codepoint
@@ -298,25 +302,35 @@ auto from_utf8(Char* dest, std::size_t dest_size, const char* source, std::size_
 }
 
 /**
- * @brief Creates a basic string with the specified character type from a string literal
+ * @brief Creates a basic string with the specified character type from UTF-8 input
  *
  * This helper properly handles UTF-8 input including multi-byte sequences like emojis,
- * and converts them correctly to the requested character type.
+ * and converts them correctly to the requested character type. Accepts both string_view
+ * and u8string_view, with automatic conversion from string literals, pointers, and string objects.
  *
  * @tparam Char The character type for the output string
- * @param str The string literal to convert (UTF-8 encoded)
+ * @tparam T The source character type (char or char8_t)
+ * @param str The string view to convert (UTF-8 encoded)
  * @return A basic_string with the requested character type
  */
-template<typename Char>
-auto from_utf8(std::string_view str) -> std::basic_string<Char>
+template<typename Char, typename T>
+    requires(std::same_as<T, char> || std::same_as<T, char8_t>)
+auto from_utf8(std::basic_string_view<T> str) -> std::basic_string<Char>
 {
     if (str.empty()) {
         return {};
     }
 
     if constexpr (std::is_same_v<Char, char>) {
-        // For char, just copy the UTF-8 bytes directly
-        return std::string(str);
+        if constexpr (std::is_same_v<T, char8_t>) {
+            // If T is char8_t, we need to convert it to char
+            std::string buffer(str.size(), '\0');
+            std::copy(str.begin(), str.end(), buffer.begin());
+            return buffer;
+        } else {
+            // For char, just copy the UTF-8 bytes directly
+            return std::string(str);
+        }
     } else {
         // Calculate destination buffer size based on target character encoding:
         // - UTF-8 (1 byte): same size as source (byte-for-byte copy)
@@ -333,6 +347,17 @@ auto from_utf8(std::string_view str) -> std::basic_string<Char>
         const auto written = from_utf8(buffer.data(), buffer.size(), str.data(), str.size());
         buffer.resize(written);
         return buffer;
+    }
+}
+
+/** @overload */
+template<typename Char, typename T>
+auto from_utf8(T&& str) -> std::basic_string<Char>
+{
+    if constexpr (std::is_convertible_v<T, std::u8string_view>) {
+        return from_utf8<Char>(std::u8string_view(std::forward<T>(str)));
+    } else {
+        return from_utf8<Char>(std::string_view(std::forward<T>(str)));
     }
 }
 
