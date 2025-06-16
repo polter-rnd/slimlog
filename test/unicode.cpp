@@ -1,16 +1,13 @@
 // SlimLog
 #include "slimlog/util/unicode.h"
 
-#include "helpers/common.h"
-
 #include <mettle.hpp>
 
 #include <array>
 #include <cstdint>
-#include <functional>
 #include <string>
 
-// IWYU pragma: no_include <utility>
+// IWYU pragma: no_include <functional>
 // clazy:excludeall=non-pod-global-static
 
 namespace {

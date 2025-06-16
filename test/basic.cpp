@@ -5,7 +5,6 @@
 #include "slimlog/sinks/null_sink.h"
 #include "slimlog/sinks/ostream_sink.h"
 #include "slimlog/util/os.h"
-#include "slimlog/util/unicode.h"
 
 // Test helpers
 #include "helpers/common.h"
