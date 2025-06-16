@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 /*
@@ -42,13 +43,11 @@
 #endif
 #define SLIMLOG_CHAR_TYPES char, wchar_t TEST_CHAR8_T TEST_CHAR16_T TEST_CHAR32_T
 
-using SlimLog::Util::Unicode::from_utf8;
-
 /**
- * @brief Returns a log filename based on the test name and character type
- * @param test_name The name of the test
- * @tparam Char The character type for the log filename
- * @return A string representing the log filename
+ * @brief Returns a log filename based on the test name and character type.
+ * @param test_name The name of the test.
+ * @tparam Char The character type for the log filename.
+ * @return A string representing the log filename.
  */
 template<typename Char>
 constexpr auto get_log_filename(std::string_view test_name) -> std::string
@@ -71,14 +70,25 @@ constexpr auto get_log_filename(std::string_view test_name) -> std::string
 }
 
 /**
- * @brief Returns a collection of test strings with various Unicode characters
+ * @brief Creates a basic string with the specified character type from UTF-8 input.
+ *
+ * See @ref SlimLog::Util::Unicode::from_utf8 for details.
+ */
+template<typename Char, typename T>
+auto from_utf8(T&& str) -> std::basic_string<Char>
+{
+    return SlimLog::Util::Unicode::from_utf8<Char>(std::forward<T>(str));
+}
+
+/**
+ * @brief Returns a collection of test strings with various Unicode characters.
  *
  * This function provides a set of strings containing different types of Unicode content
  * for testing purposes, including ASCII text, Cyrillic, Chinese characters, emojis,
  * and mathematical symbols.
  *
- * @tparam Char The character type for the output strings
- * @return A vector of basic_string objects containing Unicode test data
+ * @tparam Char The character type for the output strings.
+ * @return A vector of basic_string objects containing Unicode test data.
  */
 template<typename Char>
 auto unicode_strings() -> std::vector<std::basic_string<Char>>
@@ -92,7 +102,7 @@ auto unicode_strings() -> std::vector<std::basic_string<Char>>
 };
 
 /**
- * @brief Structure for holding log message pattern fields
+ * @brief Structure for holding log message pattern fields.
  * @tparam Char The character type for the pattern fields.
  */
 template<typename Char>
@@ -109,10 +119,10 @@ struct PatternFields {
 };
 
 /**
- * Format a log message according to the pattern with the provided fields
- * @param pattern The format pattern to use
- * @param fields The field values to insert
- * @return Formatted log string
+ * Format a log message according to the pattern with the provided fields.
+ * @param pattern The format pattern to use.
+ * @param fields The field values to insert.
+ * @return Formatted log string.
  */
 template<typename Char>
 static auto pattern_format(std::basic_string_view<Char> pattern, const PatternFields<Char>& fields)

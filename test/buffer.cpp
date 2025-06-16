@@ -1,8 +1,6 @@
 // SlimLog
 #include "slimlog/util/buffer.h"
 
-#include "slimlog/util/unicode.h"
-
 // Test helpers
 #include "helpers/common.h"
 
