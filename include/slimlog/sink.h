@@ -12,6 +12,7 @@
 #include "slimlog/util/types.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <initializer_list>
 #include <memory>
 #include <string_view>
@@ -21,15 +22,13 @@
 
 namespace SlimLog {
 
-/**
- * @brief Default buffer size for raw log messages.
- */
-static constexpr auto DefaultBufferSize = 128U;
+enum : std::uint16_t {
+    /** @brief Default buffer size for raw log messages. */
+    DefaultBufferSize = 128U,
 
-/**
- * @brief Default per-sink buffer size for formatted log messages.
- */
-static constexpr auto DefaultSinkBufferSize = 256U;
+    /** @brief Default per-sink buffer size for formatted log messages. */
+    DefaultSinkBufferSize = 256U
+};
 
 /**
  * @brief Default threading policy for logger sinks.
