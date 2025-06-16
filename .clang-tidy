@@ -6,6 +6,7 @@ Checks: '*,
         -google-*,
         -llvm*,
         -zircon-*,
+        -misc-include-cleaner,
         -bugprone-easily-swappable-parameters,
         -cppcoreguidelines-pro-bounds-pointer-arithmetic,
 '
