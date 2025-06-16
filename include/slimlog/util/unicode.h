@@ -204,13 +204,13 @@ constexpr auto to_ascii(Char chr) -> char
  *   above the Basic Multilingual Plane (> 0xFFFF)
  * - For UTF-32 and other wchar_t implementations: Direct code point assignment
  *
- * @tparam Char The character type of the destination buffer (char16_t, char32_t, wchar_t)
- * @param dest Pointer to the destination buffer
- * @param dest_size Total size of the destination buffer in characters
- * @param codepoint Unicode code point to write (as a 32-bit unsigned integer)
+ * @tparam Char The character type of the destination buffer (char16_t, char32_t, wchar_t).
+ * @param dest Pointer to the destination buffer.
+ * @param dest_size Total size of the destination buffer in characters.
+ * @param codepoint Unicode code point to write (as a 32-bit unsigned integer).
  *
  * @return Number of characters written (1 for most code points, 2 for surrogate pairs,
- *         0 if there's not enough space in the buffer)
+ *         0 if there's not enough space in the buffer).
  */
 template<typename Char>
 auto write_codepoint(Char* dest, std::size_t dest_size, std::uint32_t codepoint) -> std::size_t
@@ -302,16 +302,16 @@ auto from_utf8(Char* dest, std::size_t dest_size, const T* source, std::size_t s
 }
 
 /**
- * @brief Creates a basic string with the specified character type from UTF-8 input
+ * @brief Creates a basic string with the specified character type from UTF-8 input.
  *
  * This helper properly handles UTF-8 input including multi-byte sequences like emojis,
  * and converts them correctly to the requested character type. Accepts both string_view
  * and u8string_view, with automatic conversion from string literals, pointers, and string objects.
  *
- * @tparam Char The character type for the output string
- * @tparam T The source character type (char or char8_t)
- * @param str The string view to convert (UTF-8 encoded)
- * @return A basic_string with the requested character type
+ * @tparam Char The character type for the output string.
+ * @tparam T The source character type (char or char8_t).
+ * @param str The string view to convert (UTF-8 encoded).
+ * @return A basic_string with the requested character type.
  */
 template<typename Char, typename T>
     requires(std::same_as<T, char> || std::same_as<T, char8_t>)
