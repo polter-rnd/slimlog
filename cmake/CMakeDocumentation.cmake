@@ -230,7 +230,7 @@ function(write_cmake_documentation outputPathFileName)
         list(REMOVE_DUPLICATES PROCESS_CMAKE_DOCUMENTATION_FILES_LIST)
     endif()
 
-    file(WRITE "${outputPathFileName}" "/*! \\page cmakePage CMake Documentation")
+    file(WRITE "${outputPathFileName}" "/*! \\page cmakePage CMake")
 
     # Header file
     # cmake-format: off

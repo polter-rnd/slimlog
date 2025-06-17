@@ -170,7 +170,8 @@ if(BUILD_DOCS)
     set(DOXYGEN_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/docs)
     set(DOXYGEN_PROJECT_NAME "SlimLog")
     doxygen_add_docs(
-        docs ${PROJECT_SOURCE_DIR}/include COMMENT "Generating API documentation with Doxygen"
+        docs ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR}/cmake.dox
+        COMMENT "Generating API documentation with Doxygen"
     )
 endif()
 
