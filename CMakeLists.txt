@@ -139,7 +139,7 @@ else()
 endif()
 find_package_switchable(
     fmt
-    MIN_VERSION 9.1.0
+    MIN_VERSION 8.1.0
     OPTION ${FMT_OPTION}
     DEFAULT ON
     PURPOSE ${FMT_PURPOSE}

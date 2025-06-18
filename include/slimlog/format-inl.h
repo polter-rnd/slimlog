@@ -17,7 +17,9 @@
 #include <fmt/core.h>
 #endif
 // IWYU pragma: no_include <chrono>
+#if FMT_VERSION < 110000
 #include <iterator>
+#endif
 #else
 #include <array>
 #endif
@@ -80,7 +82,12 @@ void CachedFormatter<T, Char>::format(Out& out, T value) const
         using Appender = std::conditional_t<
             std::is_same_v<Char, char>,
             fmt::appender,
-            std::back_insert_iterator<decltype(m_buffer)>>;
+#if FMT_VERSION < 110000
+            std::back_insert_iterator<decltype(m_buffer)>
+#else
+            fmt::basic_appender<Char>
+#endif
+            >;
         fmt::basic_format_context<Appender, Char> fmt_context(Appender(m_buffer), {});
         Formatter<T, Char>::format(*m_value, fmt_context);
 #else
