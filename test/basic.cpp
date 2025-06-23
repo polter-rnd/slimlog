@@ -337,6 +337,32 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
             expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
         }
     });
+
+    // Test multithreaded logger
+    _.test("multithreaded", []() {
+        StreamCapturer<Char> cap_out;
+
+        const auto message = from_utf8<Char>("Multithreaded test message");
+
+        // Test MultiThreaded logger
+        Logger<String, Char, MultiThreadedPolicy> log_mt;
+        log_mt.template add_sink<OStreamSink>(cap_out);
+
+        log_mt.info(message);
+        expect(cap_out.read(), equal_to(message + Char{'\n'}));
+
+        // Verify logger can handle level changes
+        log_mt.set_level(Level::Error);
+        expect(log_mt.level(), equal_to(Level::Error));
+
+        // Info messages should be filtered out now
+        log_mt.info(message);
+        expect(cap_out.read(), equal_to(String{}));
+
+        // Error messages should still work
+        log_mt.error(message);
+        expect(cap_out.read(), equal_to(message + Char{'\n'}));
+    });
 });
 
 } // namespace
