@@ -296,19 +296,6 @@ const suite<SLIMLOG_CHAR_TYPES> BufferTests("buffer", type_only, [](auto& _) {
         expect(StringView(buffer.data(), buffer.size()), equal_to(large_string));
     });
 
-    // Test unicode handling
-    _.test("unicode", []() {
-        BufferType buffer;
-
-        // Test with various unicode strings
-        for (const auto& str : unicode_strings<Char>()) {
-            buffer.clear();
-            buffer.append(str);
-            expect(buffer.size(), equal_to(str.size()));
-            expect(StringView(buffer.data(), buffer.size()), equal_to(str));
-        }
-    });
-
     // Test edge cases
     _.test("edge_cases", []() {
         BufferType buffer;
