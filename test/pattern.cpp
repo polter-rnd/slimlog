@@ -109,28 +109,27 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
 
     // Test custom level names
     _.test("custom_level_names", []() {
-        PatternType pattern(
-            from_utf8<Char>("[{level}] {message}"),
-            std::make_pair(Level::Info, from_utf8<Char>("INFORMATION")),
-            std::make_pair(Level::Error, from_utf8<Char>("ERROR_MSG")));
+        const std::vector<std::pair<Level, std::basic_string<Char>>> custom_levels
+            = {{Level::Trace, from_utf8<Char>("CUSTOM_TRACE")},
+               {Level::Debug, from_utf8<Char>("CUSTOM_DEBUG")},
+               {Level::Info, from_utf8<Char>("CUSTOM_INFO")},
+               {Level::Warning, from_utf8<Char>("CUSTOM_WARN")},
+               {Level::Error, from_utf8<Char>("CUSTOM_ERROR")},
+               {Level::Fatal, from_utf8<Char>("CUSTOM_FATAL")}};
+
+        PatternType pattern(from_utf8<Char>("[{level}] {message}"), custom_levels);
 
         BufferType buffer;
         auto record = create_test_record<String, Char>();
 
-        // Test Info level
-        record.level = Level::Info;
-        pattern.format(buffer, record);
-        expect(
-            StringView(buffer.data(), buffer.size()),
-            equal_to(from_utf8<Char>("[INFORMATION] Test message")));
-
-        // Test Error level
-        buffer.clear();
-        record.level = Level::Error;
-        pattern.format(buffer, record);
-        expect(
-            StringView(buffer.data(), buffer.size()),
-            equal_to(from_utf8<Char>("[ERROR_MSG] Test message")));
+        for (const auto& [level, level_name] : custom_levels) {
+            buffer.clear();
+            record.level = level;
+            pattern.format(buffer, record);
+            const auto expected
+                = from_utf8<Char>("[") + level_name + from_utf8<Char>("] Test message");
+            expect(StringView(buffer.data(), buffer.size()), equal_to(expected));
+        }
     });
 
     // Test field alignment and padding
@@ -216,8 +215,8 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         PatternType pattern(from_utf8<Char>("{level}"));
 
         pattern.set_levels(
-            {{Level::Info, from_utf8<Char>("CUSTOM_INFO")},
-             {Level::Debug, from_utf8<Char>("CUSTOM_DEBUG")}});
+            std::make_pair(Level::Info, from_utf8<Char>("CUSTOM_INFO")),
+            std::make_pair(Level::Debug, from_utf8<Char>("CUSTOM_DEBUG")));
 
         BufferType buffer;
         auto record = create_test_record<String, Char>();
