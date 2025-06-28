@@ -70,6 +70,22 @@ constexpr auto get_log_filename(std::string_view test_name) -> std::string
 }
 
 /**
+ * @brief Mocks the current time for testing purposes.
+ *
+ * This function returns a fixed time point representing
+ * 2023-06-15 14:32:45 with 123456 nanoseconds.
+ *
+ * @return A pair containing the sys_seconds time point and nanoseconds.
+ */
+auto inline time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
+{
+    // Return 2023-06-15 14:32:45 with 123456 nanoseconds
+    constexpr auto Timestamp = 1686839565; // seconds since epoch
+    constexpr auto Nanoseconds = 123456; // nanoseconds
+    return {std::chrono::sys_seconds{std::chrono::seconds{Timestamp}}, Nanoseconds};
+}
+
+/**
  * @brief Creates a basic string with the specified character type from UTF-8 input.
  *
  * See @ref SlimLog::Util::Unicode::from_utf8 for details.
