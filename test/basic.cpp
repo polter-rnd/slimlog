@@ -16,7 +16,6 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <cstddef>
 #include <filesystem>
 #include <initializer_list>
 #include <source_location>
@@ -41,15 +40,6 @@ namespace {
 
 using namespace mettle;
 using namespace SlimLog;
-
-// Mock time function
-auto time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
-{
-    // Return 2023-06-15 14:32:45 with 123456 nanoseconds
-    constexpr auto Timestamp = 1686839565; // seconds since epoch
-    constexpr auto Nanoseconds = 123456; // nanoseconds
-    return {std::chrono::sys_seconds{std::chrono::seconds{Timestamp}}, Nanoseconds};
-}
 
 const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
