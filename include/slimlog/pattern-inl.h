@@ -27,6 +27,7 @@ template<typename String, typename Char>
 concept HasConvertString = requires(String value) {
     { ConvertString<String, Char>{}(value) } -> std::same_as<std::basic_string_view<Char>>;
 };
+
 } // namespace Detail
 /** @endcond */
 
@@ -162,15 +163,6 @@ template<typename Char>
 auto Pattern<Char>::set_pattern(StringViewType pattern) -> void
 {
     compile(pattern);
-}
-
-template<typename Char>
-auto Pattern<Char>::set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels)
-    -> void
-{
-    for (const auto& level : levels) {
-        m_levels.set(level.first, level.second);
-    }
 }
 
 template<typename Char>
