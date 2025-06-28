@@ -13,7 +13,6 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <initializer_list>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -22,6 +21,21 @@
 #include <vector>
 
 namespace SlimLog {
+
+/** @cond */
+namespace Detail {
+
+template<typename T>
+concept IsPair = requires {
+    typename T::first_type;
+    typename T::second_type;
+} && requires(T pair) {
+    pair.first;
+    pair.second;
+};
+
+} // namespace Detail
+/** @endcond */
 
 /**
  * @brief Converts a string to a `std::basic_string_view`.
@@ -189,7 +203,7 @@ public:
     template<typename... Args>
     explicit Pattern(StringViewType pattern = {}, Args&&... args)
     {
-        set_levels({std::forward<Args>(args)...});
+        set_levels(std::forward<Args>(args)...);
         compile(pattern);
     }
 
@@ -229,19 +243,48 @@ public:
     auto set_pattern(StringViewType pattern) -> void;
 
     /**
-     * @brief Sets the log level names.
-     *
-     * This function sets a name for each log level.
+     * @brief Sets the log level names with containers.
      *
      * Usage example:
      * ```cpp
-     * Log::Logger log("test", Log::Level::Info);
-     * log.add_sink<Log::OStreamSink>(std::cerr)->set_levels({{Log::Level::Info, "Information"}});
+     * std::vector<std::pair<Level, std::string>> levels = {{Level::Info, "INFO"}};
+     * pattern.set_levels(levels);
+     * ```
+     */
+    template<typename Container>
+        requires(!Detail::IsPair<std::remove_cvref_t<Container>>)
+    auto set_levels(Container&& container) -> void
+    {
+        for (const auto& pair : std::forward<Container>(container)) {
+            m_levels.set(pair.first, StringViewType{pair.second});
+        }
+    }
+
+    /**
+     * @brief Sets the log level names with variadic arguments.
+     * @overload
+     *
+     * Usage example:
+     * ```cpp
+     * pattern.set_levels(
+     *     std::make_pair(Level::Info, from_utf8<Char>("CUSTOM_INFO")),
+     *     std::make_pair(Level::Debug, from_utf8<Char>("CUSTOM_DEBUG"))
+     * );
      * ```
      *
-     * @param levels Initializer list of log level pairs.
+     * @param pairs Variadic list of level-name pairs.
      */
-    auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels) -> void;
+    template<typename... Pairs>
+        requires(Detail::IsPair<std::remove_cvref_t<Pairs>> && ...)
+    auto set_levels(Pairs&&... pairs) -> void
+    {
+        (
+            [&]() {
+                auto&& pair = std::forward<Pairs>(pairs);
+                m_levels.set(pair.first, StringViewType{pair.second});
+            }(),
+            ...);
+    }
 
 protected:
     /**
