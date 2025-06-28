@@ -32,6 +32,8 @@ template class OStreamSink<std::string>;
 template class NullSink<std::string>;
 template class RecordStringView<char>;
 template class Pattern<char>;
+template void Pattern<char>::format(
+    Util::MemoryBuffer<char, DefaultBufferSize>&, Record<std::string, char>&);
 template class CachedFormatter<std::size_t, char>;
 template class CachedFormatter<std::chrono::sys_seconds, char>;
 #ifndef SLIMLOG_FMTLIB
@@ -48,6 +50,8 @@ template class OStreamSink<std::wstring>;
 template class NullSink<std::wstring>;
 template class RecordStringView<wchar_t>;
 template class Pattern<wchar_t>;
+template void Pattern<wchar_t>::format(
+    Util::MemoryBuffer<wchar_t, DefaultBufferSize>&, Record<std::wstring, wchar_t>&);
 template class CachedFormatter<std::size_t, wchar_t>;
 template class CachedFormatter<std::chrono::sys_seconds, wchar_t>;
 #ifndef SLIMLOG_FMTLIB
@@ -65,6 +69,8 @@ template class OStreamSink<std::u8string>;
 template class NullSink<std::u8string>;
 template class RecordStringView<char8_t>;
 template class Pattern<char8_t>;
+template void Pattern<char8_t>::format(
+    Util::MemoryBuffer<char8_t, DefaultBufferSize>&, Record<std::u8string, char8_t>&);
 template class CachedFormatter<std::size_t, char8_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char8_t>;
 #endif
@@ -79,6 +85,8 @@ template class OStreamSink<std::u16string>;
 template class NullSink<std::u16string>;
 template class RecordStringView<char16_t>;
 template class Pattern<char16_t>;
+template void Pattern<char16_t>::format(
+    Util::MemoryBuffer<char16_t, DefaultBufferSize>&, Record<std::u16string, char16_t>&);
 template class CachedFormatter<std::size_t, char16_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char16_t>;
 #endif
@@ -93,6 +101,8 @@ template class OStreamSink<std::u32string>;
 template class NullSink<std::u32string>;
 template class RecordStringView<char32_t>;
 template class Pattern<char32_t>;
+template void Pattern<char32_t>::format(
+    Util::MemoryBuffer<char32_t, DefaultBufferSize>&, Record<std::u32string, char32_t>&);
 template class CachedFormatter<std::size_t, char32_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char32_t>;
 #endif
