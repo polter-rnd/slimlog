@@ -13,7 +13,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <initializer_list>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -126,7 +125,7 @@ public:
      * ```
      *
      * @tparam Args Argument types for the pattern and log levels.
-     * @param args Optional pattern and list of log levels.
+     * @param args Optional pattern and variadic list of log level pairs.
      */
     template<typename... Args>
     explicit FormattableSink(Args&&... args)
@@ -146,20 +145,32 @@ public:
      *
      * @param pattern Log message pattern.
      */
-    virtual auto set_pattern(StringViewType pattern) -> void;
+    auto set_pattern(StringViewType pattern) -> void;
 
     /**
-     * @brief Sets the log level names.
+     * @brief Sets the log level names with automatic type deduction.
      *
-     * Usage example:
+     * This function can handle both initializer lists and variadic arguments.
+     *
+     * Usage examples:
      * ```cpp
-     * Log::Logger log("test", Log::Level::Info);
-     * log.add_sink<Log::OStreamSink>(std::cerr)->set_levels({{Log::Level::Info, "Information"}});
+     * // With initializer list:
+     * sink->set_levels({{Log::Level::Info, "Information"}});
+     *
+     * // With variadic arguments:
+     * sink->set_levels(
+     *     std::make_pair(Log::Level::Info, from_utf8<Char>("CUSTOM_INFO")),
+     *     std::make_pair(Log::Level::Debug, from_utf8<Char>("CUSTOM_DEBUG"))
+     * );
      * ```
      *
      * @param levels List of log levels with corresponding names.
      */
-    virtual auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels) -> void;
+    template<typename... Pairs>
+    auto set_levels(Pairs&&... pairs) -> void
+    {
+        m_pattern.set_levels(std::forward<Pairs>(pairs)...);
+    }
 
 protected:
     /**

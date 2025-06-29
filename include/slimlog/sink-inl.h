@@ -13,13 +13,6 @@
 namespace SlimLog {
 
 template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto FormattableSink<String, Char, BufferSize, Allocator>::set_levels(
-    std::initializer_list<std::pair<Level, StringViewType>> levels) -> void
-{
-    m_pattern.set_levels(std::move(levels));
-}
-
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
 auto FormattableSink<String, Char, BufferSize, Allocator>::set_pattern(StringViewType pattern)
     -> void
 {

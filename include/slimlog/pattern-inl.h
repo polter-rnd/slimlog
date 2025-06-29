@@ -27,6 +27,7 @@ template<typename String, typename Char>
 concept HasConvertString = requires(String value) {
     { ConvertString<String, Char>{}(value) } -> std::same_as<std::basic_string_view<Char>>;
 };
+
 } // namespace Detail
 /** @endcond */
 
@@ -35,19 +36,19 @@ auto Pattern<Char>::Levels::get(Level level) -> RecordStringView<Char>&
 {
     switch (level) {
     case Level::Fatal:
-        return m_fatal;
+        return m_fatal_sv;
     case Level::Error:
-        return m_error;
+        return m_error_sv;
     case Level::Warning:
-        return m_warning;
+        return m_warning_sv;
     case Level::Info:
-        return m_info;
+        return m_info_sv;
     case Level::Debug:
-        return m_debug;
+        return m_debug_sv;
     case Level::Trace:
         [[fallthrough]];
     default:
-        return m_trace;
+        return m_trace_sv;
     }
 }
 
@@ -57,21 +58,27 @@ auto Pattern<Char>::Levels::set(Level level, StringViewType name) -> void
     switch (level) {
     case Level::Fatal:
         m_fatal = std::move(name);
+        m_fatal_sv = RecordStringView<Char>{m_fatal};
         break;
     case Level::Error:
         m_error = std::move(name);
+        m_error_sv = RecordStringView<Char>{m_error};
         break;
     case Level::Warning:
         m_warning = std::move(name);
+        m_warning_sv = RecordStringView<Char>{m_warning};
         break;
     case Level::Info:
         m_info = std::move(name);
+        m_info_sv = RecordStringView<Char>{m_info};
         break;
     case Level::Debug:
         m_debug = std::move(name);
+        m_debug_sv = RecordStringView<Char>{m_debug};
         break;
     case Level::Trace:
         m_trace = std::move(name);
+        m_trace_sv = RecordStringView<Char>{m_trace};
         break;
     }
 }
@@ -156,15 +163,6 @@ template<typename Char>
 auto Pattern<Char>::set_pattern(StringViewType pattern) -> void
 {
     compile(pattern);
-}
-
-template<typename Char>
-auto Pattern<Char>::set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels)
-    -> void
-{
-    for (const auto& level : levels) {
-        m_levels.set(level.first, level.second);
-    }
 }
 
 template<typename Char>
@@ -323,8 +321,7 @@ constexpr auto Pattern<Char>::parse_align(
                 case '{':
                     throw FormatError("format: invalid fill character '{'\n");
                 }
-                specs.fill
-                    = std::basic_string_view<Char>(begin, Util::Types::to_unsigned(ptr - begin));
+                specs.fill = StringViewType(begin, Util::Types::to_unsigned(ptr - begin));
                 begin = ptr + 1;
             } else {
                 ++begin;
@@ -452,32 +449,31 @@ constexpr void Pattern<Char>::write_string_padded(
     dst.reserve(dst.size() + codepoints + (padding * specs.fill.size()));
 
     // Lambda for filling with single character or multibyte pattern
-    constexpr auto FillPattern
-        = [](auto& dst, std::basic_string_view<Char> fill, std::size_t fill_len) {
-              const auto* src = fill.data();
-              auto block_size = fill.size();
-              auto* dest = dst.end() - (fill_len * block_size);
+    constexpr auto FillPattern = [](auto& dst, StringViewType fill, std::size_t fill_len) {
+        const auto* src = fill.data();
+        auto block_size = fill.size();
+        auto* dest = dst.end() - (fill_len * block_size);
 
-              if (block_size > 1) {
-                  // Copy first block
-                  std::copy_n(src, block_size, dest);
+        if (block_size > 1) {
+            // Copy first block
+            std::copy_n(src, block_size, dest);
 
-                  // Copy other blocks recursively via O(n*log(N)) calls
-                  const auto* start = dest;
-                  const auto* end = start + (fill_len * block_size);
-                  auto* current = dest + block_size;
-                  while ((current + block_size) < end) {
-                      std::copy_n(start, block_size, current);
-                      current += block_size;
-                      block_size *= 2;
-                  }
+            // Copy other blocks recursively via O(n*log(N)) calls
+            const auto* start = dest;
+            const auto* end = start + (fill_len * block_size);
+            auto* current = dest + block_size;
+            while ((current + block_size) < end) {
+                std::copy_n(start, block_size, current);
+                current += block_size;
+                block_size *= 2;
+            }
 
-                  // Copy the rest
-                  std::copy_n(start, end - current, current);
-              } else {
-                  std::fill_n(dest, fill_len, *src);
-              }
-          };
+            // Copy the rest
+            std::copy_n(start, end - current, current);
+        } else {
+            std::fill_n(dest, fill_len, *src);
+        }
+    };
 
     // Fill left padding
     if (left_padding != 0) {

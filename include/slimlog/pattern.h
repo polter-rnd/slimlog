@@ -13,7 +13,6 @@
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
-#include <initializer_list>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -22,6 +21,21 @@
 #include <vector>
 
 namespace SlimLog {
+
+/** @cond */
+namespace Detail {
+
+template<typename T>
+concept IsPair = requires {
+    typename T::first_type;
+    typename T::second_type;
+} && requires(T pair) {
+    pair.first;
+    pair.second;
+};
+
+} // namespace Detail
+/** @endcond */
 
 /**
  * @brief Converts a string to a `std::basic_string_view`.
@@ -73,19 +87,19 @@ public:
         auto set(Level level, StringViewType name) -> void;
 
     private:
-        static constexpr std::array<Char, 6> DefaultTrace{'T', 'R', 'A', 'C', 'E', '\0'};
-        static constexpr std::array<Char, 6> DefaultDebug{'D', 'E', 'B', 'U', 'G', '\0'};
-        static constexpr std::array<Char, 5> DefaultInfo{'I', 'N', 'F', 'O', '\0'};
-        static constexpr std::array<Char, 5> DefaultWarning{'W', 'A', 'R', 'N', '\0'};
-        static constexpr std::array<Char, 6> DefaultError{'E', 'R', 'R', 'O', 'R', '\0'};
-        static constexpr std::array<Char, 6> DefaultFatal{'F', 'A', 'T', 'A', 'L', '\0'};
+        std::basic_string<Char> m_trace = {'T', 'R', 'A', 'C', 'E'};
+        std::basic_string<Char> m_debug = {'D', 'E', 'B', 'U', 'G'};
+        std::basic_string<Char> m_info = {'I', 'N', 'F', 'O'};
+        std::basic_string<Char> m_warning = {'W', 'A', 'R', 'N'};
+        std::basic_string<Char> m_error = {'E', 'R', 'R', 'O', 'R'};
+        std::basic_string<Char> m_fatal = {'F', 'A', 'T', 'A', 'L'};
 
-        RecordStringView<Char> m_trace{DefaultTrace.data()}; ///< Trace level
-        RecordStringView<Char> m_debug{DefaultDebug.data()}; ///< Debug level
-        RecordStringView<Char> m_info{DefaultInfo.data()}; ///< Info level
-        RecordStringView<Char> m_warning{DefaultWarning.data()}; ///< Warning level
-        RecordStringView<Char> m_error{DefaultError.data()}; ///< Error level
-        RecordStringView<Char> m_fatal{DefaultFatal.data()}; ///< Fatal level
+        RecordStringView<Char> m_trace_sv = m_trace; ///< Trace level
+        RecordStringView<Char> m_debug_sv = m_debug; ///< Debug level
+        RecordStringView<Char> m_info_sv = m_info; ///< Info level
+        RecordStringView<Char> m_warning_sv = m_warning; ///< Warning level
+        RecordStringView<Char> m_error_sv = m_error; ///< Error level
+        RecordStringView<Char> m_fatal_sv = m_fatal; ///< Fatal level
     };
 
     /**
@@ -189,7 +203,7 @@ public:
     template<typename... Args>
     explicit Pattern(StringViewType pattern = {}, Args&&... args)
     {
-        set_levels({std::forward<Args>(args)...});
+        set_levels(std::forward<Args>(args)...);
         compile(pattern);
     }
 
@@ -229,19 +243,48 @@ public:
     auto set_pattern(StringViewType pattern) -> void;
 
     /**
-     * @brief Sets the log level names.
-     *
-     * This function sets a name for each log level.
+     * @brief Sets the log level names with containers.
      *
      * Usage example:
      * ```cpp
-     * Log::Logger log("test", Log::Level::Info);
-     * log.add_sink<Log::OStreamSink>(std::cerr)->set_levels({{Log::Level::Info, "Information"}});
+     * std::vector<std::pair<Level, std::string>> levels = {{Level::Info, "INFO"}};
+     * pattern.set_levels(levels);
+     * ```
+     */
+    template<typename Container>
+        requires(!Detail::IsPair<std::remove_cvref_t<Container>>)
+    auto set_levels(Container&& container) -> void
+    {
+        for (const auto& pair : std::forward<Container>(container)) {
+            m_levels.set(pair.first, StringViewType{pair.second});
+        }
+    }
+
+    /**
+     * @brief Sets the log level names with variadic arguments.
+     * @overload
+     *
+     * Usage example:
+     * ```cpp
+     * pattern.set_levels(
+     *     std::make_pair(Level::Info, from_utf8<Char>("CUSTOM_INFO")),
+     *     std::make_pair(Level::Debug, from_utf8<Char>("CUSTOM_DEBUG"))
+     * );
      * ```
      *
-     * @param levels Initializer list of log level pairs.
+     * @param pairs Variadic list of level-name pairs.
      */
-    auto set_levels(std::initializer_list<std::pair<Level, StringViewType>> levels) -> void;
+    template<typename... Pairs>
+        requires(Detail::IsPair<std::remove_cvref_t<Pairs>> && ...)
+    auto set_levels(Pairs&&... pairs) -> void
+    {
+        (
+            [&]() {
+                auto&& pair = std::forward<Pairs>(pairs);
+                m_levels.set(pair.first, StringViewType{pair.second});
+            }(),
+            ...);
+    }
 
 protected:
     /**
