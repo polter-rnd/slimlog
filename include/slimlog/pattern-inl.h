@@ -396,8 +396,7 @@ auto Pattern<Char>::get_string_specs(StringViewType value) -> Placeholder::Strin
                 }
                 break;
             default:
-                throw FormatError(
-                    std::string("wrong format type '") + chr + "' for the string field");
+                throw FormatError("wrong format type");
             }
             specs.width = width;
         }
@@ -445,50 +444,56 @@ constexpr void Pattern<Char>::write_string_padded(
         = padding >> static_cast<unsigned>(shifts[static_cast<int>(specs.align)]);
     const auto right_padding = padding - left_padding;
 
-    // Reserve exact amount for data + padding
-    dst.reserve(dst.size() + codepoints + (padding * specs.fill.size()));
+    // Reserve exact amount for data + padding upfront
+    const auto fill_size = specs.fill.size();
+    dst.reserve(dst.size() + codepoints + (padding * fill_size));
 
-    // Lambda for filling with single character or multibyte pattern
-    constexpr auto FillPattern = [](auto& dst, StringViewType fill, std::size_t fill_len) {
-        const auto* src = fill.data();
-        auto block_size = fill.size();
-        auto* dest = dst.end() - (fill_len * block_size);
+    // Highly optimized fill function using large chunks
+    constexpr auto FastFill = [](auto& dst, StringViewType fill, std::size_t fill_len) {
+        if (fill_len == 0)
+            return;
 
-        if (block_size > 1) {
-            // Copy first block
-            std::copy_n(src, block_size, dest);
+        const auto fill_size = fill.size();
+        const auto total_chars = fill_len * fill_size;
+        const auto start_pos = dst.size();
+        dst.resize(start_pos + total_chars);
+        auto* dest = dst.data() + start_pos;
 
-            // Copy other blocks recursively via O(n*log(N)) calls
-            const auto* start = dest;
-            const auto* end = start + (fill_len * block_size);
-            auto* current = dest + block_size;
-            while ((current + block_size) < end) {
-                std::copy_n(start, block_size, current);
-                current += block_size;
-                block_size *= 2;
+        if (fill_size == 1 && sizeof(Char) == 1) {
+            // Single character - fastest way to fill
+            std::fill_n(dest, total_chars, fill[0]);
+            return;
+        }
+
+        // For multi-byte single chars and multi-character patterns
+        constexpr std::size_t ChunkSize = 65536; // 64KB
+        if (fill_size == 1) {
+            // Fill first chunk, then copy in large blocks
+            std::fill_n(dest, std::min(total_chars, ChunkSize), fill[0]);
+
+            for (std::size_t pos = ChunkSize; pos < total_chars; pos += ChunkSize) {
+                const auto size = std::min(ChunkSize, total_chars - pos);
+                std::copy_n(dest, size, dest + pos);
             }
-
-            // Copy the rest
-            std::copy_n(start, end - current, current);
         } else {
-            std::fill_n(dest, fill_len, *src);
+            // Multi-character pattern - exponential doubling up to 64KB
+            std::copy_n(fill.data(), fill_size, dest);
+            for (std::size_t current = fill_size; current < total_chars;) {
+                const auto size = std::min({current, ChunkSize, total_chars - current});
+                std::copy_n(dest, size, dest + current);
+                current += size;
+            }
         }
     };
 
     // Fill left padding
-    if (left_padding != 0) {
-        dst.resize(dst.size() + (left_padding * specs.fill.size()));
-        FillPattern(dst, specs.fill, left_padding);
-    }
+    FastFill(dst, specs.fill, left_padding);
 
     // Fill data
     write_string(dst, std::forward<StringView>(src));
 
     // Fill right padding
-    if (right_padding != 0) {
-        dst.resize(dst.size() + (right_padding * specs.fill.size()));
-        FillPattern(dst, specs.fill, right_padding);
-    }
+    FastFill(dst, specs.fill, right_padding);
 }
 
 } // namespace SlimLog
