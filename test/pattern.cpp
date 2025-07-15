@@ -11,6 +11,9 @@
 #include <mettle.hpp>
 
 #include <array>
+#include <chrono>
+#include <initializer_list>
+#include <source_location>
 #include <string>
 #include <string_view>
 
@@ -23,26 +26,31 @@ using namespace mettle;
 using namespace SlimLog;
 
 // Helper to create test record
-template<typename String, typename Char>
-auto create_test_record() -> Record<String, Char>
+template<typename Char>
+auto create_test_record(
+    Level level = Level::Info,
+    std::basic_string_view<Char> message = from_utf8<Char>("Test message"),
+    std::basic_string_view<Char> category = from_utf8<Char>("test_category"),
+    std::size_t thread_id = 12345,
+    std::pair<std::chrono::sys_seconds, std::uint64_t> time = time_mock(),
+    std::source_location location = std::source_location::current())
+    -> Record<std::basic_string<Char>, Char>
 {
-    using RecordType = Record<String, Char>;
-    using StringViewType = std::basic_string_view<Char>;
+    static thread_local std::basic_string<Char> message_data;
+    static thread_local std::basic_string<Char> category_data;
 
-    static const auto* const filename_str = "test.cpp";
-    static const auto* const function_str = "test_function";
-    static const auto category_str = from_utf8<Char>("test_category");
-    static const auto message_str = from_utf8<Char>("Test message");
+    message_data = message;
+    category_data = category;
 
-    RecordType record;
-    record.level = Level::Info;
-    record.filename = RecordStringView<char>{filename_str};
-    record.function = RecordStringView<char>{function_str};
-    record.line = 42;
-    record.category = RecordStringView<Char>{category_str};
-    record.thread_id = 12345;
-    record.time = time_mock();
-    record.message = RecordStringView<Char>{message_str};
+    Record<std::basic_string<Char>, Char> record;
+    record.level = level;
+    record.filename = RecordStringView<char>{location.file_name()};
+    record.function = RecordStringView<char>{location.function_name()};
+    record.line = location.line();
+    record.category = RecordStringView<Char>{category_data.data(), category_data.size()};
+    record.thread_id = thread_id;
+    record.time = time;
+    record.message = RecordStringView<Char>{message_data.data(), message_data.size()};
     return record;
 }
 
@@ -59,7 +67,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         expect(pattern.empty(), equal_to(true));
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
         pattern.format(buffer, record);
 
         // Empty pattern should default to message only
@@ -73,7 +81,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         expect(pattern.empty(), equal_to(false));
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
         pattern.format(buffer, record);
 
         const auto expected = from_utf8<Char>("[INFO] test_category: Test message");
@@ -87,7 +95,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         PatternType pattern(pattern_str);
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
         pattern.format(buffer, record);
 
         PatternFields<Char> fields;
@@ -120,7 +128,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         PatternType pattern(from_utf8<Char>("[{level}] {message}"), custom_levels);
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
 
         for (const auto& [level, level_name] : custom_levels) {
             buffer.clear();
@@ -138,12 +146,28 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         PatternType pattern(pattern_str);
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
         pattern.format(buffer, record);
 
         const auto result = StringView(buffer.data(), buffer.size());
         expect(
             result, equal_to(from_utf8<Char>("[   INFO   ] [test_category  ] ****Test message")));
+    });
+
+    // Test field alignment and padding
+    _.test("alignment_unicode", []() {
+        const auto pattern_str
+            = from_utf8<Char>(u8"[{level:😀^8}] [{category:<15}] {message:∮>15}");
+        PatternType pattern(pattern_str);
+
+        BufferType buffer;
+        auto record = create_test_record<Char>(Level::Info, from_utf8<Char>(u8"𝒽𝑒𝓁𝓁𝑜 🌍🚀💫!"));
+        pattern.format(buffer, record);
+
+        const auto result = StringView(buffer.data(), buffer.size());
+        expect(
+            result,
+            equal_to(from_utf8<Char>(u8"[😀😀INFO😀😀] [test_category  ] ∮∮∮∮∮𝒽𝑒𝓁𝓁𝑜 🌍🚀💫!")));
     });
 
     // Test escaped braces
@@ -152,7 +176,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         PatternType pattern(pattern_str);
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
         pattern.format(buffer, record);
 
         const auto expected = from_utf8<Char>("{level} INFO {message}");
@@ -165,7 +189,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         PatternType pattern(pattern_str);
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
         pattern.format(buffer, record);
 
         PatternFields<Char> fields;
@@ -183,7 +207,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         PatternType pattern(pattern_str);
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
         pattern.format(buffer, record);
 
         PatternFields<Char> fields;
@@ -203,7 +227,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         expect(pattern.empty(), equal_to(false));
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
         pattern.format(buffer, record);
 
         const auto expected = from_utf8<Char>("[INFO] Test message");
@@ -219,7 +243,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
             std::make_pair(Level::Debug, from_utf8<Char>("CUSTOM_DEBUG")));
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
 
         record.level = Level::Info;
         pattern.format(buffer, record);
@@ -249,7 +273,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         auto expected_it = expected_names.begin();
         for (auto level : levels) {
             BufferType buffer;
-            auto record = create_test_record<String, Char>();
+            auto record = create_test_record<Char>();
             record.level = level;
             pattern.format(buffer, record);
 
@@ -287,7 +311,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         PatternType pattern(pattern_str);
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
         pattern.format(buffer, record);
 
         PatternFields<Char> fields;
@@ -312,27 +336,10 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         PatternType pattern(pattern_str);
 
         BufferType buffer;
-        auto record = create_test_record<String, Char>();
+        auto record = create_test_record<Char>();
         pattern.format(buffer, record);
 
         expect(StringView(buffer.data(), buffer.size()), equal_to(pattern_str));
-    });
-
-    // Test unicode in patterns
-    _.test("unicode_pattern", []() {
-        PatternType pattern;
-        BufferType buffer;
-
-        for (const auto& unicode_str : unicode_strings<Char>()) {
-            buffer.clear();
-            auto record = create_test_record<String, Char>();
-            record.message = RecordStringView<Char>{unicode_str};
-
-            pattern.set_pattern(from_utf8<Char>("{message}"));
-            pattern.format(buffer, record);
-
-            expect(StringView(buffer.data(), buffer.size()), equal_to(unicode_str));
-        }
     });
 });
 
