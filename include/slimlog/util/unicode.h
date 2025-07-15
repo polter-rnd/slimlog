@@ -33,9 +33,7 @@ template<typename Char>
     requires std::is_integral_v<Char>
 constexpr auto code_point_length(const Char* begin) -> int
 {
-    if constexpr (sizeof(Char) != 1) {
-        return 1;
-    } else {
+    if constexpr (sizeof(Char) == 1) {
         /**
          * Determines the length of a UTF-8 code point based on its first 5 bits.
          * We can fit the length in 2 bytes by storing value from 0 to 3.
@@ -60,6 +58,15 @@ constexpr auto code_point_length(const Char* begin) -> int
         const auto chr = static_cast<std::uint8_t>(*begin);
         constexpr auto CodepointLengths = 0x3a55000000000000ULL;
         return static_cast<int>((CodepointLengths >> (2U * (chr >> 3U))) & 0x3U) + 1;
+    } else if constexpr (
+        std::is_same_v<Char, char16_t> || (std::is_same_v<Char, wchar_t> && sizeof(Char) == 2)) {
+        // For UTF-16, check for surrogate pairs
+        if ((static_cast<std::uint16_t>(*begin) & 0xFC00U) == 0xD800U) { // NOLINT(*-magic-numbers)
+            return 2; // High surrogate indicates a surrogate pair
+        }
+        return 1;
+    } else {
+        return 1;
     }
 }
 
@@ -161,7 +168,18 @@ template<typename Char>
 constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size_t
 {
     if constexpr (sizeof(Char) != 1) {
-        return len;
+        if constexpr (
+            std::is_same_v<Char, char16_t>
+            || (std::is_same_v<Char, wchar_t> && sizeof(Char) == 2)) {
+            // For UTF-16, check for surrogate pairs
+            std::size_t codepoints = 0;
+            for (const auto* end = begin + len; begin != end; ++codepoints) {
+                begin += Util::Unicode::code_point_length(begin);
+            }
+            return codepoints;
+        } else {
+            return len;
+        }
     } else {
         std::uint8_t state = 0;
         std::size_t codepoints = 0;
