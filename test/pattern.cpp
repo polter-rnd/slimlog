@@ -74,6 +74,22 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         expect(StringView(buffer.data(), buffer.size()), equal_to(from_utf8<Char>("Test message")));
     });
 
+    // Test empty string handling
+    _.test("empty_strings", []() {
+        const auto pattern_str = from_utf8<Char>("{message}{file}{function}");
+        PatternType pattern(pattern_str);
+
+        BufferType buffer;
+        auto record = create_test_record<Char>(Level::Info, StringView{});
+        record.filename = RecordStringView<char>{""}; // Empty filename
+        record.function = RecordStringView<char>{""}; // Empty function
+        pattern.format(buffer, record);
+
+        // Empty message should result in empty output
+        expect(StringView(buffer.data(), buffer.size()), equal_to(StringView{}));
+        expect(buffer.size(), equal_to(0));
+    });
+
     // Test basic placeholders
     _.test("basic_placeholders", []() {
         const auto pattern_str = from_utf8<Char>("[{level}] {category}: {message}");
@@ -125,7 +141,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
                {Level::Error, from_utf8<Char>("CUSTOM_ERROR")},
                {Level::Fatal, from_utf8<Char>("CUSTOM_FATAL")}};
 
-        PatternType pattern(from_utf8<Char>("[{level}] {message}"), custom_levels);
+        PatternType pattern(from_utf8<Char>("[{level}] {message:s}"), custom_levels);
 
         BufferType buffer;
         auto record = create_test_record<Char>();
@@ -142,7 +158,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
 
     // Test field alignment and padding
     _.test("alignment", []() {
-        const auto pattern_str = from_utf8<Char>("[{level:^10}] [{category:<15}] {message:*>16}");
+        const auto pattern_str = from_utf8<Char>("[{level:^10s}] [{category:<15}] {message:*>16}");
         PatternType pattern(pattern_str);
 
         BufferType buffer;
@@ -288,6 +304,11 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         expect(
             []() { const PatternType pattern(from_utf8<Char>("{level")); }, thrown<FormatError>());
 
+        // Unexpected character after string specifier
+        expect(
+            []() { const PatternType pattern(from_utf8<Char>("{level:10s_}")); },
+            thrown<FormatError>());
+
         // Unmatched closing brace
         expect(
             []() { const PatternType pattern(from_utf8<Char>("level}")); }, thrown<FormatError>());
@@ -301,6 +322,39 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         expect(
             []() { const PatternType pattern(from_utf8<Char>("{level:invalid}")); },
             thrown<FormatError>());
+
+        // Invalid fill character '{'
+        expect(
+            []() { const PatternType pattern(from_utf8<Char>("{level:{<10}")); },
+            thrown<FormatError>());
+    });
+
+    // Test integer overflow in field width parsing
+    _.test("large_field_width", []() {
+        // Test with a number larger than std::numeric_limits<int>::max()
+        // std::numeric_limits<int>::max() is typically 2147483647
+        // Using 99999999999999999999 which is much larger
+        expect(
+            []() { const PatternType pattern(from_utf8<Char>("{level:99999999999999999999}")); },
+            thrown<FormatError>());
+
+        // Test with maximum int + 1 (2147483648 for 32-bit int)
+        expect(
+            []() { const PatternType pattern(from_utf8<Char>("{category:<2147483648}")); },
+            thrown<FormatError>());
+
+        // Test that maximum valid width still works by actually formatting
+        PatternType pattern(from_utf8<Char>("{level:2147483647}"));
+        BufferType buffer;
+        auto record = create_test_record<Char>();
+        pattern.format(buffer, record);
+
+        // Should format successfully with maximum int width
+        // The result will be "INFO" followed by many spaces (2147483643 spaces)
+        expect(
+            StringView(buffer.data(), buffer.size()).substr(0, 4),
+            equal_to(from_utf8<Char>("INFO")));
+        expect(buffer.size(), equal_to(2147483647));
     });
 
     // Test complex pattern

@@ -450,8 +450,9 @@ constexpr void Pattern<Char>::write_string_padded(
 
     // Highly optimized fill function using large chunks
     constexpr auto FastFill = [](auto& dst, StringViewType fill, std::size_t fill_len) {
-        if (fill_len == 0)
+        if (fill_len == 0) {
             return;
+        }
 
         const auto fill_size = fill.size();
         const auto total_chars = fill_len * fill_size;
