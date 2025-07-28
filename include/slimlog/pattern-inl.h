@@ -296,6 +296,9 @@ constexpr auto Pattern<Char>::parse_align(
     auto align = Placeholder::StringSpecs::Align::None;
     auto* ptr = begin + Util::Unicode::code_point_length(begin);
     if (end - ptr <= 0) {
+        // Can happen if invalid code point claims more bytes than available
+        // in the string, so we just reset pointer to the beginning
+        // to avoid dereferencing out of bounds.
         ptr = begin;
     }
 
@@ -313,14 +316,6 @@ constexpr auto Pattern<Char>::parse_align(
         }
         if (align != Placeholder::StringSpecs::Align::None) {
             if (ptr != begin) {
-                // Actually this check is redundant, cause using '{' or '}'
-                // as a fill character will cause parsing failure earlier.
-                switch (Util::Unicode::to_ascii(*begin)) {
-                case '}':
-                    return begin;
-                case '{':
-                    throw FormatError("format: invalid fill character '{'\n");
-                }
                 specs.fill = StringViewType(begin, Util::Types::to_unsigned(ptr - begin));
                 begin = ptr + 1;
             } else {

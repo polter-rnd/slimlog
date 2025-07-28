@@ -327,6 +327,11 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         expect(
             []() { const PatternType pattern(from_utf8<Char>("{level:{<10}")); },
             thrown<FormatError>());
+
+        // Invalid invalid Unicode fill character (claims 4 bytes but only has 2)
+        expect(
+            []() { const PatternType pattern(from_utf8<Char>("{level:\xF0\x9F}")); },
+            thrown<FormatError>());
     });
 
     // Test integer overflow in field width parsing
@@ -361,7 +366,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
     _.test("complex_pattern", []() {
         const auto pattern_str
             = from_utf8<Char>("[{time:%Y-%m-%d %H:%M:%S}.{msec:03}] [{level:>5}] {category} "
-                              "({file}:{line}) {function}: {message}");
+                              "({file:^100}:{line}) {function:>100}: {message}");
         PatternType pattern(pattern_str);
 
         BufferType buffer;
