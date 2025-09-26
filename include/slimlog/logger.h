@@ -189,11 +189,19 @@ public:
     [[nodiscard]] auto sink_enabled(const std::shared_ptr<SinkType>& sink) const -> bool;
 
     /**
+     * @brief Sets whether log messages should propagate to parent loggers.
+     *
+     * @param enabled If true, log messages will propagate to parent loggers.
+     */
+    auto set_propagate(bool enabled) -> void;
+
+    /**
      * @brief Sets the logging level.
      *
      * @param level Level to be set for this logger (e.g., Log::Level::Info).
      */
     auto set_level(Level level) -> void;
+
     /**
      * @brief Gets the logging level.
      *
@@ -241,11 +249,10 @@ public:
         bool evaluated = false;
 
         const typename ThreadingPolicy::ReadLock lock(m_mutex);
-        for (const auto& [sink, logger] : m_effective_sinks) {
-            if (static_cast<Level>(logger->m_level) < level) [[unlikely]] {
-                continue;
-            }
-
+        if (static_cast<Level>(m_level) < level) [[unlikely]] {
+            return;
+        }
+        for (const auto sink : m_propagated_sinks) {
             if (!evaluated) [[unlikely]] {
                 evaluated = true;
                 record
@@ -255,7 +262,7 @@ public:
                        static_cast<std::size_t>(location.line()),
                        m_category,
                        Util::OS::thread_id(),
-                       logger->m_time_func()};
+                       m_time_func()};
 
                 using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
                 using RecordStringViewType = typename RecordType::StringViewType;
@@ -499,6 +506,7 @@ protected:
      * @param child Pointer to the child logger.
      */
     auto add_child(Logger* child) -> void;
+
     /**
      * @brief Removes a child logger.
      *
@@ -508,24 +516,25 @@ protected:
 
 private:
     /**
-     * @brief Recursively updates the effective sinks for
+     * @brief Recursively updates the propagated sinks for
      *        the current logger and its children.
      */
-    auto update_effective_sinks() -> void;
+    auto update_propagated_sinks() -> void;
 
     /**
-     * @brief Updates the effective sinks for the particular logger.
+     * @brief Updates the propagated sinks for the particular logger.
      * @param logger Pointer to the logger to update.
      * @return Pointer to the next logger to be updated.
      */
-    auto update_effective_sinks(Logger* logger) -> Logger*;
+    auto update_propagated_sinks(Logger* logger) -> Logger*;
 
     std::basic_string<Char> m_category;
     AtomicWrapper<Level, ThreadingPolicy> m_level;
+    bool m_propagate;
     TimeFunctionType m_time_func;
     Logger* m_parent = nullptr;
     std::vector<Logger*> m_children;
-    std::vector<std::pair<SinkType*, const Logger*>> m_effective_sinks;
+    std::vector<SinkType*> m_propagated_sinks;
     std::unordered_map<std::shared_ptr<SinkType>, bool> m_sinks;
     mutable ThreadingPolicy::Mutex m_mutex;
     static constexpr std::array<Char, 8> DefaultCategory{'d', 'e', 'f', 'a', 'u', 'l', 't', '\0'};

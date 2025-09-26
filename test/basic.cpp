@@ -353,6 +353,99 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         log_mt.error(message);
         expect(cap_out.read(), equal_to(message + Char{'\n'}));
     });
+
+    // Test logger hierarchy and message propagation
+    _.test("logger_hierarchy", []() {
+        StreamCapturer<Char> cap_root;
+        StreamCapturer<Char> cap_child1;
+        StreamCapturer<Char> cap_child2;
+        StreamCapturer<Char> cap_grandchild;
+        const auto pattern = from_utf8<Char>("[{category}:{level}] {message}");
+
+        // Create logger hierarchy: root -> child1 -> grandchild -> child2
+        // Parent relationships are set via constructor
+        Logger<String> root_log{from_utf8<Char>("root")};
+        Logger<String> child1_log(from_utf8<Char>("root.child1"), Level::Trace, root_log);
+        Logger<String> child2_log(from_utf8<Char>("root.child2"), Level::Trace, root_log);
+        Logger<String> grandchild_log(
+            from_utf8<Char>("root.child1.grandchild"), Level::Trace, child1_log);
+
+        // Add sinks to capture output
+        root_log.template add_sink<OStreamSink>(cap_root, pattern);
+        child1_log.template add_sink<OStreamSink>(cap_child1, pattern);
+        child2_log.template add_sink<OStreamSink>(cap_child2, pattern);
+        grandchild_log.template add_sink<OStreamSink>(cap_grandchild, pattern);
+
+        const auto message = from_utf8<Char>("Hierarchy test message");
+
+        grandchild_log.info(message);
+        auto expected = from_utf8<Char>("[root.child1.grandchild:INFO] ") + message + Char{'\n'};
+
+        // Grandchild should log to its own sink
+        expect(cap_grandchild.read(), equal_to(expected));
+
+        // Message should propagate to child1 (parent)
+        expect(cap_child1.read(), equal_to(expected));
+
+        // Message should propagate to root (grandparent)
+        expect(cap_root.read(), equal_to(expected));
+
+        // child2 should not receive the message (different branch)
+        expect(cap_child2.read(), equal_to(String{}));
+
+        // Test message from child2
+        child2_log.warning(message);
+        expected = from_utf8<Char>("[root.child2:WARN] ") + message + Char{'\n'};
+
+        // child2 should log to its own sink
+        expect(cap_child2.read(), equal_to(expected));
+
+        // Message should propagate to root
+        expect(cap_root.read(), equal_to(expected));
+
+        // Other loggers should not receive the message
+        expect(cap_child1.read(), equal_to(String{}));
+        expect(cap_grandchild.read(), equal_to(String{}));
+
+        // Test level filtering in hierarchy
+        grandchild_log.set_level(Level::Error);
+
+        // Debug message should be filtered out at grandchild level
+        grandchild_log.debug(message);
+        expect(cap_grandchild.read(), equal_to(String{}));
+        expect(cap_child1.read(), equal_to(String{}));
+        expect(cap_root.read(), equal_to(String{}));
+
+        // Reset grandchild level for propagation test
+        grandchild_log.set_level(Level::Trace);
+
+        // Test stopping propagation at child1 level
+        child1_log.set_propagate(false);
+        grandchild_log.warning(message);
+        expected = from_utf8<Char>("[root.child1.grandchild:WARN] ") + message + Char{'\n'};
+
+        // Grandchild should still log to its own sink
+        expect(cap_grandchild.read(), equal_to(expected));
+
+        // Message should propagate to child1 (immediate parent)
+        expect(cap_child1.read(), equal_to(expected));
+
+        // Message should NOT propagate to root (propagation stopped at child1)
+        expect(cap_root.read(), equal_to(String{}));
+
+        // child2 should not receive the message (different branch)
+        expect(cap_child2.read(), equal_to(String{}));
+
+        // Re-enable propagation for final test
+        child1_log.set_propagate(true);
+
+        // Error message should pass through
+        grandchild_log.error(message);
+        expected = from_utf8<Char>("[root.child1.grandchild:ERROR] ") + message + Char{'\n'};
+        expect(cap_grandchild.read(), equal_to(expected));
+        expect(cap_child1.read(), equal_to(expected));
+        expect(cap_root.read(), equal_to(expected));
+    });
 });
 
 } // namespace
