@@ -28,6 +28,7 @@ Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
     TimeFunctionType time_func)
     : m_category(category) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
     , m_level(level)
+    , m_propagate(true)
 {
     if (time_func != nullptr) {
         m_time_func = time_func;
@@ -69,11 +70,12 @@ Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
     StringViewType category, Level level, Logger& parent)
     : m_category(category)
     , m_level(level)
+    , m_propagate(true)
     , m_time_func(parent.m_time_func)
     , m_parent(&parent)
 {
     m_parent->add_child(this);
-    update_effective_sinks();
+    update_propagated_sinks();
 }
 
 template<
@@ -132,7 +134,7 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::add_sink(
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     const auto result = m_sinks.insert_or_assign(sink, true).second;
-    update_effective_sinks();
+    update_propagated_sinks();
     return result;
 }
 
@@ -147,7 +149,7 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::remove_sink(
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     if (m_sinks.erase(sink) > 0) {
-        update_effective_sinks();
+        update_propagated_sinks();
         return true;
     }
     return false;
@@ -165,7 +167,7 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_sink_enab
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
         itr->second = enabled;
-        update_effective_sinks();
+        update_propagated_sinks();
         return true;
     }
     return false;
@@ -185,6 +187,20 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::sink_enabled(
         return itr->second;
     }
     return false;
+}
+
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_propagate(bool enabled)
+    -> void
+{
+    const typename ThreadingPolicy::WriteLock lock(m_mutex);
+    m_propagate = enabled;
+    update_propagated_sinks();
 }
 
 template<
@@ -257,7 +273,7 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_parent(Lo
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     m_parent = parent;
-    update_effective_sinks();
+    update_propagated_sinks();
 }
 
 template<
@@ -293,37 +309,31 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_effective_sinks(
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks(
     Logger* logger) -> Logger*
 {
     typename ThreadingPolicy::ReadLock parent_lock;
     Logger* parent = logger->m_parent;
-    if (parent) {
+    if (parent && logger->m_propagate) {
         if (parent != this) {
             // Avoid deadlock when locking parent which is already write-locked
             parent_lock = typename ThreadingPolicy::ReadLock(parent->m_mutex);
         }
-        logger->m_effective_sinks = parent->m_effective_sinks;
+        logger->m_propagated_sinks = parent->m_propagated_sinks;
     } else {
-        logger->m_effective_sinks.clear();
+        logger->m_propagated_sinks.clear();
     }
 
-    // Update the current node's effective sinks
+    // Update the current node's propagated sinks
     for (const auto& [sink, enabled] : logger->m_sinks) {
-        const auto it = std::find_if(
-            logger->m_effective_sinks.begin(),
-            logger->m_effective_sinks.end(),
-            [&sink](const auto& pair) { return pair.first == sink.get(); });
-        const bool found = it != logger->m_effective_sinks.end();
-
-        if (enabled) {
-            if (found) {
-                it->second = logger;
-            } else {
-                logger->m_effective_sinks.emplace_back(sink.get(), logger);
+        const auto it = std::find(
+            logger->m_propagated_sinks.begin(), logger->m_propagated_sinks.end(), sink.get());
+        if (const bool found = it != logger->m_propagated_sinks.end(); enabled) {
+            if (!found) {
+                logger->m_propagated_sinks.push_back(sink.get());
             }
         } else if (found) {
-            logger->m_effective_sinks.erase(it);
+            logger->m_propagated_sinks.erase(it);
         }
     }
 
@@ -354,14 +364,14 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_effective_sinks() -> void
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks() -> void
 {
-    // Update current driver without lock since update_effective_sinks()
+    // Update current driver without lock since update_propagated_sinks()
     // have to be called already under the write lock.
-    Logger* next = update_effective_sinks(this);
+    Logger* next = update_propagated_sinks(this);
     while (next) {
         const typename ThreadingPolicy::WriteLock next_lock(next->m_mutex);
-        next = update_effective_sinks(next);
+        next = update_propagated_sinks(next);
     }
 }
 
