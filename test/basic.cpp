@@ -70,6 +70,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
         Logger<String> default_log;
         Logger<String> custom_log{custom_category};
+        expect(custom_log.category(), equal_to(custom_category));
 
         default_log.template add_sink<OStreamSink>(cap_out, pattern);
         custom_log.template add_sink<OStreamSink>(cap_out, pattern);
@@ -157,6 +158,39 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         auto sink = log.template add_sink<OStreamSink>(cap_out);
         expect(sink, is_not(nullptr));
 
+        // Test sink enabled/disabled functionality
+        const auto message = from_utf8<Char>("Test message");
+
+        // Sink should be enabled by default
+        expect(log.sink_enabled(sink), equal_to(true));
+
+        // Test logging when sink is enabled
+        log.info(message);
+        expect(cap_out.read(), equal_to(message + Char{'\n'}));
+
+        // Disable the sink
+        expect(log.set_sink_enabled(sink, false), equal_to(true));
+        expect(log.sink_enabled(sink), equal_to(false));
+
+        // Test logging when sink is disabled - should not produce output
+        log.info(message);
+        expect(cap_out.read(), equal_to(String{}));
+
+        // Re-enable the sink
+        expect(log.set_sink_enabled(sink, true), equal_to(true));
+        expect(log.sink_enabled(sink), equal_to(true));
+
+        // Test logging when sink is re-enabled
+        log.info(message);
+        expect(cap_out.read(), equal_to(message + Char{'\n'}));
+
+        // Test set_sink_enabled with non-existent sink
+        auto non_existent_sink = std::make_shared<OStreamSink<String>>(cap_out);
+        expect(log.set_sink_enabled(non_existent_sink, false), equal_to(false));
+
+        // Test sink_enabled with non-existent sink
+        expect(log.sink_enabled(non_existent_sink), equal_to(false));
+
         // Remove existing sink
         expect(log.remove_sink(sink), equal_to(true));
 
@@ -182,10 +216,12 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
         std::for_each(levels.begin(), levels.end(), [&log, &levels, &cap_out](auto& log_level) {
             log.set_level(log_level);
+            expect(log.level(), equal_to(log_level));
 
             const auto message = from_utf8<Char>("Hello, World!");
             for (const auto msg_level : levels) {
                 log.message(msg_level, message);
+                expect(log.level_enabled(msg_level), equal_to(msg_level <= log_level));
                 if (msg_level > log_level) {
                     expect(cap_out.read(), equal_to(String{}));
                 } else {
