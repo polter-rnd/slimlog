@@ -441,55 +441,55 @@ constexpr void Pattern<Char>::write_string_padded(
 
     // Reserve exact amount for data + padding upfront
     const auto fill_size = specs.fill.size();
+    const auto fill_data = specs.fill.data();
     dst.reserve(dst.size() + codepoints + (padding * fill_size));
 
     // Highly optimized fill function using large chunks
-    constexpr auto FastFill = [](auto& dst, StringViewType fill, std::size_t fill_len) {
-        if (fill_len == 0) {
-            return;
-        }
+    constexpr auto FastFill = [](auto& out, const Char* src, std::size_t src_len, std::size_t cnt) {
+        const auto total_chars = cnt * src_len;
+        const auto start_pos = out.size();
+        out.resize(start_pos + total_chars);
+        auto* dst = out.data() + start_pos;
 
-        const auto fill_size = fill.size();
-        const auto total_chars = fill_len * fill_size;
-        const auto start_pos = dst.size();
-        dst.resize(start_pos + total_chars);
-        auto* dest = dst.data() + start_pos;
-
-        if (fill_size == 1 && sizeof(Char) == 1) {
+        if (src_len == 1 && sizeof(Char) == 1) {
             // Single character - fastest way to fill
-            std::fill_n(dest, total_chars, fill[0]);
+            std::fill_n(dst, total_chars, src[0]);
             return;
         }
 
         // For multi-byte single chars and multi-character patterns
         constexpr std::size_t ChunkSize = 65536; // 64KB
-        if (fill_size == 1) {
+        if (src_len == 1) {
             // Fill first chunk, then copy in large blocks
-            std::fill_n(dest, std::min(total_chars, ChunkSize), fill[0]);
+            std::fill_n(dst, std::min(total_chars, ChunkSize), src[0]);
 
             for (std::size_t pos = ChunkSize; pos < total_chars; pos += ChunkSize) {
                 const auto size = std::min(ChunkSize, total_chars - pos);
-                std::copy_n(dest, size, dest + pos);
+                std::copy_n(dst, size, dst + pos);
             }
         } else {
             // Multi-character pattern - exponential doubling up to 64KB
-            std::copy_n(fill.data(), fill_size, dest);
-            for (std::size_t current = fill_size; current < total_chars;) {
+            std::copy_n(src, src_len, dst);
+            for (std::size_t current = src_len; current < total_chars;) {
                 const auto size = std::min({current, ChunkSize, total_chars - current});
-                std::copy_n(dest, size, dest + current);
+                std::copy_n(dst, size, dst + current);
                 current += size;
             }
         }
     };
 
     // Fill left padding
-    FastFill(dst, specs.fill, left_padding);
+    if (left_padding > 0) {
+        FastFill(dst, fill_data, fill_size, left_padding);
+    }
 
     // Fill data
     write_string(dst, std::forward<StringView>(src));
 
     // Fill right padding
-    FastFill(dst, specs.fill, right_padding);
+    if (right_padding > 0) {
+        FastFill(dst, fill_data, fill_size, right_padding);
+    }
 }
 
 } // namespace SlimLog
