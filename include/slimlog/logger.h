@@ -83,6 +83,14 @@ public:
     explicit Logger(const std::shared_ptr<Logger>& parent, StringViewType category, Level level);
 
     /**
+     * @brief Constructs a new child Logger object with level inherited from parent.
+     *
+     * @param parent Parent logger to inherit sinks.
+     * @param category Logger category name. Can be used in logger messages.
+     */
+    explicit Logger(const std::shared_ptr<Logger>& parent, StringViewType category);
+
+    /**
      * @brief Constructs a new child Logger object with category inherited from parent.
      *
      * @param parent Parent logger to inherit sinks.
@@ -100,7 +108,7 @@ public:
     /**
      * @brief Destructor for the Logger class.
      */
-    virtual ~Logger() = default;
+    virtual ~Logger();
 
     /**
      * @brief Gets the logger category.

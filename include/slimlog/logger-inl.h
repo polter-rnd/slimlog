@@ -52,12 +52,40 @@ Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
     const std::shared_ptr<Logger>& parent, StringViewType category, Level level)
     : m_category(category)
     , m_level(level)
-    , m_time_func(static_cast<TimeFunctionType>(parent->m_time_func))
+    , m_time_func(
+          parent ? static_cast<TimeFunctionType>(parent->m_time_func) : Util::OS::local_time)
     , m_propagate(true)
     , m_parent(parent)
 {
-    m_parent->add_child(this);
-    update_propagated_sinks();
+    if (m_parent) {
+        m_parent->add_child(this);
+        update_propagated_sinks();
+    }
+}
+
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
+    const std::shared_ptr<Logger>& parent, StringViewType category)
+    : Logger(parent, category, parent->level())
+{
+}
+
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::~Logger()
+{
+    if (m_parent) {
+        m_parent->remove_child(this);
+    }
 }
 
 template<
@@ -258,6 +286,12 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_parent(
     const std::shared_ptr<Logger>& parent) -> void
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
+    if (m_parent) {
+        m_parent->remove_child(this);
+    }
+    if (parent) {
+        parent->add_child(this);
+    }
     m_parent = parent;
     update_propagated_sinks();
 }
@@ -333,13 +367,15 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propag
                 std::distance(it, parent->m_children.end()) > 1) {
                 next = *std::next(it);
             }
-            prev = parent;
-            if (auto grand_parent = parent->m_parent.get(); grand_parent != this) {
-                parent = grand_parent;
-            } else {
+
+            // Stop if we reached ourselves (happens when going up the tree)
+            // Or if we raised above ourselves (happens when first iteration has no children)
+            if (parent == this || parent == m_parent.get()) {
                 parent = nullptr;
+            } else {
+                prev = parent;
+                parent = parent->m_parent.get();
             }
-            // parent = parent->m_parent != this ? parent->m_parent : nullptr;
         }
     } else {
         // Nove to next level
@@ -357,7 +393,7 @@ template<
     typename Allocator>
 auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks() -> void
 {
-    // Update current driver without lock since update_propagated_sinks()
+    // Update current logger without lock since update_propagated_sinks()
     // have to be called already under the write lock.
     Logger* next = update_propagated_sinks(this);
     while (next) {
