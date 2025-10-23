@@ -273,7 +273,8 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
                                              "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
                                              "#{thread} {function} {file}|{line}: {message}");
 
-        Logger<String> log{time_mock};
+        Logger<String> log;
+        log.set_time_func(time_mock);
         auto file_sink = log.template add_sink<FileSink>(cap_file.path().string(), pattern);
 
         PatternFields<Char> fields;
@@ -301,7 +302,8 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         const auto pattern = from_utf8<Char>("[{level}] {time} - {message}");
         const auto message = from_utf8<Char>("Warning message");
 
-        Logger<String> log{time_mock};
+        Logger<String> log;
+        log.set_time_func(time_mock);
         log.template add_sink<OStreamSink>(cap_out, pattern);
 
         PatternFields<Char> fields;
@@ -323,7 +325,8 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
         const auto pattern = from_utf8<Char>("[{level}] {time} - {message}");
 
-        Logger<String> log{time_mock};
+        Logger<String> log;
+        log.set_time_func(time_mock);
         log.template add_sink<OStreamSink>(cap_out, pattern);
         log.template add_sink<FileSink>(cap_file.path().string(), pattern);
 
@@ -400,15 +403,16 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
         // Create logger hierarchy: root -> child1 -> grandchild -> child2
         // Parent relationships are set via constructor
-        Logger<String> root_log{from_utf8<Char>("root")};
-        Logger<String> child1_log(from_utf8<Char>("root.child1"), Level::Trace, root_log);
-        Logger<String> child2_log(from_utf8<Char>("root.child2"), Level::Trace, root_log);
+        auto root_log = std::make_shared<Logger<String>>(from_utf8<Char>("root"));
+        auto child1_log = std::make_shared<Logger<String>>(
+            root_log, from_utf8<Char>("root.child1"), Level::Trace);
+        Logger<String> child2_log(root_log, from_utf8<Char>("root.child2"), Level::Trace);
         Logger<String> grandchild_log(
-            from_utf8<Char>("root.child1.grandchild"), Level::Trace, child1_log);
+            child1_log, from_utf8<Char>("root.child1.grandchild"), Level::Trace);
 
         // Add sinks to capture output
-        root_log.template add_sink<OStreamSink>(cap_root, pattern);
-        child1_log.template add_sink<OStreamSink>(cap_child1, pattern);
+        root_log->template add_sink<OStreamSink>(cap_root, pattern);
+        child1_log->template add_sink<OStreamSink>(cap_child1, pattern);
         child2_log.template add_sink<OStreamSink>(cap_child2, pattern);
         grandchild_log.template add_sink<OStreamSink>(cap_grandchild, pattern);
 
@@ -456,7 +460,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         grandchild_log.set_level(Level::Trace);
 
         // Test stopping propagation at child1 level
-        child1_log.set_propagate(false);
+        child1_log->set_propagate(false);
         grandchild_log.warning(message);
         expected = from_utf8<Char>("[root.child1.grandchild:WARN] ") + message + Char{'\n'};
 
@@ -473,7 +477,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         expect(cap_child2.read(), equal_to(String{}));
 
         // Re-enable propagation for final test
-        child1_log.set_propagate(true);
+        child1_log->set_propagate(true);
 
         // Error message should pass through
         grandchild_log.error(message);

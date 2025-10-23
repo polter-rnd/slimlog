@@ -57,53 +57,50 @@ public:
     auto operator=(Logger&&) -> Logger& = delete;
 
     /**
-     * @brief Constructs a new Logger object with the specified category, level and time function.
+     * @brief Constructs a new Logger object with the specified category and level.
      *
      * @param category Logger category name.
      * @param level Logging level.
-     * @param time_func Function to get the current time.
      */
     explicit Logger(
-        StringViewType category,
-        Level level = Level::Info,
-        TimeFunctionType time_func = Util::OS::local_time);
+        StringViewType category = StringViewType{DefaultCategory.data()},
+        Level level = Level::Info);
 
     /**
-     * @brief Constructs a new Logger object with the specified logging level and time function.
+     * @brief Constructs a new Logger object with default category.
      *
      * @param level Logging level.
-     * @param time_func Function to get the current time.
      */
-    explicit Logger(Level level, TimeFunctionType time_func = Util::OS::local_time);
-
-    /**
-     * @brief Constructs a new Logger object with the specified time function.
-     *
-     * @param time_func Function to get the current time.
-     */
-    explicit Logger(TimeFunctionType time_func = Util::OS::local_time);
+    explicit Logger(Level level);
 
     /**
      * @brief Constructs a new child Logger object.
      *
-     * @param category Logger category name. Can be used in logger messages.
-     * @param level Logging level.
      * @param parent Parent logger to inherit sinks from.
+     * @param category Logger category name. Can be used in logger messages.
+     * @param level Logging level.
      */
-    explicit Logger(StringViewType category, Level level, Logger& parent);
+    explicit Logger(const std::shared_ptr<Logger>& parent, StringViewType category, Level level);
 
     /**
-     * @brief Constructs a new child Logger object.
+     * @brief Constructs a new child Logger object with category inherited from parent.
      *
-     * @param category Logger category name. Can be used in logger messages.
-     * @param parent Parent logger to inherit sinks and logging level from.
+     * @param parent Parent logger to inherit sinks.
+     * @param level Logging level.
      */
-    explicit Logger(StringViewType category, Logger& parent);
+    explicit Logger(const std::shared_ptr<Logger>& parent, Level level);
+
+    /**
+     * @brief Constructs a new child Logger object with category and level inherited from parent.
+     *
+     * @param parent Parent logger to inherit sinks.
+     */
+    explicit Logger(const std::shared_ptr<Logger>& parent);
 
     /**
      * @brief Destructor for the Logger class.
      */
-    virtual ~Logger();
+    virtual ~Logger() = default;
 
     /**
      * @brief Gets the logger category.
@@ -203,6 +200,13 @@ public:
     auto set_level(Level level) -> void;
 
     /**
+     * @brief Sets the time function used for log timestamps.
+     *
+     * @param time_func Time function to be set for this logger.
+     */
+    auto set_time_func(TimeFunctionType time_func) -> void;
+
+    /**
      * @brief Gets the logging level.
      *
      * @return Logging level for this logger.
@@ -242,6 +246,10 @@ public:
         using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
         using RecordType = Record<String, Char>;
 
+        if (static_cast<Level>(m_level) < level) [[unlikely]] {
+            return;
+        }
+
         FormatBufferType buffer; // NOLINT(misc-const-correctness)
         RecordType record;
 
@@ -249,9 +257,7 @@ public:
         bool evaluated = false;
 
         const typename ThreadingPolicy::ReadLock lock(m_mutex);
-        if (static_cast<Level>(m_level) < level) [[unlikely]] {
-            return;
-        }
+        // TODO: speed up this. Take first sink and evaluate, then loop through others.
         for (const auto sink : m_propagated_sinks) {
             if (!evaluated) [[unlikely]] {
                 evaluated = true;
@@ -262,7 +268,7 @@ public:
                        static_cast<std::size_t>(location.line()),
                        m_category,
                        Util::OS::thread_id(),
-                       m_time_func()};
+                       static_cast<TimeFunctionType>(m_time_func)()};
 
                 using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
                 using RecordStringViewType = typename RecordType::StringViewType;
@@ -485,21 +491,21 @@ public:
         this->message(Level::Fatal, std::forward<T>(message), location);
     }
 
-protected:
     /**
      * @brief Returns a pointer to the parent sink (or `nullptr` if none).
      *
      * @return Pointer to the parent sink.
      */
-    auto parent() -> Logger*;
+    auto parent() -> std::shared_ptr<Logger>;
 
     /**
      * @brief Sets the parent sink object.
      *
      * @param parent Pointer to the parent logger.
      */
-    auto set_parent(Logger* parent) -> void;
+    auto set_parent(const std::shared_ptr<Logger>& parent) -> void;
 
+protected:
     /**
      * @brief Adds a child logger.
      *
@@ -530,9 +536,9 @@ private:
 
     std::basic_string<Char> m_category;
     AtomicWrapper<Level, ThreadingPolicy> m_level;
+    AtomicWrapper<TimeFunctionType, ThreadingPolicy> m_time_func;
     bool m_propagate;
-    TimeFunctionType m_time_func;
-    Logger* m_parent = nullptr;
+    std::shared_ptr<Logger> m_parent;
     std::vector<Logger*> m_children;
     std::vector<SinkType*> m_propagated_sinks;
     std::unordered_map<std::shared_ptr<SinkType>, bool> m_sinks;
