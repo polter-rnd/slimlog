@@ -11,7 +11,6 @@
 #include "slimlog/logger.h" // IWYU pragma: associated
 
 #include <algorithm>
-#include <exception>
 #include <iterator>
 
 namespace SlimLog {
@@ -24,17 +23,12 @@ template<
     typename Allocator>
 Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
     StringViewType category,
-    Level level,
-    TimeFunctionType time_func)
+    Level level)
     : m_category(category) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
     , m_level(level)
+    , m_time_func(Util::OS::local_time)
     , m_propagate(true)
 {
-    if (time_func != nullptr) {
-        m_time_func = time_func;
-    } else {
-        m_time_func = []() { return std::make_pair(std::chrono::sys_seconds{}, std::size_t{}); };
-    }
 }
 
 template<
@@ -43,20 +37,8 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
-    Level level, TimeFunctionType time_func)
-    : Logger(StringViewType{DefaultCategory.data()}, level, time_func)
-{
-}
-
-template<
-    typename String,
-    typename Char,
-    typename ThreadingPolicy,
-    std::size_t BufferSize,
-    typename Allocator>
-Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(TimeFunctionType time_func)
-    : Logger(StringViewType{DefaultCategory.data()}, Level::Info, time_func)
+Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(Level level)
+    : Logger(StringViewType{DefaultCategory.data()}, level)
 {
 }
 
@@ -67,12 +49,12 @@ template<
     std::size_t BufferSize,
     typename Allocator>
 Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
-    StringViewType category, Level level, Logger& parent)
+    const std::shared_ptr<Logger>& parent, StringViewType category, Level level)
     : m_category(category)
     , m_level(level)
+    , m_time_func(static_cast<TimeFunctionType>(parent->m_time_func))
     , m_propagate(true)
-    , m_time_func(parent.m_time_func)
-    , m_parent(&parent)
+    , m_parent(parent)
 {
     m_parent->add_child(this);
     update_propagated_sinks();
@@ -85,8 +67,8 @@ template<
     std::size_t BufferSize,
     typename Allocator>
 Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
-    StringViewType category, Logger& parent)
-    : Logger(category, parent.level(), parent)
+    const std::shared_ptr<Logger>& parent, Level level)
+    : Logger(parent, parent->category(), level)
 {
 }
 
@@ -96,19 +78,10 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::~Logger()
+Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
+    const std::shared_ptr<Logger>& parent)
+    : Logger(parent, parent->category(), parent->level())
 {
-    try {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
-        for (auto* child : m_children) {
-            child->set_parent(m_parent);
-        }
-        if (m_parent) {
-            m_parent->remove_child(this);
-        }
-    } catch (...) {
-        std::terminate();
-    }
 }
 
 template<
@@ -214,6 +187,18 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_level(Lev
     m_level = level;
 }
 
+template<
+    typename String,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator>
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_time_func(
+    TimeFunctionType time_func) -> void
+{
+    m_time_func = time_func;
+}
+
 /**
  * @brief Gets the logging level.
  *
@@ -256,7 +241,8 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::parent() -> Logger*
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::parent()
+    -> std::shared_ptr<Logger>
 {
     const typename ThreadingPolicy::ReadLock lock(m_mutex);
     return m_parent;
@@ -268,8 +254,8 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_parent(Logger* parent)
-    -> void
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_parent(
+    const std::shared_ptr<Logger>& parent) -> void
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     m_parent = parent;
@@ -313,7 +299,7 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propag
     Logger* logger) -> Logger*
 {
     typename ThreadingPolicy::ReadLock parent_lock;
-    Logger* parent = logger->m_parent;
+    Logger* parent = logger->m_parent.get();
     if (parent && logger->m_propagate) {
         if (parent != this) {
             // Avoid deadlock when locking parent which is already write-locked
@@ -348,7 +334,12 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propag
                 next = *std::next(it);
             }
             prev = parent;
-            parent = parent->m_parent != this ? parent->m_parent : nullptr;
+            if (auto grand_parent = parent->m_parent.get(); grand_parent != this) {
+                parent = grand_parent;
+            } else {
+                parent = nullptr;
+            }
+            // parent = parent->m_parent != this ? parent->m_parent : nullptr;
         }
     } else {
         // Nove to next level
