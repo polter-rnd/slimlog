@@ -84,6 +84,51 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         expect(cap_out.read(), equal_to(from_utf8<Char>("[my_module] ") + message + Char{'\n'}));
     });
 
+    // Test all constructors
+    _.test("constructors", []() {
+        // Default constructor
+        auto log = std::make_shared<Logger<String>>();
+        expect(log->category(), equal_to(from_utf8<Char>("default")));
+        expect(log->level(), equal_to(Level::Info));
+
+        // Constructor with custom category and level
+        const auto custom_category = from_utf8<Char>("test_category");
+        log = std::make_shared<Logger<String>>(custom_category, Level::Debug);
+        expect(log->category(), equal_to(custom_category));
+        expect(log->level(), equal_to(Level::Debug));
+
+        // Constructor with category only
+        log = std::make_shared<Logger<String>>(custom_category);
+        expect(log->category(), equal_to(custom_category));
+        expect(log->level(), equal_to(Level::Info));
+
+        // Constructor with level only
+        log = std::make_shared<Logger<String>>(Level::Warning);
+        expect(log->category(), equal_to(from_utf8<Char>("default")));
+        expect(log->level(), equal_to(Level::Warning));
+
+        // Constructor with parent logger, custom category and level
+        const auto child_category = from_utf8<Char>("log_child");
+        auto log_child = std::make_shared<Logger<String>>(log, child_category, Level::Error);
+        expect(log_child->category(), equal_to(child_category));
+        expect(log_child->level(), equal_to(Level::Error));
+
+        // Constructor with parent logger, level inherited from parent
+        log_child = std::make_shared<Logger<String>>(log, child_category);
+        expect(log_child->category(), equal_to(child_category));
+        expect(log_child->level(), equal_to(log->level()));
+
+        // Constructor with parent logger, category inherited from parent
+        log_child = std::make_shared<Logger<String>>(log, Level::Error);
+        expect(log_child->category(), equal_to(log->category()));
+        expect(log_child->level(), equal_to(Level::Error));
+
+        // Constructor with parent logger, level and category inherited from parent
+        log_child = std::make_shared<Logger<String>>(log);
+        expect(log_child->category(), equal_to(log->category()));
+        expect(log_child->level(), equal_to(log->level()));
+    });
+
     // Test convenience logging methods
     _.test("convenience_methods", []() {
         StreamCapturer<Char> cap_out;
