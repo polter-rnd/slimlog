@@ -22,12 +22,8 @@ template<
     std::size_t BufferSize,
     typename Allocator>
 Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
-    StringViewType category,
-    Level level)
-    : m_category(category) // NOLINT(*-array-to-pointer-decay,*-no-array-decay)
-    , m_level(level)
-    , m_time_func(Util::OS::local_time)
-    , m_propagate(true)
+    StringViewType category, Level level)
+    : Logger(nullptr, category, level)
 {
 }
 
@@ -38,7 +34,7 @@ template<
     std::size_t BufferSize,
     typename Allocator>
 Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(Level level)
-    : Logger(StringViewType{DefaultCategory.data()}, level)
+    : Logger(nullptr, StringViewType{DefaultCategory.data()}, level)
 {
 }
 
