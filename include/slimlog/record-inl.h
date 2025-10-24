@@ -30,18 +30,6 @@ RecordStringView<T>::RecordStringView(RecordStringView&& str_view) noexcept
 }
 
 template<typename T>
-RecordStringView<T>::RecordStringView(std::basic_string_view<T> str_view) noexcept
-    : std::basic_string_view<T>(std::move(str_view))
-{
-}
-
-template<typename T>
-RecordStringView<T>::RecordStringView(const std::basic_string<T>& str) noexcept
-    : std::basic_string_view<T>(str)
-{
-}
-
-template<typename T>
 auto RecordStringView<T>::operator=(const RecordStringView& str_view) noexcept -> RecordStringView&
 {
     if (this == &str_view) {
@@ -72,10 +60,8 @@ template<typename T>
 auto RecordStringView<T>::operator=(std::basic_string_view<T> str_view) noexcept
     -> RecordStringView&
 {
-    if (this != &str_view) {
-        std::basic_string_view<T>::operator=(std::move(str_view));
-        m_codepoints.store(std::string_view::npos, std::memory_order_relaxed);
-    }
+    std::basic_string_view<T>::operator=(std::move(str_view));
+    m_codepoints.store(std::string_view::npos, std::memory_order_relaxed);
     return *this;
 }
 
