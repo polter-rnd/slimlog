@@ -148,14 +148,20 @@ public:
      * @param str_view The std::basic_string_view to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
-    RecordStringView(std::basic_string_view<T> str_view) noexcept;
+    constexpr RecordStringView(std::basic_string_view<T> str_view) noexcept
+        : std::basic_string_view<T>(std::move(str_view))
+    {
+    }
 
     /**
      * @brief Constructor from `std::basic_string`.
      * @param str The std::basic_string to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
-    RecordStringView(const std::basic_string<T>& str) noexcept;
+    constexpr RecordStringView(const std::basic_string<T>& str) noexcept
+        : std::basic_string_view<T>(str)
+    {
+    }
 
     /**
      * @brief Assignment operator.
