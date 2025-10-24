@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <iterator>
+#include <unordered_set>
 
 namespace SlimLog {
 
@@ -389,10 +390,16 @@ template<
     typename Allocator>
 auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks() -> void
 {
+    // Keep track of visited loggers to detect cycles
+    std::unordered_set<Logger*> visited;
+
     // Update current logger without lock since update_propagated_sinks()
     // have to be called already under the write lock.
     Logger* next = update_propagated_sinks(this);
-    while (next) {
+    visited.insert(this);
+
+    while (next && visited.find(next) == visited.end()) {
+        visited.insert(next);
         const typename ThreadingPolicy::WriteLock next_lock(next->m_mutex);
         next = update_propagated_sinks(next);
     }
