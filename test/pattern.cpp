@@ -170,6 +170,21 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
             result, equal_to(from_utf8<Char>("[   INFO   ] [test_category  ] ****Test message")));
     });
 
+    // Test no padding when field width is less than content length
+    _.test("alignment_overflow", []() {
+        const auto pattern_str = from_utf8<Char>("{message:5}");
+        PatternType pattern(pattern_str);
+
+        BufferType buffer;
+        auto record
+            = create_test_record<Char>(Level::Info, from_utf8<Char>("Hello!")); // 6 codepoints
+
+        pattern.format(buffer, record);
+
+        // Since spec_width (5) < codepoints (6), no padding should be added
+        expect(StringView(buffer.data(), buffer.size()), equal_to(from_utf8<Char>("Hello!")));
+    });
+
     // Test field alignment and padding
     _.test("alignment_unicode", []() {
         const auto pattern_str
