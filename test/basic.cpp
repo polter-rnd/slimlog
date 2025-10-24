@@ -320,7 +320,9 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
         Logger<String> log;
         log.set_time_func(time_mock);
-        auto file_sink = log.template add_sink<FileSink>(cap_file.path().string(), pattern);
+        auto file_sink = std::static_pointer_cast<FormattableSink<String>>(
+            log.template add_sink<FileSink>(cap_file.path().string()));
+        file_sink->set_pattern(pattern);
 
         PatternFields<Char> fields;
         fields.category = from_utf8<Char>("default");
