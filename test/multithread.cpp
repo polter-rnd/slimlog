@@ -67,7 +67,7 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
         constexpr int num_threads = 8;
         constexpr int messages_per_thread = 1000;
 
-        auto log = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>();
+        auto log = Logger<String, Char, MultiThreadedPolicy>::create();
         log->template add_sink<OStreamSink>(std::cout);
 
         std::atomic<int> total_messages{0};
@@ -94,7 +94,7 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
         constexpr int num_threads = 4;
         constexpr int iterations_per_thread = 1000;
 
-        Logger<String, Char, MultiThreadedPolicy> log;
+        auto log = Logger<String, Char, MultiThreadedPolicy>::create();
 
         run_concurrent_test(num_threads, iterations_per_thread, [&](int thread_id, int iteration) {
             // Create thread-local sinks
@@ -103,17 +103,17 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
 
             // First thread adds sinks, others try to use them
             if (thread_id == 0) {
-                log.add_sink(sink1);
-                log.add_sink(sink2);
+                log->add_sink(sink1);
+                log->add_sink(sink2);
             }
 
             // All threads log through whatever sinks are available
-            log.info(from_utf8<Char>("Test message"));
+            log->info(from_utf8<Char>("Test message"));
 
             // Last thread removes sinks
             if (thread_id == num_threads - 1) {
-                log.remove_sink(sink1);
-                log.remove_sink(sink2);
+                log->remove_sink(sink1);
+                log->remove_sink(sink2);
             }
         });
     });
@@ -123,23 +123,23 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
         constexpr int num_threads = 4;
         constexpr int iterations_per_thread = 1000;
 
-        Logger<String, Char, MultiThreadedPolicy> log;
-        log.template add_sink<NullSink>();
+        auto log = Logger<String, Char, MultiThreadedPolicy>::create();
+        log->template add_sink<NullSink>();
 
         std::atomic<int> filtered_messages{0};
 
         run_concurrent_test(num_threads, iterations_per_thread, [&](int thread_id, int iteration) {
             // Randomly switch between Debug and Info levels
-            log.set_level(iteration % 2 == 0 ? Level::Debug : Level::Info);
+            log->set_level(iteration % 2 == 0 ? Level::Debug : Level::Info);
 
             // Try to log at Debug level
-            if (log.level_enabled(Level::Debug)) {
-                log.debug(from_utf8<Char>("Debug message"));
+            if (log->level_enabled(Level::Debug)) {
+                log->debug(from_utf8<Char>("Debug message"));
                 filtered_messages.fetch_add(1, std::memory_order_relaxed);
             }
 
             // Info level should always work
-            log.info(from_utf8<Char>("Info message"));
+            log->info(from_utf8<Char>("Info message"));
             filtered_messages.fetch_add(1, std::memory_order_relaxed);
         });
 
@@ -152,14 +152,14 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
         constexpr int num_threads = 8;
         constexpr int messages_per_thread = 1000;
 
-        Logger<String, Char, MultiThreadedPolicy> log;
+        auto log = Logger<String, Char, MultiThreadedPolicy>::create();
         auto sink = std::make_shared<FileSink<String>>(log_filename);
-        log.add_sink(sink);
+        log->add_sink(sink);
 
         run_concurrent_test(num_threads, messages_per_thread, [&](int thread_id, int iteration) {
             const auto msg = from_utf8<Char>(
                 "Thread " + std::to_string(thread_id) + " message " + std::to_string(iteration));
-            log.info(msg);
+            log->info(msg);
 
             // Occasionally flush to test concurrent flush operations
             if (iteration % 10 == 0) {
@@ -180,10 +180,10 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
 
         // Create a base hierarchy that will be dynamically modified
         auto root_logger
-            = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(from_utf8<Char>("root"));
-        auto branch1_logger = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
+            = Logger<String, Char, MultiThreadedPolicy>::create(from_utf8<Char>("root"));
+        auto branch1_logger = Logger<String, Char, MultiThreadedPolicy>::create(
             root_logger, from_utf8<Char>("branch1"));
-        auto branch2_logger = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
+        auto branch2_logger = Logger<String, Char, MultiThreadedPolicy>::create(
             root_logger, from_utf8<Char>("branch2"));
 
         // Add a sink to root to verify message propagation during hierarchy changes
@@ -195,8 +195,8 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
         run_concurrent_test(num_threads, iterations_per_thread, [&](int thread_id, int iteration) {
             if (thread_id % 3 == 0) {
                 // Thread group 1: Create temporary child loggers and attach/detach them
-                auto temp_child
-                    = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(from_utf8<Char>(
+                auto temp_child = Logger<String, Char, MultiThreadedPolicy>::create(
+                    from_utf8<Char>(
                         "temp_" + std::to_string(thread_id) + "_" + std::to_string(iteration)));
 
                 // Randomly attach to different branches
@@ -224,7 +224,7 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
                 if (persistent_children.empty()) {
                     for (int i = 0; i < 3; ++i) {
                         persistent_children.push_back(
-                            std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
+                            Logger<String, Char, MultiThreadedPolicy>::create(
                                 from_utf8<Char>(
                                     "persistent_" + std::to_string(thread_id) + "_"
                                     + std::to_string(i))));
@@ -264,11 +264,11 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
                 }
 
                 // Create temporary chain: temp1 -> temp2 -> temp3
-                auto temp1 = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
+                auto temp1 = Logger<String, Char, MultiThreadedPolicy>::create(
                     from_utf8<Char>("chain1_" + std::to_string(thread_id)));
-                auto temp2 = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
+                auto temp2 = Logger<String, Char, MultiThreadedPolicy>::create(
                     temp1, from_utf8<Char>("chain2_" + std::to_string(thread_id)));
-                auto temp3 = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
+                auto temp3 = Logger<String, Char, MultiThreadedPolicy>::create(
                     temp2, from_utf8<Char>("chain3_" + std::to_string(thread_id)));
 
                 // Attach the chain to one of the branches
@@ -313,11 +313,11 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
 
         for (int iter = 0; iter < num_iterations; ++iter) {
             // Create a hierarchy: root -> parent -> child
-            auto root_logger = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
-                from_utf8<Char>("root"));
-            auto parent_logger = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
+            auto root_logger
+                = Logger<String, Char, MultiThreadedPolicy>::create(from_utf8<Char>("root"));
+            auto parent_logger = Logger<String, Char, MultiThreadedPolicy>::create(
                 root_logger, from_utf8<Char>("parent"));
-            auto child_logger = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
+            auto child_logger = Logger<String, Char, MultiThreadedPolicy>::create(
                 parent_logger, from_utf8<Char>("child"));
 
             // Create various sinks
@@ -344,20 +344,18 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
                         child_logger->set_parent(parent_logger);
                     } else if (thread_id % 5 == 3) {
                         // Create new child loggers with the parent (constructor path)
-                        auto new_child
-                            = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
-                                parent_logger,
-                                from_utf8<Char>(
-                                    "new_child_" + std::to_string(thread_id) + "_"
-                                    + std::to_string(iteration)));
+                        auto new_child = Logger<String, Char, MultiThreadedPolicy>::create(
+                            parent_logger,
+                            from_utf8<Char>(
+                                "new_child_" + std::to_string(thread_id) + "_"
+                                + std::to_string(iteration)));
                     } else {
                         if (iteration % 2 == 0) {
                             // Create and immediately change parent
-                            auto temp_child
-                                = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
-                                    from_utf8<Char>(
-                                        "temp_child_" + std::to_string(thread_id) + "_"
-                                        + std::to_string(iteration)));
+                            auto temp_child = Logger<String, Char, MultiThreadedPolicy>::create(
+                                from_utf8<Char>(
+                                    "temp_child_" + std::to_string(thread_id) + "_"
+                                    + std::to_string(iteration)));
                             temp_child->set_parent(parent_logger);
                         } else {
                             // Change parent of existing child logger (set_parent path)
@@ -387,7 +385,7 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
             std::vector<std::shared_ptr<Logger<String, Char, MultiThreadedPolicy>>> loggers;
             for (int i = 0; i < total_loggers; ++i) {
                 loggers.push_back(
-                    std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
+                    Logger<String, Char, MultiThreadedPolicy>::create(
                         from_utf8<Char>("logger_" + std::to_string(i))));
             }
 
@@ -439,15 +437,14 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
 
         for (int iter = 0; iter < num_iterations; ++iter) {
             // Create a moderately complex hierarchy
-            auto root = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
-                from_utf8<Char>("root"));
+            auto root = Logger<String, Char, MultiThreadedPolicy>::create(from_utf8<Char>("root"));
 
             std::vector<std::shared_ptr<Logger<String, Char, MultiThreadedPolicy>>> loggers;
             loggers.push_back(root);
 
             // Create some initial children
             for (int i = 0; i < child_loggers; ++i) {
-                auto logger = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
+                auto logger = Logger<String, Char, MultiThreadedPolicy>::create(
                     root, from_utf8<Char>("child_" + std::to_string(i)));
                 loggers.push_back(logger);
             }
@@ -469,12 +466,11 @@ const suite<char> Multithread("multithread", type_only, [](auto& _) {
                     case 0: {
                         // Create new logger with random parent
                         const int parent_idx = rng() % loggers.size();
-                        auto new_logger
-                            = std::make_shared<Logger<String, Char, MultiThreadedPolicy>>(
-                                loggers[parent_idx],
-                                from_utf8<Char>(
-                                    "dynamic_" + std::to_string(thread_id) + "_"
-                                    + std::to_string(iteration)));
+                        auto new_logger = Logger<String, Char, MultiThreadedPolicy>::create(
+                            loggers[parent_idx],
+                            from_utf8<Char>(
+                                "dynamic_" + std::to_string(thread_id) + "_"
+                                + std::to_string(iteration)));
                         // Don't store it to allow destruction
                         break;
                     }

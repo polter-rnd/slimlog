@@ -51,11 +51,11 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     // Test empty message
     _.test("empty_message", []() {
         StreamCapturer<Char> cap_out;
-        Logger<String> log;
-        log.template add_sink<OStreamSink>(cap_out);
+        auto log = Logger<String>::create();
+        log->template add_sink<OStreamSink>(cap_out);
 
         const auto empty_message = String{};
-        log.info(empty_message);
+        log->info(empty_message);
 
         expect(cap_out.read(), equal_to(String{Char{'\n'}}));
     });
@@ -68,63 +68,63 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         const auto default_category = from_utf8<Char>("default");
         const auto custom_category = from_utf8<Char>("my_module");
 
-        Logger<String> default_log;
-        Logger<String> custom_log{custom_category};
-        expect(custom_log.category(), equal_to(custom_category));
+        auto default_log = Logger<String>::create();
+        auto custom_log = Logger<String>::create(custom_category);
+        expect(custom_log->category(), equal_to(custom_category));
 
-        default_log.template add_sink<OStreamSink>(cap_out, pattern);
-        custom_log.template add_sink<OStreamSink>(cap_out, pattern);
+        default_log->template add_sink<OStreamSink>(cap_out, pattern);
+        custom_log->template add_sink<OStreamSink>(cap_out, pattern);
 
         const auto message = from_utf8<Char>("Test message");
 
-        default_log.info(message);
+        default_log->info(message);
         expect(cap_out.read(), equal_to(from_utf8<Char>("[default] ") + message + Char{'\n'}));
 
-        custom_log.info(message);
+        custom_log->info(message);
         expect(cap_out.read(), equal_to(from_utf8<Char>("[my_module] ") + message + Char{'\n'}));
     });
 
     // Test all constructors
     _.test("constructors", []() {
         // Default constructor
-        auto log = std::make_shared<Logger<String>>();
+        auto log = Logger<String>::create();
         expect(log->category(), equal_to(from_utf8<Char>("default")));
         expect(log->level(), equal_to(Level::Info));
 
         // Constructor with custom category and level
         const auto custom_category = from_utf8<Char>("test_category");
-        log = std::make_shared<Logger<String>>(custom_category, Level::Debug);
+        log = Logger<String>::create(custom_category, Level::Debug);
         expect(log->category(), equal_to(custom_category));
         expect(log->level(), equal_to(Level::Debug));
 
         // Constructor with category only
-        log = std::make_shared<Logger<String>>(custom_category);
+        log = Logger<String>::create(custom_category);
         expect(log->category(), equal_to(custom_category));
         expect(log->level(), equal_to(Level::Info));
 
         // Constructor with level only
-        log = std::make_shared<Logger<String>>(Level::Warning);
+        log = Logger<String>::create(Level::Warning);
         expect(log->category(), equal_to(from_utf8<Char>("default")));
         expect(log->level(), equal_to(Level::Warning));
 
         // Constructor with parent logger, custom category and level
         const auto child_category = from_utf8<Char>("log_child");
-        auto log_child = std::make_shared<Logger<String>>(log, child_category, Level::Error);
+        auto log_child = Logger<String>::create(log, child_category, Level::Error);
         expect(log_child->category(), equal_to(child_category));
         expect(log_child->level(), equal_to(Level::Error));
 
         // Constructor with parent logger, level inherited from parent
-        log_child = std::make_shared<Logger<String>>(log, child_category);
+        log_child = Logger<String>::create(log, child_category);
         expect(log_child->category(), equal_to(child_category));
         expect(log_child->level(), equal_to(log->level()));
 
         // Constructor with parent logger, category inherited from parent
-        log_child = std::make_shared<Logger<String>>(log, Level::Error);
+        log_child = Logger<String>::create(log, Level::Error);
         expect(log_child->category(), equal_to(log->category()));
         expect(log_child->level(), equal_to(Level::Error));
 
         // Constructor with parent logger, level and category inherited from parent
-        log_child = std::make_shared<Logger<String>>(log);
+        log_child = Logger<String>::create(log);
         expect(log_child->category(), equal_to(log->category()));
         expect(log_child->level(), equal_to(log->level()));
     });
@@ -134,27 +134,27 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         StreamCapturer<Char> cap_out;
         const auto pattern = from_utf8<Char>("[{level}] {message}");
 
-        Logger<String> log(Level::Trace);
-        log.template add_sink<OStreamSink>(cap_out, pattern);
+        auto log = Logger<String>::create(Level::Trace);
+        log->template add_sink<OStreamSink>(cap_out, pattern);
 
         const auto message = from_utf8<Char>("Test message");
 
-        log.trace(message);
+        log->trace(message);
         expect(cap_out.read(), equal_to(from_utf8<Char>("[TRACE] ") + message + Char{'\n'}));
 
-        log.debug(message);
+        log->debug(message);
         expect(cap_out.read(), equal_to(from_utf8<Char>("[DEBUG] ") + message + Char{'\n'}));
 
-        log.info(message);
+        log->info(message);
         expect(cap_out.read(), equal_to(from_utf8<Char>("[INFO] ") + message + Char{'\n'}));
 
-        log.warning(message);
+        log->warning(message);
         expect(cap_out.read(), equal_to(from_utf8<Char>("[WARN] ") + message + Char{'\n'}));
 
-        log.error(message);
+        log->error(message);
         expect(cap_out.read(), equal_to(from_utf8<Char>("[ERROR] ") + message + Char{'\n'}));
 
-        log.fatal(message);
+        log->fatal(message);
         expect(cap_out.read(), equal_to(from_utf8<Char>("[FATAL] ") + message + Char{'\n'}));
     });
 
@@ -163,31 +163,31 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         StreamCapturer<Char> cap_out1;
         StreamCapturer<Char> cap_out2;
 
-        Logger<String> log;
-        auto sink1 = log.template add_sink<OStreamSink>(cap_out1);
-        auto sink2 = log.template add_sink<OStreamSink>(cap_out2);
+        auto log = Logger<String>::create();
+        auto sink1 = log->template add_sink<OStreamSink>(cap_out1);
+        auto sink2 = log->template add_sink<OStreamSink>(cap_out2);
 
         const auto message = from_utf8<Char>("Multi-sink message");
 
-        log.info(message);
+        log->info(message);
 
         // Both sinks should receive the same message
         expect(cap_out1.read(), equal_to(message + Char{'\n'}));
         expect(cap_out2.read(), equal_to(message + Char{'\n'}));
 
         // Remove one sink
-        expect(log.remove_sink(sink1), equal_to(true));
+        expect(log->remove_sink(sink1), equal_to(true));
 
-        log.info(message);
+        log->info(message);
 
         // Only second sink should receive the message
         expect(cap_out1.read(), equal_to(String{}));
         expect(cap_out2.read(), equal_to(message + Char{'\n'}));
 
         // Remove last sink
-        expect(log.remove_sink(sink2), equal_to(true));
+        expect(log->remove_sink(sink2), equal_to(true));
 
-        log.info(message);
+        log->info(message);
 
         // No sinks should receive the message now
         expect(cap_out1.read(), equal_to(String{}));
@@ -196,60 +196,60 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
     // Test sink management
     _.test("sink_management", []() {
-        Logger<String> log;
+        auto log = Logger<String>::create();
         StreamCapturer<Char> cap_out;
 
         // Add sink
-        auto sink = log.template add_sink<OStreamSink>(cap_out);
+        auto sink = log->template add_sink<OStreamSink>(cap_out);
         expect(sink, is_not(nullptr));
 
         // Test sink enabled/disabled functionality
         const auto message = from_utf8<Char>("Test message");
 
         // Sink should be enabled by default
-        expect(log.sink_enabled(sink), equal_to(true));
+        expect(log->sink_enabled(sink), equal_to(true));
 
         // Test logging when sink is enabled
-        log.info(message);
+        log->info(message);
         expect(cap_out.read(), equal_to(message + Char{'\n'}));
 
         // Disable the sink
-        expect(log.set_sink_enabled(sink, false), equal_to(true));
-        expect(log.sink_enabled(sink), equal_to(false));
+        expect(log->set_sink_enabled(sink, false), equal_to(true));
+        expect(log->sink_enabled(sink), equal_to(false));
 
         // Test logging when sink is disabled - should not produce output
-        log.info(message);
+        log->info(message);
         expect(cap_out.read(), equal_to(String{}));
 
         // Re-enable the sink
-        expect(log.set_sink_enabled(sink, true), equal_to(true));
-        expect(log.sink_enabled(sink), equal_to(true));
+        expect(log->set_sink_enabled(sink, true), equal_to(true));
+        expect(log->sink_enabled(sink), equal_to(true));
 
         // Test logging when sink is re-enabled
-        log.info(message);
+        log->info(message);
         expect(cap_out.read(), equal_to(message + Char{'\n'}));
 
         // Test set_sink_enabled with non-existent sink
         auto non_existent_sink = std::make_shared<OStreamSink<String>>(cap_out);
-        expect(log.set_sink_enabled(non_existent_sink, false), equal_to(false));
+        expect(log->set_sink_enabled(non_existent_sink, false), equal_to(false));
 
         // Test sink_enabled with non-existent sink
-        expect(log.sink_enabled(non_existent_sink), equal_to(false));
+        expect(log->sink_enabled(non_existent_sink), equal_to(false));
 
         // Remove existing sink
-        expect(log.remove_sink(sink), equal_to(true));
+        expect(log->remove_sink(sink), equal_to(true));
 
         // Try to remove the same sink again
-        expect(log.remove_sink(sink), equal_to(false));
+        expect(log->remove_sink(sink), equal_to(false));
 
         // Try to remove null sink
-        expect(log.remove_sink(nullptr), equal_to(false));
+        expect(log->remove_sink(nullptr), equal_to(false));
     });
 
     _.test("levels", []() {
         StreamCapturer<Char> cap_out;
-        Logger<String> log;
-        log.template add_sink<OStreamSink>(cap_out);
+        auto log = Logger<String>::create();
+        log->template add_sink<OStreamSink>(cap_out);
         const auto levels = {
             Level::Trace,
             Level::Debug,
@@ -260,13 +260,13 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         };
 
         std::for_each(levels.begin(), levels.end(), [&log, &levels, &cap_out](auto& log_level) {
-            log.set_level(log_level);
-            expect(log.level(), equal_to(log_level));
+            log->set_level(log_level);
+            expect(log->level(), equal_to(log_level));
 
             const auto message = from_utf8<Char>("Hello, World!");
             for (const auto msg_level : levels) {
-                log.message(msg_level, message);
-                expect(log.level_enabled(msg_level), equal_to(msg_level <= log_level));
+                log->message(msg_level, message);
+                expect(log->level_enabled(msg_level), equal_to(msg_level <= log_level));
                 if (msg_level > log_level) {
                     expect(cap_out.read(), equal_to(String{}));
                 } else {
@@ -277,35 +277,35 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     });
 
     _.test("null_sink", []() {
-        Logger<String> log;
-        auto null_sink = log.template add_sink<NullSink>();
-        log.info(from_utf8<Char>("Hello, World!"));
+        auto log = Logger<String>::create();
+        auto null_sink = log->template add_sink<NullSink>();
+        log->info(from_utf8<Char>("Hello, World!"));
         null_sink->flush();
-        expect(log.remove_sink(null_sink), equal_to(true));
+        expect(log->remove_sink(null_sink), equal_to(true));
     });
 
     _.test("ostream_sink", []() {
         StreamCapturer<Char> cap_out;
-        Logger<String> log;
+        auto log = Logger<String>::create();
 
-        auto ostream_sink = log.template add_sink<OStreamSink>(cap_out);
+        auto ostream_sink = log->template add_sink<OStreamSink>(cap_out);
         for (const auto& message : unicode_strings<Char>()) {
-            log.info(message);
+            log->info(message);
             ostream_sink->flush();
             expect(cap_out.read(), equal_to(message + Char{'\n'}));
         }
     });
 
     _.test("file_sink", []() {
-        Logger<String> log;
+        auto log = Logger<String>::create();
         // Check that invalid path throws an error
-        expect([&log]() { log.template add_sink<FileSink>(""); }, thrown<std::system_error>());
+        expect([&log]() { log->template add_sink<FileSink>(""); }, thrown<std::system_error>());
         // Check that valid path works
         FileCapturer<Char> cap_file(log_filename);
 
-        auto file_sink = log.template add_sink<FileSink>(cap_file.path().string());
+        auto file_sink = log->template add_sink<FileSink>(cap_file.path().string());
         for (const auto& message : unicode_strings<Char>()) {
-            log.info(message);
+            log->info(message);
             file_sink->flush();
             expect(cap_file.read(), equal_to(message + Char{'\n'}));
         }
@@ -318,10 +318,10 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
                                              "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
                                              "#{thread} {function} {file}|{line}: {message}");
 
-        Logger<String> log;
-        log.set_time_func(time_mock);
+        auto log = Logger<String>::create();
+        log->set_time_func(time_mock);
         auto file_sink = std::static_pointer_cast<FormattableSink<String>>(
-            log.template add_sink<FileSink>(cap_file.path().string()));
+            log->template add_sink<FileSink>(cap_file.path().string()));
         file_sink->set_pattern(pattern);
 
         PatternFields<Char> fields;
@@ -334,7 +334,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         fields.nsec = time_mock().second;
 
         for (const auto& message : unicode_strings<Char>()) {
-            log.info(message);
+            log->info(message);
             fields.line = std::source_location::current().line() - 1;
             fields.message = message;
             file_sink->flush();
@@ -349,9 +349,9 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         const auto pattern = from_utf8<Char>("[{level}] {time} - {message}");
         const auto message = from_utf8<Char>("Warning message");
 
-        Logger<String> log;
-        log.set_time_func(time_mock);
-        log.template add_sink<OStreamSink>(cap_out, pattern);
+        auto log = Logger<String>::create();
+        log->set_time_func(time_mock);
+        log->template add_sink<OStreamSink>(cap_out, pattern);
 
         PatternFields<Char> fields;
         fields.level = from_utf8<Char>("WARN");
@@ -359,7 +359,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         fields.nsec = time_mock().second;
 
         for (const auto& message : unicode_strings<Char>()) {
-            log.warning(message);
+            log->warning(message);
             fields.message = message;
             expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
         }
@@ -372,10 +372,10 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
         const auto pattern = from_utf8<Char>("[{level}] {time} - {message}");
 
-        Logger<String> log;
-        log.set_time_func(time_mock);
-        log.template add_sink<OStreamSink>(cap_out, pattern);
-        log.template add_sink<FileSink>(cap_file.path().string(), pattern);
+        auto log = Logger<String>::create();
+        log->set_time_func(time_mock);
+        log->template add_sink<OStreamSink>(cap_out, pattern);
+        log->template add_sink<FileSink>(cap_file.path().string(), pattern);
 
         PatternFields<Char> fields;
         fields.level = from_utf8<Char>("INFO");
@@ -392,7 +392,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
             static auto int_num = 66;
             static auto dbl_num = 10.0 / 3;
 
-            log.info(
+            log->info(
                 FormatString<
                     Char,
                     std::add_lvalue_reference_t<decltype(date)>,
@@ -421,22 +421,22 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Multithreaded test message");
 
         // Test MultiThreaded logger
-        Logger<String, Char, MultiThreadedPolicy> log_mt;
-        log_mt.template add_sink<OStreamSink>(cap_out);
+        auto log_mt = Logger<String, Char, MultiThreadedPolicy>::create();
+        log_mt->template add_sink<OStreamSink>(cap_out);
 
-        log_mt.info(message);
+        log_mt->info(message);
         expect(cap_out.read(), equal_to(message + Char{'\n'}));
 
         // Verify logger can handle level changes
-        log_mt.set_level(Level::Error);
-        expect(log_mt.level(), equal_to(Level::Error));
+        log_mt->set_level(Level::Error);
+        expect(log_mt->level(), equal_to(Level::Error));
 
         // Info messages should be filtered out now
-        log_mt.info(message);
+        log_mt->info(message);
         expect(cap_out.read(), equal_to(String{}));
 
         // Error messages should still work
-        log_mt.error(message);
+        log_mt->error(message);
         expect(cap_out.read(), equal_to(message + Char{'\n'}));
     });
 
@@ -450,22 +450,23 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
 
         // Create logger hierarchy: root -> child1 -> grandchild -> child2
         // Parent relationships are set via constructor
-        auto root_log = std::make_shared<Logger<String>>(from_utf8<Char>("root"));
-        auto child1_log = std::make_shared<Logger<String>>(
-            root_log, from_utf8<Char>("root.child1"), Level::Trace);
-        Logger<String> child2_log(root_log, from_utf8<Char>("root.child2"), Level::Trace);
-        Logger<String> grandchild_log(
+        auto root_log = Logger<String>::create(from_utf8<Char>("root"));
+        auto child1_log
+            = Logger<String>::create(root_log, from_utf8<Char>("root.child1"), Level::Trace);
+        auto child2_log
+            = Logger<String>::create(root_log, from_utf8<Char>("root.child2"), Level::Trace);
+        auto grandchild_log = Logger<String>::create(
             child1_log, from_utf8<Char>("root.child1.grandchild"), Level::Trace);
 
         // Add sinks to capture output
         root_log->template add_sink<OStreamSink>(cap_root, pattern);
         child1_log->template add_sink<OStreamSink>(cap_child1, pattern);
-        child2_log.template add_sink<OStreamSink>(cap_child2, pattern);
-        grandchild_log.template add_sink<OStreamSink>(cap_grandchild, pattern);
+        child2_log->template add_sink<OStreamSink>(cap_child2, pattern);
+        grandchild_log->template add_sink<OStreamSink>(cap_grandchild, pattern);
 
         const auto message = from_utf8<Char>("Hierarchy test message");
 
-        grandchild_log.info(message);
+        grandchild_log->info(message);
         auto expected = from_utf8<Char>("[root.child1.grandchild:INFO] ") + message + Char{'\n'};
 
         // Grandchild should log to its own sink
@@ -481,7 +482,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         expect(cap_child2.read(), equal_to(String{}));
 
         // Test message from child2
-        child2_log.warning(message);
+        child2_log->warning(message);
         expected = from_utf8<Char>("[root.child2:WARN] ") + message + Char{'\n'};
 
         // child2 should log to its own sink
@@ -495,20 +496,20 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         expect(cap_grandchild.read(), equal_to(String{}));
 
         // Test level filtering in hierarchy
-        grandchild_log.set_level(Level::Error);
+        grandchild_log->set_level(Level::Error);
 
         // Debug message should be filtered out at grandchild level
-        grandchild_log.debug(message);
+        grandchild_log->debug(message);
         expect(cap_grandchild.read(), equal_to(String{}));
         expect(cap_child1.read(), equal_to(String{}));
         expect(cap_root.read(), equal_to(String{}));
 
         // Reset grandchild level for propagation test
-        grandchild_log.set_level(Level::Trace);
+        grandchild_log->set_level(Level::Trace);
 
         // Test stopping propagation at child1 level
         child1_log->set_propagate(false);
-        grandchild_log.warning(message);
+        grandchild_log->warning(message);
         expected = from_utf8<Char>("[root.child1.grandchild:WARN] ") + message + Char{'\n'};
 
         // Grandchild should still log to its own sink
@@ -527,7 +528,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         child1_log->set_propagate(true);
 
         // Error message should pass through
-        grandchild_log.error(message);
+        grandchild_log->error(message);
         expected = from_utf8<Char>("[root.child1.grandchild:ERROR] ") + message + Char{'\n'};
         expect(cap_grandchild.read(), equal_to(expected));
         expect(cap_child1.read(), equal_to(expected));
