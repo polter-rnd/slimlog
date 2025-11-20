@@ -20,6 +20,7 @@
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -534,18 +535,12 @@ private:
      *        the current logger and its children.
      */
     auto update_propagated_sinks() -> void;
-
-    /**
-     * @brief Updates the propagated sinks for the particular logger.
-     * @param logger Pointer to the logger to update.
-     * @return Pointer to the next logger to be updated.
-     */
-    auto update_propagated_sinks(Logger* logger) -> Logger*;
+    auto update_propagated_sinks_impl(std::unordered_set<Logger*> visited) -> void;
 
     std::basic_string<Char> m_category;
     AtomicWrapper<Level, ThreadingPolicy> m_level;
     AtomicWrapper<TimeFunctionType, ThreadingPolicy> m_time_func;
-    bool m_propagate;
+    AtomicWrapper<bool, ThreadingPolicy> m_propagate;
     std::shared_ptr<Logger> m_parent;
     std::vector<Logger*> m_children;
     std::vector<SinkType*> m_propagated_sinks;

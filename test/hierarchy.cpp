@@ -552,6 +552,170 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         child->info(message);
         expect(cap.read(), equal_to(String{}));
     });
+
+    // Test deep sink propagation through multiple hierarchy levels
+    _.test("deep_sink_propagation", []() {
+        StreamCapturer<Char> cap_sink1;
+        StreamCapturer<Char> cap_sink2;
+        StreamCapturer<Char> cap_child1;
+        StreamCapturer<Char> cap_grandchild1;
+        StreamCapturer<Char> cap_grandchild2;
+        StreamCapturer<Char> cap_great_grandchild1;
+        StreamCapturer<Char> cap_great_grandchild2;
+
+        const auto pattern = from_utf8<Char>("[{category}] {message}");
+        const auto message = from_utf8<Char>("Deep propagation test");
+
+        // Create a deep hierarchy tree structure:
+        //                    root
+        //                   /    \
+        //              child1   child2
+        //             /      \
+        //       grandchild1  grandchild2
+        //       /         \
+        // great_grandchild1  great_grandchild2
+        auto root = std::make_shared<Logger<String>>(from_utf8<Char>("root"));
+        auto child1 = std::make_shared<Logger<String>>(root, from_utf8<Char>("child1"));
+        auto child2 = std::make_shared<Logger<String>>(root, from_utf8<Char>("child2"));
+        auto grandchild1 = std::make_shared<Logger<String>>(child1, from_utf8<Char>("grandchild1"));
+        auto grandchild2 = std::make_shared<Logger<String>>(child1, from_utf8<Char>("grandchild2"));
+        auto great_grandchild1
+            = std::make_shared<Logger<String>>(grandchild1, from_utf8<Char>("great_grandchild1"));
+        auto great_grandchild2
+            = std::make_shared<Logger<String>>(grandchild1, from_utf8<Char>("great_grandchild2"));
+
+        // Add individual sinks for verification
+        child1->template add_sink<OStreamSink>(cap_child1, pattern);
+        grandchild1->template add_sink<OStreamSink>(cap_grandchild1, pattern);
+        grandchild2->template add_sink<OStreamSink>(cap_grandchild2, pattern);
+        great_grandchild1->template add_sink<OStreamSink>(cap_great_grandchild1, pattern);
+        great_grandchild2->template add_sink<OStreamSink>(cap_great_grandchild2, pattern);
+
+        // Initially, test that child1 hierarchy works
+        great_grandchild1->info(message);
+        expect(
+            cap_child1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(
+            cap_grandchild1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(
+            cap_great_grandchild1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(cap_grandchild2.read(), equal_to(String{}));
+        expect(cap_great_grandchild2.read(), equal_to(String{}));
+        expect(cap_sink1.read(), equal_to(String{}));
+        expect(cap_sink2.read(), equal_to(String{}));
+
+        // Also test grandchild2 propagates to child1
+        grandchild2->info(message);
+        expect(
+            cap_child1.read(), equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
+        expect(
+            cap_grandchild2.read(),
+            equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
+        expect(cap_grandchild1.read(), equal_to(String{}));
+        expect(cap_great_grandchild1.read(), equal_to(String{}));
+        expect(cap_great_grandchild2.read(), equal_to(String{}));
+        expect(cap_sink1.read(), equal_to(String{}));
+        expect(cap_sink2.read(), equal_to(String{}));
+
+        // Add sink1 to child1 - should propagate to its descendants but not to child2
+        auto sink1 = child1->template add_sink<OStreamSink>(cap_sink1, pattern);
+
+        // Test that great_grandchild1 now propagates to sink1
+        great_grandchild1->info(message);
+        expect(
+            cap_child1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(
+            cap_grandchild1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(
+            cap_great_grandchild1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(
+            cap_sink1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(cap_sink2.read(), equal_to(String{}));
+
+        // Test that great_grandchild2 also propagates to sink1
+        great_grandchild2->info(message);
+        expect(
+            cap_child1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild2] ") + message + Char{'\n'}));
+        expect(
+            cap_grandchild1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild2] ") + message + Char{'\n'}));
+        expect(
+            cap_great_grandchild2.read(),
+            equal_to(from_utf8<Char>("[great_grandchild2] ") + message + Char{'\n'}));
+        expect(
+            cap_sink1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild2] ") + message + Char{'\n'}));
+        expect(cap_sink2.read(), equal_to(String{}));
+
+        // Test that grandchild2 also propagates to sink1
+        grandchild2->info(message);
+        expect(
+            cap_child1.read(), equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
+        expect(
+            cap_grandchild2.read(),
+            equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
+        expect(
+            cap_sink1.read(), equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
+        expect(cap_sink2.read(), equal_to(String{}));
+
+        // Add sink2 to child2 - should NOT affect child1's descendants
+        auto sink2 = child2->template add_sink<OStreamSink>(cap_sink2, pattern);
+
+        // Verify child1 descendants still only go to sink1, not sink2
+        great_grandchild1->info(message);
+        expect(
+            cap_child1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(
+            cap_grandchild1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(
+            cap_great_grandchild1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(
+            cap_sink1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(cap_sink2.read(), equal_to(String{}));
+
+        // Test child2 itself would go to sink2 (if it logged)
+        child2->info(message);
+        expect(cap_sink1.read(), equal_to(String{}));
+        expect(cap_sink2.read(), equal_to(from_utf8<Char>("[child2] ") + message + Char{'\n'}));
+
+        // Disable sink1 in child1 - should stop propagation to it for all child1 descendants
+        child1->set_sink_enabled(sink1, false);
+        great_grandchild1->info(message);
+        expect(
+            cap_child1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(
+            cap_grandchild1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(
+            cap_great_grandchild1.read(),
+            equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
+        expect(cap_sink1.read(), equal_to(String{}));
+        expect(cap_sink2.read(), equal_to(String{}));
+
+        // Remove sink1 completely - should stop propagation to it
+        child1->remove_sink(sink1);
+        grandchild2->info(message);
+        expect(
+            cap_child1.read(), equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
+        expect(
+            cap_grandchild2.read(),
+            equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
+        expect(cap_sink1.read(), equal_to(String{}));
+        expect(cap_sink2.read(), equal_to(String{}));
+    });
 });
 
 } // namespace
