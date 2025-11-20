@@ -130,10 +130,15 @@ template<
 auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::add_sink(
     const std::shared_ptr<SinkType>& sink) -> bool
 {
-    const typename ThreadingPolicy::WriteLock lock(m_mutex);
-    const auto result = m_sinks.insert_or_assign(sink, true).second;
-    update_propagated_sinks();
-    return result;
+    bool added = false;
+    {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        added = m_sinks.insert_or_assign(sink, true).second;
+    }
+    if (added) {
+        update_propagated_sinks();
+    }
+    return added;
 }
 
 template<
@@ -145,12 +150,16 @@ template<
 auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::remove_sink(
     const std::shared_ptr<SinkType>& sink) -> bool
 {
-    const typename ThreadingPolicy::WriteLock lock(m_mutex);
-    if (m_sinks.erase(sink) > 0) {
-        update_propagated_sinks();
-        return true;
+
+    bool erased = false;
+    {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        erased = m_sinks.erase(sink) > 0;
     }
-    return false;
+    if (erased) {
+        update_propagated_sinks();
+    }
+    return erased;
 }
 
 template<
@@ -162,13 +171,21 @@ template<
 auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_sink_enabled(
     const std::shared_ptr<SinkType>& sink, bool enabled) -> bool
 {
-    const typename ThreadingPolicy::WriteLock lock(m_mutex);
-    if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
-        itr->second = enabled;
-        update_propagated_sinks();
-        return true;
+    bool found = false;
+    {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
+            if (itr->second == enabled) {
+                return true;
+            }
+            itr->second = enabled;
+            found = true;
+        }
     }
-    return false;
+    if (found) {
+        update_propagated_sinks();
+    }
+    return found;
 }
 
 template<
@@ -196,7 +213,6 @@ template<
 auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_propagate(bool enabled)
     -> void
 {
-    const typename ThreadingPolicy::WriteLock lock(m_mutex);
     m_propagate = enabled;
     update_propagated_sinks();
 }
@@ -282,14 +298,21 @@ template<
 auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_parent(
     const std::shared_ptr<Logger>& parent) -> void
 {
-    const typename ThreadingPolicy::WriteLock lock(m_mutex);
-    if (m_parent) {
-        m_parent->remove_child(this);
+    std::shared_ptr<Logger> old_parent;
+    {
+        const typename ThreadingPolicy::ReadLock lock(m_mutex);
+        old_parent = m_parent;
+    }
+    if (old_parent) {
+        old_parent->remove_child(this);
     }
     if (parent) {
         parent->add_child(this);
     }
-    m_parent = parent;
+    {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        m_parent = parent;
+    }
     update_propagated_sinks();
 }
 
@@ -326,60 +349,9 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks(
-    Logger* logger) -> Logger*
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks() -> void
 {
-    typename ThreadingPolicy::ReadLock parent_lock;
-    Logger* parent = logger->m_parent.get();
-    if (parent && logger->m_propagate) {
-        if (parent != this) {
-            // Avoid deadlock when locking parent which is already write-locked
-            parent_lock = typename ThreadingPolicy::ReadLock(parent->m_mutex);
-        }
-        logger->m_propagated_sinks = parent->m_propagated_sinks;
-    } else {
-        logger->m_propagated_sinks.clear();
-    }
-
-    // Update the current node's propagated sinks
-    for (const auto& [sink, enabled] : logger->m_sinks) {
-        const auto it = std::find(
-            logger->m_propagated_sinks.begin(), logger->m_propagated_sinks.end(), sink.get());
-        if (const bool found = it != logger->m_propagated_sinks.end(); enabled) {
-            if (!found) {
-                logger->m_propagated_sinks.push_back(sink.get());
-            }
-        } else if (found) {
-            logger->m_propagated_sinks.erase(it);
-        }
-    }
-
-    // Find the next node in level order
-    Logger* next = nullptr;
-    if (logger->m_children.empty()) {
-        // Move to the next sibling or parent's sibling
-        Logger* prev = logger;
-        while (parent && next == nullptr) {
-            if (auto it = std::find(parent->m_children.begin(), parent->m_children.end(), prev);
-                std::distance(it, parent->m_children.end()) > 1) {
-                next = *std::next(it);
-            }
-
-            // Stop if we reached ourselves (happens when going up the tree)
-            // Or if we raised above ourselves (happens when first iteration has no children)
-            if (parent == this || parent == m_parent.get()) {
-                parent = nullptr;
-            } else {
-                prev = parent;
-                parent = parent->m_parent.get();
-            }
-        }
-    } else {
-        // Nove to next level
-        next = logger->m_children.front();
-    }
-
-    return next;
+    update_propagated_sinks_impl(std::unordered_set<Logger*>{});
 }
 
 template<
@@ -388,20 +360,50 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks() -> void
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks_impl(
+    std::unordered_set<Logger*> visited) -> void
 {
-    // Keep track of visited loggers to detect cycles
-    std::unordered_set<Logger*> visited;
-
-    // Update current logger without lock since update_propagated_sinks()
-    // have to be called already under the write lock.
-    Logger* next = update_propagated_sinks(this);
+    // Check for cycle to prevent infinite recursion
+    if (visited.find(this) != visited.end()) {
+        return; // Already processing this logger, stop recursion
+    }
     visited.insert(this);
 
-    while (next && visited.find(next) == visited.end()) {
-        visited.insert(next);
-        const typename ThreadingPolicy::WriteLock next_lock(next->m_mutex);
-        next = update_propagated_sinks(next);
+    // Snapshot parent propagated sinks and children
+    std::shared_ptr<Logger> parent;
+    std::vector<SinkType*> propagated_sinks;
+    std::vector<Logger*> children;
+    {
+        const typename ThreadingPolicy::ReadLock lock(m_mutex);
+        parent = m_parent;
+        children = m_children;
+    }
+    if (parent && m_propagate) {
+        const typename ThreadingPolicy::ReadLock lock(parent->m_mutex);
+        propagated_sinks = parent->m_propagated_sinks;
+    }
+
+    // Update the current node's propagated sinks
+    {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        m_propagated_sinks = propagated_sinks;
+        for (const auto& [sink, enabled] : m_sinks) {
+            const auto it
+                = std::find(m_propagated_sinks.begin(), m_propagated_sinks.end(), sink.get());
+            const auto found = it != m_propagated_sinks.end();
+            if (!found && enabled) {
+                // Add sink if not already present
+                m_propagated_sinks.push_back(sink.get());
+            } else if (found && !enabled) {
+                // Remove sink if present
+                m_propagated_sinks.erase(it);
+            }
+        }
+    }
+
+    // Recursively update children with visited set
+    for (auto child : children) {
+        child->update_propagated_sinks_impl(visited);
     }
 }
 
