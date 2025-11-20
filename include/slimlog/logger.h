@@ -30,6 +30,8 @@ namespace SlimLog {
  * @brief Logger front-end class.
  *
  * The Logger class performs log message filtering and emits messages through specified sinks.
+ * Loggers can only be created using the static create() methods and must be managed with
+ * shared_ptr.
  *
  * @tparam String Type used for logging messages (e.g., `std::string`).
  * @tparam Char Underlying character type for the string.
@@ -43,7 +45,8 @@ template<
     typename ThreadingPolicy = DefaultThreadingPolicy,
     std::size_t BufferSize = DefaultBufferSize,
     typename Allocator = std::allocator<Char>>
-class Logger {
+class Logger : public std::enable_shared_from_this<
+                   Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>> {
 public:
     /** @brief String view type for log categories. */
     using StringViewType = std::basic_string_view<Char>;
@@ -58,53 +61,100 @@ public:
     auto operator=(Logger&&) -> Logger& = delete;
 
     /**
-     * @brief Constructs a new Logger object with the specified category and level.
+     * @brief Creates a new Logger object with the specified category and level.
      *
      * @param category Logger category name.
      * @param level Logging level.
+     * @return Shared pointer to the created logger.
      */
-    explicit Logger(
-        StringViewType category = StringViewType{DefaultCategory.data()},
-        Level level = Level::Info);
+    static auto create(
+        StringViewType category = StringViewType{DefaultCategory.data()}, Level level = Level::Info)
+        -> std::shared_ptr<Logger>
+    {
+        return std::shared_ptr<Logger>(new Logger(category, level));
+    }
 
     /**
-     * @brief Constructs a new Logger object with default category.
+     * @brief Creates a new Logger object with default category.
      *
      * @param level Logging level.
+     * @return Shared pointer to the created logger.
      */
-    explicit Logger(Level level);
+    static auto create(Level level) -> std::shared_ptr<Logger>
+    {
+        return std::shared_ptr<Logger>(new Logger(level));
+    }
 
     /**
-     * @brief Constructs a new child Logger object.
+     * @brief Creates a new child Logger object.
      *
      * @param parent Parent logger to inherit sinks from.
      * @param category Logger category name. Can be used in logger messages.
      * @param level Logging level.
+     * @return Shared pointer to the created logger.
      */
-    explicit Logger(const std::shared_ptr<Logger>& parent, StringViewType category, Level level);
+    static auto create(const std::shared_ptr<Logger>& parent, StringViewType category, Level level)
+        -> std::shared_ptr<Logger>
+    {
+        auto logger = std::shared_ptr<Logger>(new Logger(parent, category, level));
+        if (parent) {
+            parent->add_child(logger);
+            logger->update_propagated_sinks();
+        }
+        return logger;
+    }
 
     /**
-     * @brief Constructs a new child Logger object with level inherited from parent.
+     * @brief Creates a new child Logger object with level inherited from parent.
      *
      * @param parent Parent logger to inherit sinks.
      * @param category Logger category name. Can be used in logger messages.
+     * @return Shared pointer to the created logger.
      */
-    explicit Logger(const std::shared_ptr<Logger>& parent, StringViewType category);
+    static auto create(const std::shared_ptr<Logger>& parent, StringViewType category)
+        -> std::shared_ptr<Logger>
+    {
+        auto logger = std::shared_ptr<Logger>(new Logger(parent, category));
+        if (parent) {
+            parent->add_child(logger);
+            logger->update_propagated_sinks();
+        }
+        return logger;
+    }
 
     /**
-     * @brief Constructs a new child Logger object with category inherited from parent.
+     * @brief Creates a new child Logger object with category inherited from parent.
      *
      * @param parent Parent logger to inherit sinks.
      * @param level Logging level.
+     * @return Shared pointer to the created logger.
      */
-    explicit Logger(const std::shared_ptr<Logger>& parent, Level level);
+    static auto create(const std::shared_ptr<Logger>& parent, Level level)
+        -> std::shared_ptr<Logger>
+    {
+        auto logger = std::shared_ptr<Logger>(new Logger(parent, level));
+        if (parent) {
+            parent->add_child(logger);
+            logger->update_propagated_sinks();
+        }
+        return logger;
+    }
 
     /**
-     * @brief Constructs a new child Logger object with category and level inherited from parent.
+     * @brief Creates a new child Logger object with category and level inherited from parent.
      *
      * @param parent Parent logger to inherit sinks.
+     * @return Shared pointer to the created logger.
      */
-    explicit Logger(const std::shared_ptr<Logger>& parent);
+    static auto create(const std::shared_ptr<Logger>& parent) -> std::shared_ptr<Logger>
+    {
+        auto logger = std::shared_ptr<Logger>(new Logger(parent));
+        if (parent) {
+            parent->add_child(logger);
+            logger->update_propagated_sinks();
+        }
+        return logger;
+    }
 
     /**
      * @brief Destructor for the Logger class.
@@ -518,18 +568,67 @@ protected:
     /**
      * @brief Adds a child logger.
      *
-     * @param child Pointer to the child logger.
+     * @param child Weak pointer to the child logger.
      */
-    auto add_child(Logger* child) -> void;
+    auto add_child(const std::weak_ptr<Logger>& child) -> void;
 
     /**
      * @brief Removes a child logger.
      *
-     * @param child Pointer to the child logger.
+     * @param child Weak pointer to the child logger.
      */
-    auto remove_child(Logger* child) -> void;
+    auto remove_child(const std::weak_ptr<Logger>& child) -> void;
 
 private:
+    /**
+     * @brief Constructs a new Logger object with the specified category and level.
+     *
+     * @param category Logger category name.
+     * @param level Logging level.
+     */
+    explicit Logger(
+        StringViewType category = StringViewType{DefaultCategory.data()},
+        Level level = Level::Info);
+
+    /**
+     * @brief Constructs a new Logger object with default category.
+     *
+     * @param level Logging level.
+     */
+    explicit Logger(Level level);
+
+    /**
+     * @brief Constructs a new child Logger object.
+     *
+     * @param parent Parent logger to inherit sinks from.
+     * @param category Logger category name. Can be used in logger messages.
+     * @param level Logging level.
+     */
+    explicit Logger(const std::shared_ptr<Logger>& parent, StringViewType category, Level level);
+
+    /**
+     * @brief Constructs a new child Logger object with level inherited from parent.
+     *
+     * @param parent Parent logger to inherit sinks.
+     * @param category Logger category name. Can be used in logger messages.
+     */
+    explicit Logger(const std::shared_ptr<Logger>& parent, StringViewType category);
+
+    /**
+     * @brief Constructs a new child Logger object with category inherited from parent.
+     *
+     * @param parent Parent logger to inherit sinks.
+     * @param level Logging level.
+     */
+    explicit Logger(const std::shared_ptr<Logger>& parent, Level level);
+
+    /**
+     * @brief Constructs a new child Logger object with category and level inherited from parent.
+     *
+     * @param parent Parent logger to inherit sinks.
+     */
+    explicit Logger(const std::shared_ptr<Logger>& parent);
+
     /**
      * @brief Recursively updates the propagated sinks for
      *        the current logger and its children.
@@ -542,7 +641,7 @@ private:
     AtomicWrapper<TimeFunctionType, ThreadingPolicy> m_time_func;
     AtomicWrapper<bool, ThreadingPolicy> m_propagate;
     std::shared_ptr<Logger> m_parent;
-    std::vector<Logger*> m_children;
+    std::vector<std::weak_ptr<Logger>> m_children;
     std::vector<SinkType*> m_propagated_sinks;
     std::unordered_map<std::shared_ptr<SinkType>, bool> m_sinks;
     mutable ThreadingPolicy::Mutex m_mutex;

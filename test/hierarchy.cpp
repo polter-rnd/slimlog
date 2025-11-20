@@ -35,10 +35,10 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Test message");
 
         // Create multiple potential parents and a child without parent
-        auto root_log = std::make_shared<Logger<String>>(from_utf8<Char>("root"));
-        auto parent1_log = std::make_shared<Logger<String>>(root_log, from_utf8<Char>("parent1"));
-        auto parent2_log = std::make_shared<Logger<String>>(root_log, from_utf8<Char>("parent2"));
-        auto child_log = std::make_shared<Logger<String>>(from_utf8<Char>("child"));
+        auto root_log = Logger<String>::create(from_utf8<Char>("root"));
+        auto parent1_log = Logger<String>::create(root_log, from_utf8<Char>("parent1"));
+        auto parent2_log = Logger<String>::create(root_log, from_utf8<Char>("parent2"));
+        auto child_log = Logger<String>::create(from_utf8<Char>("child"));
 
         // Add sinks to all loggers
         root_log->template add_sink<OStreamSink>(cap_root, pattern);
@@ -107,11 +107,10 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Propagation test message");
 
         // Create a deep hierarchy: root -> parent -> child -> grandchild
-        auto root_log = std::make_shared<Logger<String>>(from_utf8<Char>("root"));
-        auto parent_log = std::make_shared<Logger<String>>(root_log, from_utf8<Char>("parent"));
-        auto child_log = std::make_shared<Logger<String>>(parent_log, from_utf8<Char>("child"));
-        auto grandchild_log
-            = std::make_shared<Logger<String>>(child_log, from_utf8<Char>("grandchild"));
+        auto root_log = Logger<String>::create(from_utf8<Char>("root"));
+        auto parent_log = Logger<String>::create(root_log, from_utf8<Char>("parent"));
+        auto child_log = Logger<String>::create(parent_log, from_utf8<Char>("child"));
+        auto grandchild_log = Logger<String>::create(child_log, from_utf8<Char>("grandchild"));
 
         // Add sinks to all loggers
         root_log->template add_sink<OStreamSink>(cap_root, pattern);
@@ -195,13 +194,13 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         StreamCapturer<Char> cap_leaf3;
         StreamCapturer<Char> cap_leaf4;
 
-        auto root_log = std::make_shared<Logger<String>>(from_utf8<Char>("root"));
-        auto branch1_log = std::make_shared<Logger<String>>(root_log, from_utf8<Char>("branch1"));
-        auto branch2_log = std::make_shared<Logger<String>>(root_log, from_utf8<Char>("branch2"));
-        auto leaf1_log = std::make_shared<Logger<String>>(branch1_log, from_utf8<Char>("leaf1"));
-        auto leaf2_log = std::make_shared<Logger<String>>(branch1_log, from_utf8<Char>("leaf2"));
-        auto leaf3_log = std::make_shared<Logger<String>>(branch2_log, from_utf8<Char>("leaf3"));
-        auto leaf4_log = std::make_shared<Logger<String>>(branch2_log, from_utf8<Char>("leaf4"));
+        auto root_log = Logger<String>::create(from_utf8<Char>("root"));
+        auto branch1_log = Logger<String>::create(root_log, from_utf8<Char>("branch1"));
+        auto branch2_log = Logger<String>::create(root_log, from_utf8<Char>("branch2"));
+        auto leaf1_log = Logger<String>::create(branch1_log, from_utf8<Char>("leaf1"));
+        auto leaf2_log = Logger<String>::create(branch1_log, from_utf8<Char>("leaf2"));
+        auto leaf3_log = Logger<String>::create(branch2_log, from_utf8<Char>("leaf3"));
+        auto leaf4_log = Logger<String>::create(branch2_log, from_utf8<Char>("leaf4"));
 
         // Add sinks to all loggers
         root_log->template add_sink<OStreamSink>(cap_root, pattern);
@@ -279,11 +278,9 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Level test message");
 
         // Create hierarchy with different levels
-        auto root_log = std::make_shared<Logger<String>>(from_utf8<Char>("root"), Level::Warning);
-        auto parent_log
-            = std::make_shared<Logger<String>>(root_log, from_utf8<Char>("parent"), Level::Info);
-        auto child_log
-            = std::make_shared<Logger<String>>(parent_log, from_utf8<Char>("child"), Level::Debug);
+        auto root_log = Logger<String>::create(from_utf8<Char>("root"), Level::Warning);
+        auto parent_log = Logger<String>::create(root_log, from_utf8<Char>("parent"), Level::Info);
+        auto child_log = Logger<String>::create(parent_log, from_utf8<Char>("child"), Level::Debug);
 
         // Add sinks to all loggers
         root_log->template add_sink<OStreamSink>(cap_root, pattern);
@@ -358,9 +355,9 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Restructuring test");
 
         // Create multiple loggers
-        auto root1 = std::make_shared<Logger<String>>(from_utf8<Char>("root1"));
-        auto root2 = std::make_shared<Logger<String>>(from_utf8<Char>("root2"));
-        auto child = std::make_shared<Logger<String>>(from_utf8<Char>("child"));
+        auto root1 = Logger<String>::create(from_utf8<Char>("root1"));
+        auto root2 = Logger<String>::create(from_utf8<Char>("root2"));
+        auto child = Logger<String>::create(from_utf8<Char>("child"));
 
         // Add sinks to roots
         auto sink1 = root1->template add_sink<OStreamSink>(cap1);
@@ -425,9 +422,9 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Circular reference test");
 
         // Create loggers
-        auto logger1 = std::make_shared<Logger<String>>(from_utf8<Char>("logger1"));
-        auto logger2 = std::make_shared<Logger<String>>(logger1, from_utf8<Char>("logger2"));
-        auto logger3 = std::make_shared<Logger<String>>(logger2, from_utf8<Char>("logger3"));
+        auto logger1 = Logger<String>::create(from_utf8<Char>("logger1"));
+        auto logger2 = Logger<String>::create(logger1, from_utf8<Char>("logger2"));
+        auto logger3 = Logger<String>::create(logger2, from_utf8<Char>("logger3"));
 
         StreamCapturer<Char> cap1;
         StreamCapturer<Char> cap2;
@@ -468,13 +465,13 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Multiple children test");
 
         // Create two parent loggers
-        auto parent1 = std::make_shared<Logger<String>>(from_utf8<Char>("parent1"));
-        auto parent2 = std::make_shared<Logger<String>>(from_utf8<Char>("parent2"));
+        auto parent1 = Logger<String>::create(from_utf8<Char>("parent1"));
+        auto parent2 = Logger<String>::create(from_utf8<Char>("parent2"));
 
         // Create three child loggers, all initially with parent1
-        auto child1 = std::make_shared<Logger<String>>(parent1, from_utf8<Char>("child1"));
-        auto child2 = std::make_shared<Logger<String>>(parent1, from_utf8<Char>("child2"));
-        auto child3 = std::make_shared<Logger<String>>(parent1, from_utf8<Char>("child3"));
+        auto child1 = Logger<String>::create(parent1, from_utf8<Char>("child1"));
+        auto child2 = Logger<String>::create(parent1, from_utf8<Char>("child2"));
+        auto child3 = Logger<String>::create(parent1, from_utf8<Char>("child3"));
 
         // Add sinks to all loggers
         parent1->template add_sink<OStreamSink>(cap_parent1);
@@ -530,8 +527,8 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto pattern = from_utf8<Char>("[{category}] {message}");
         const auto message = from_utf8<Char>("Sink disable propagation test");
 
-        auto parent = std::make_shared<Logger<String>>(from_utf8<Char>("parent"));
-        auto child = std::make_shared<Logger<String>>(parent, from_utf8<Char>("child"));
+        auto parent = Logger<String>::create(from_utf8<Char>("parent"));
+        auto child = Logger<String>::create(parent, from_utf8<Char>("child"));
 
         // Add same sink to both loggers
         auto sink = parent->template add_sink<OStreamSink>(cap, pattern);
@@ -574,15 +571,15 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         //       grandchild1  grandchild2
         //       /         \
         // great_grandchild1  great_grandchild2
-        auto root = std::make_shared<Logger<String>>(from_utf8<Char>("root"));
-        auto child1 = std::make_shared<Logger<String>>(root, from_utf8<Char>("child1"));
-        auto child2 = std::make_shared<Logger<String>>(root, from_utf8<Char>("child2"));
-        auto grandchild1 = std::make_shared<Logger<String>>(child1, from_utf8<Char>("grandchild1"));
-        auto grandchild2 = std::make_shared<Logger<String>>(child1, from_utf8<Char>("grandchild2"));
+        auto root = Logger<String>::create(from_utf8<Char>("root"));
+        auto child1 = Logger<String>::create(root, from_utf8<Char>("child1"));
+        auto child2 = Logger<String>::create(root, from_utf8<Char>("child2"));
+        auto grandchild1 = Logger<String>::create(child1, from_utf8<Char>("grandchild1"));
+        auto grandchild2 = Logger<String>::create(child1, from_utf8<Char>("grandchild2"));
         auto great_grandchild1
-            = std::make_shared<Logger<String>>(grandchild1, from_utf8<Char>("great_grandchild1"));
+            = Logger<String>::create(grandchild1, from_utf8<Char>("great_grandchild1"));
         auto great_grandchild2
-            = std::make_shared<Logger<String>>(grandchild1, from_utf8<Char>("great_grandchild2"));
+            = Logger<String>::create(grandchild1, from_utf8<Char>("great_grandchild2"));
 
         // Add individual sinks for verification
         child1->template add_sink<OStreamSink>(cap_child1, pattern);

@@ -54,10 +54,7 @@ Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
     , m_propagate(true)
     , m_parent(parent)
 {
-    if (m_parent) {
-        m_parent->add_child(this);
-        update_propagated_sinks();
-    }
+    // Note: add_child will be called from the static create method after construction
 }
 
 template<
@@ -81,7 +78,18 @@ template<
 Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::~Logger()
 {
     if (m_parent) {
-        m_parent->remove_child(this);
+        // Find and remove this logger from parent's children
+        // We can't use shared_from_this in destructor, so we iterate and compare addresses
+        const typename ThreadingPolicy::WriteLock parent_lock(m_parent->m_mutex);
+        m_parent->m_children.erase(
+            std::remove_if(
+                m_parent->m_children.begin(),
+                m_parent->m_children.end(),
+                [this](const std::weak_ptr<Logger>& weak_child) {
+                    auto child = weak_child.lock();
+                    return !child || child.get() == this;
+                }),
+            m_parent->m_children.end());
     }
 }
 
@@ -303,16 +311,38 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_parent(
         const typename ThreadingPolicy::ReadLock lock(m_mutex);
         old_parent = m_parent;
     }
+
     if (old_parent) {
-        old_parent->remove_child(this);
+        // Remove from old parent's children - use raw pointer comparison for safety
+        const typename ThreadingPolicy::WriteLock parent_lock(old_parent->m_mutex);
+        old_parent->m_children.erase(
+            std::remove_if(
+                old_parent->m_children.begin(),
+                old_parent->m_children.end(),
+                [this](const std::weak_ptr<Logger>& weak_child) {
+                    auto child = weak_child.lock();
+                    return !child || child.get() == this;
+                }),
+            old_parent->m_children.end());
     }
-    if (parent) {
-        parent->add_child(this);
-    }
+
     {
         const typename ThreadingPolicy::WriteLock lock(m_mutex);
         m_parent = parent;
     }
+
+    // Add to new parent's children
+    if (parent) {
+        try {
+            auto self = this->shared_from_this();
+            parent->add_child(self);
+        } catch (const std::bad_weak_ptr&) {
+            // If shared_from_this fails, it means this logger is not managed by shared_ptr
+            // This should not happen with our factory design, but we handle it gracefully
+            // by not adding to parent's children list
+        }
+    }
+
     update_propagated_sinks();
 }
 
@@ -322,7 +352,8 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::add_child(Logger* child) -> void
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::add_child(
+    const std::weak_ptr<Logger>& child) -> void
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
     m_children.push_back(child);
@@ -334,13 +365,24 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::remove_child(Logger* child)
-    -> void
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::remove_child(
+    const std::weak_ptr<Logger>& child) -> void
 {
     const typename ThreadingPolicy::WriteLock lock(m_mutex);
-    if (auto it = std::find(m_children.begin(), m_children.end(), child); it != m_children.end()) {
-        m_children.erase(it);
+    auto child_ptr = child.lock();
+    if (!child_ptr) {
+        return; // Child already destroyed
     }
+
+    m_children.erase(
+        std::remove_if(
+            m_children.begin(),
+            m_children.end(),
+            [&child_ptr](const std::weak_ptr<Logger>& weak_child) {
+                auto locked_child = weak_child.lock();
+                return !locked_child || locked_child == child_ptr;
+            }),
+        m_children.end());
 }
 
 template<
@@ -372,12 +414,20 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propag
     // Snapshot parent propagated sinks and children
     std::shared_ptr<Logger> parent;
     std::vector<SinkType*> propagated_sinks;
-    std::vector<Logger*> children;
+    std::vector<std::shared_ptr<Logger>> children;
     {
         const typename ThreadingPolicy::ReadLock lock(m_mutex);
         parent = m_parent;
-        children = m_children;
+
+        // Convert weak_ptr children to shared_ptr, filtering out expired ones
+        children.reserve(m_children.size());
+        for (const auto& weak_child : m_children) {
+            if (auto child = weak_child.lock()) {
+                children.push_back(child);
+            }
+        }
     }
+
     if (parent && m_propagate) {
         const typename ThreadingPolicy::ReadLock lock(parent->m_mutex);
         propagated_sinks = parent->m_propagated_sinks;
@@ -399,10 +449,18 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propag
                 m_propagated_sinks.erase(it);
             }
         }
+
+        // Clean up expired children while we have the write lock
+        m_children.erase(
+            std::remove_if(
+                m_children.begin(),
+                m_children.end(),
+                [](const std::weak_ptr<Logger>& weak_child) { return weak_child.expired(); }),
+            m_children.end());
     }
 
     // Recursively update children with visited set
-    for (auto child : children) {
+    for (auto& child : children) {
         child->update_propagated_sinks_impl(visited);
     }
 }
