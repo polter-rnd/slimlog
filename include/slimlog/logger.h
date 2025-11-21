@@ -159,7 +159,7 @@ public:
     /**
      * @brief Destructor for the Logger class.
      */
-    virtual ~Logger();
+    virtual ~Logger() = default;
 
     /**
      * @brief Gets the logger category.
@@ -570,14 +570,14 @@ protected:
      *
      * @param child Weak pointer to the child logger.
      */
-    auto add_child(const std::weak_ptr<Logger>& child) -> void;
+    auto add_child(const std::shared_ptr<Logger>& child) -> void;
 
     /**
      * @brief Removes a child logger.
      *
-     * @param child Weak pointer to the child logger.
+     * @param child Pointer to the child logger.
      */
-    auto remove_child(const std::weak_ptr<Logger>& child) -> void;
+    auto remove_child(const std::shared_ptr<Logger>& child) -> void;
 
 private:
     /**
