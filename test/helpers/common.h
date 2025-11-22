@@ -2,6 +2,8 @@
 
 #include "slimlog/util/unicode.h"
 
+#include <mettle.hpp>
+
 #if __has_include(<fmt/base.h>)
 #include <fmt/base.h>
 #else
@@ -169,4 +171,30 @@ static auto pattern_format(std::basic_string_view<Char> pattern, const PatternFi
 
     return fmt::vformat(
         fmt::basic_string_view<Char>{pattern}, fmt::basic_format_args<FormatContext>{args});
+}
+
+/**
+ * @brief Helper to verify message in capturer
+ */
+template<template<typename> typename Capturer, typename Char>
+void expect_message(
+    Capturer<Char>& capturer,
+    const std::basic_string<Char>& expected_message,
+    const std::basic_string<Char>& pattern = from_utf8<Char>("{message}"))
+{
+    using namespace mettle;
+    PatternFields<Char> fields;
+    fields.message = expected_message;
+    const auto expected_output = pattern_format<Char>(pattern, fields) + Char{'\n'};
+    expect(capturer.read(), equal_to(expected_output));
+}
+
+/**
+ * @brief Helper to verify no message in capturer
+ */
+template<template<typename> typename Capturer, typename Char>
+void expect_no_message(Capturer<Char>& capturer)
+{
+    using namespace mettle;
+    expect(capturer.read(), equal_to(std::basic_string<Char>{}));
 }
