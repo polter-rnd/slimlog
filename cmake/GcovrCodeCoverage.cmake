@@ -117,8 +117,15 @@ function(add_gcovr_coverage_target)
     endif()
 
     set(gcovr_dirs --root ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR})
-    set(gcovr_options --exclude-unreachable-branches --exclude-throw-branches --print-summary
-                      --gcov-executable ${ARG_GCOV_EXECUTABLE} ${ARG_GCOVR_OPTIONS}
+    set(gcovr_options
+        --exclude-unreachable-branches
+        --exclude-throw-branches
+        --exclude-noncode-lines
+        --print-summary
+        --gcov-ignore-parse-errors=negative_hits.warn_once_per_file
+        --gcov-executable
+        ${ARG_GCOV_EXECUTABLE}
+        ${ARG_GCOVR_OPTIONS}
     )
 
     # Exclude paths

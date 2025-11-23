@@ -29,10 +29,6 @@ struct SingleThreadedPolicy final {
         static void unlock()
         {
         }
-        static bool try_lock()
-        {
-            return true;
-        }
     };
 
     /** @brief Dummy read lock. */

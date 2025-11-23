@@ -11,7 +11,6 @@
 #include "slimlog/logger.h" // IWYU pragma: associated
 
 #include <algorithm>
-#include <iterator>
 #include <unordered_set>
 
 namespace SlimLog {
@@ -292,7 +291,7 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_parent(
         m_parent = parent;
     }
 
-    std::shared_ptr<Logger> self = this->shared_from_this();
+    const std::shared_ptr<Logger> self = this->shared_from_this();
     if (old_parent) {
         old_parent->remove_child(self);
     }
@@ -343,18 +342,8 @@ template<
     typename ThreadingPolicy,
     std::size_t BufferSize,
     typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks() -> void
-{
-    update_propagated_sinks_impl(std::unordered_set<Logger*>{});
-}
-
-template<
-    typename String,
-    typename Char,
-    typename ThreadingPolicy,
-    std::size_t BufferSize,
-    typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks_impl(
+// NOLINTNEXTLINE(misc-no-recursion)
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks(
     std::unordered_set<Logger*> visited) -> void
 {
     // Check for cycle to prevent infinite recursion
@@ -370,14 +359,6 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propag
     {
         const typename ThreadingPolicy::ReadLock lock(m_mutex);
         parent = m_parent;
-
-        // Convert weak_ptr children to shared_ptr, filtering out expired ones
-        children.reserve(m_children.size());
-        for (const auto& weak_child : m_children) {
-            if (auto child = weak_child.lock()) {
-                children.push_back(child);
-            }
-        }
     }
 
     if (parent && m_propagate) {
@@ -402,18 +383,26 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propag
             }
         }
 
-        // Clean up expired children while we have the write lock
+        // Clean up expired children and snapshot valid ones
+        children.reserve(m_children.size());
         m_children.erase(
             std::remove_if(
                 m_children.begin(),
                 m_children.end(),
-                [](const std::weak_ptr<Logger>& weak_child) { return weak_child.expired(); }),
+                [&children](const std::weak_ptr<Logger>& weak_child) {
+                    auto child = weak_child.lock();
+                    if (child) {
+                        children.push_back(child);
+                        return false;
+                    }
+                    return true;
+                }),
             m_children.end());
     }
 
     // Recursively update children with visited set
     for (auto& child : children) {
-        child->update_propagated_sinks_impl(visited);
+        child->update_propagated_sinks(visited);
     }
 }
 

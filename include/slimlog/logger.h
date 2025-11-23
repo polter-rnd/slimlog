@@ -68,7 +68,8 @@ public:
      * @return Shared pointer to the created logger.
      */
     static auto create(
-        StringViewType category = StringViewType{DefaultCategory.data()}, Level level = Level::Info)
+        StringViewType category = StringViewType{DefaultCategory.data()},
+        Level level = Level::Info) // For clang-format < 19
         -> std::shared_ptr<Logger>
     {
         return std::shared_ptr<Logger>(new Logger(category, level));
@@ -632,9 +633,9 @@ private:
     /**
      * @brief Recursively updates the propagated sinks for
      *        the current logger and its children.
+     * @param visited Set of visited loggers to avoid cycles.
      */
-    auto update_propagated_sinks() -> void;
-    auto update_propagated_sinks_impl(std::unordered_set<Logger*> visited) -> void;
+    auto update_propagated_sinks(std::unordered_set<Logger*> visited = {}) -> void;
 
     std::basic_string<Char> m_category;
     AtomicWrapper<Level, ThreadingPolicy> m_level;
