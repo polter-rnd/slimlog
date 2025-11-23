@@ -8,11 +8,11 @@
 
 #include <mettle.hpp>
 
-#include <memory>
 #include <string>
 
-// IWYU pragma: no_include <utility>
+// IWYU pragma: no_include <memory>
 // IWYU pragma: no_include <sstream>
+// IWYU pragma: no_include <utility>
 // clazy:excludeall=non-pod-global-static
 
 namespace {

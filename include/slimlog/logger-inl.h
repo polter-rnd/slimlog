@@ -11,7 +11,6 @@
 #include "slimlog/logger.h" // IWYU pragma: associated
 
 #include <algorithm>
-#include <iterator>
 #include <unordered_set>
 
 namespace SlimLog {
@@ -292,7 +291,7 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::set_parent(
         m_parent = parent;
     }
 
-    std::shared_ptr<Logger> self = this->shared_from_this();
+    const std::shared_ptr<Logger> self = this->shared_from_this();
     if (old_parent) {
         old_parent->remove_child(self);
     }
@@ -342,50 +341,32 @@ template<
     typename Char,
     typename ThreadingPolicy,
     std::size_t BufferSize,
-    typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks() -> void
-{
-    update_propagated_sinks_impl(std::unordered_set<Logger*>{});
-}
-
-template<
-    typename String,
-    typename Char,
-    typename ThreadingPolicy,
-    std::size_t BufferSize,
-    typename Allocator>
-auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks_impl(
+    typename Allocator> // NOLINTNEXTLINE(misc-no-recursion)
+auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sinks(
     std::unordered_set<Logger*> visited) -> void
 {
     // Check for cycle to prevent infinite recursion
     if (visited.find(this) != visited.end()) {
-        return; // Already processing this logger, stop recursion
+        return;
     }
     visited.insert(this);
 
-    // Snapshot parent propagated sinks and children
+    // Snapshot parent
     std::shared_ptr<Logger> parent;
-    std::vector<SinkType*> propagated_sinks;
-    std::vector<std::shared_ptr<Logger>> children;
     {
         const typename ThreadingPolicy::ReadLock lock(m_mutex);
         parent = m_parent;
-
-        // Convert weak_ptr children to shared_ptr, filtering out expired ones
-        children.reserve(m_children.size());
-        for (const auto& weak_child : m_children) {
-            if (auto child = weak_child.lock()) {
-                children.push_back(child);
-            }
-        }
     }
 
+    // Snapshot propagated sinks
+    std::vector<SinkType*> propagated_sinks;
     if (parent && m_propagate) {
         const typename ThreadingPolicy::ReadLock lock(parent->m_mutex);
         propagated_sinks = parent->m_propagated_sinks;
     }
 
-    // Update the current node's propagated sinks
+    // Update the current node's propagated sinks, snapshot children
+    std::vector<std::shared_ptr<Logger>> children;
     {
         const typename ThreadingPolicy::WriteLock lock(m_mutex);
         m_propagated_sinks = propagated_sinks;
@@ -402,18 +383,26 @@ auto Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>::update_propag
             }
         }
 
-        // Clean up expired children while we have the write lock
+        // Clean up expired children and snapshot valid ones
+        children.reserve(m_children.size());
         m_children.erase(
             std::remove_if(
                 m_children.begin(),
                 m_children.end(),
-                [](const std::weak_ptr<Logger>& weak_child) { return weak_child.expired(); }),
+                [&children](const std::weak_ptr<Logger>& weak_child) {
+                    auto child = weak_child.lock();
+                    if (child) {
+                        children.push_back(child);
+                        return false;
+                    }
+                    return true;
+                }),
             m_children.end());
     }
 
-    // Recursively update children with visited set
+    // Recursively update children
     for (auto& child : children) {
-        child->update_propagated_sinks_impl(visited);
+        child->update_propagated_sinks(visited);
     }
 }
 
