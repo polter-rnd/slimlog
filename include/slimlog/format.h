@@ -5,7 +5,7 @@
 
 #pragma once
 
-#include "slimlog/record.h"
+#include "slimlog/location.h"
 #include "slimlog/util/buffer.h"
 #include "slimlog/util/types.h"
 

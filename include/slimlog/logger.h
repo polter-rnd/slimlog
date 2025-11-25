@@ -6,6 +6,7 @@
 #pragma once
 
 #include "slimlog/format.h"
+#include "slimlog/location.h" // IWYU pragma: export
 #include "slimlog/record.h" // IWYU pragma: export
 #include "slimlog/sink.h" // IWYU pragma: export
 #include "slimlog/threading.h" // IWYU pragma: export
