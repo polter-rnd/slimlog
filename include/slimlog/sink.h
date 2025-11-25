@@ -23,7 +23,7 @@ namespace SlimLog {
 
 enum : std::uint16_t {
     /** @brief Default buffer size for raw log messages. */
-    DefaultBufferSize = 128U,
+    DefaultBufferSize = 192U,
 
     /** @brief Default per-sink buffer size for formatted log messages. */
     DefaultSinkBufferSize = 256U
