@@ -91,8 +91,9 @@ if(ENABLE_ANALYZERS)
         --check_also=${CMAKE_SOURCE_DIR}/include/*
         --transitive_includes_only
     )
-    set(CPPCHECK_EXTRA_ARGS --enable=warning,performance,portability,information,missingInclude
-                            --inline-suppr --suppress=missingIncludeSystem --check-level=exhaustive
+    set(CPPCHECK_EXTRA_ARGS
+        --enable=warning,performance,portability,information,missingInclude --inline-suppr
+        --suppress=missingIncludeSystem --suppress=unmatchedSuppression --check-level=exhaustive
     )
 endif()
 
