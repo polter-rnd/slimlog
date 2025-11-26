@@ -30,8 +30,17 @@ public:
 #endif
 #if __has_builtin(__builtin_FILE) and __has_builtin(__builtin_FUNCTION)                            \
         and __has_builtin(__builtin_LINE)                                                          \
-    or defined(_MSC_VER) and _MSC_VER > 192
-        const char* file = extract_file_name(__builtin_FILE()),
+    or defined(_MSC_VER) and _MSC_VER >= 1926 // starting from MSVC 16.6 (MSVC-PR-229114)
+        const char* file = [](const char* path = __builtin_FILE()) consteval -> auto {
+            const char* file = path;
+            while (*path != '\0') {
+                if (*path == '\\' || *path == '/') {
+                    file = path + 1;
+                }
+                ++path;
+            }
+            return file;
+        }(),
         const char* function = __builtin_FUNCTION(),
         int line = __builtin_LINE()
 #else
@@ -77,23 +86,6 @@ public:
     }
 
 private:
-    consteval static auto extract_file_name(const char* path) -> const char*
-    {
-        const char* file = path;
-        const char sep =
-#ifdef _WIN32
-            '\\';
-#else
-            '/';
-#endif
-        while (*path != '\0') {
-            if (*path++ == sep) {
-                file = path;
-            }
-        }
-        return file;
-    }
-
     const char* m_file{""};
     const char* m_function{""};
     int m_line{};

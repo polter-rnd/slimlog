@@ -18,7 +18,6 @@
 #include <chrono>
 #include <filesystem>
 #include <initializer_list>
-#include <source_location>
 #include <string>
 #include <system_error>
 #include <type_traits>
@@ -328,14 +327,14 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         fields.category = from_utf8<Char>("default");
         fields.level = from_utf8<Char>("INFO");
         fields.thread_id = Util::OS::thread_id();
-        fields.function = from_utf8<Char>(std::source_location::current().function_name());
-        fields.file = from_utf8<Char>(std::source_location::current().file_name());
+        fields.function = from_utf8<Char>(__builtin_FUNCTION());
+        fields.file = from_utf8<Char>("basic.cpp");
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
 
         for (const auto& message : unicode_strings<Char>()) {
             log->info(message);
-            fields.line = std::source_location::current().line() - 1;
+            fields.line = __builtin_LINE() - 1;
             fields.message = message;
             file_sink->flush();
             expect(cap_file.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
