@@ -23,8 +23,7 @@ namespace SlimLog {
 template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
 auto FileSink<String, Char, BufferSize, Allocator>::open(std::string_view filename) -> void
 {
-#if defined(_WIN32)
-    // std::is_same_v<Char, wchar_t> ? "a, ccs=UTF-8" : "a"
+#ifdef _WIN32
     FILE* fp = _fsopen(std::string(filename).c_str(), "ab", _SH_DENYWR);
     m_fp = {fp, std::fclose};
 #else
@@ -34,17 +33,13 @@ auto FileSink<String, Char, BufferSize, Allocator>::open(std::string_view filena
         throw std::system_error({errno, std::system_category()}, "Error opening log file");
     }
 
+    // Seek to end of file
     if (std::fseek(m_fp.get(), 0, SEEK_END) != 0) {
         throw std::system_error({errno, std::system_category()}, "Error seeking log file");
     }
 
-    const auto size = std::ftell(m_fp.get());
-    if (size == -1) {
-        throw std::system_error({errno, std::system_category()}, "Error getting log file size");
-    }
-
     // Write BOM only if the file is empty
-    if (size == 0 && !write_bom()) {
+    if (std::ftell(m_fp.get()) == 0 && !write_bom()) {
         throw std::system_error({errno, std::system_category()}, "Error writing BOM to log file");
     }
 }
