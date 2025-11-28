@@ -1,6 +1,7 @@
 #include "slimlog/format.h"
 #include "slimlog/logger.h"
 #include "slimlog/pattern.h"
+#include "slimlog/sinks/callback_sink.h"
 #include "slimlog/sinks/file_sink.h"
 #include "slimlog/sinks/null_sink.h"
 #include "slimlog/sinks/ostream_sink.h"
@@ -12,6 +13,7 @@
 #include "slimlog/pattern-inl.h"
 #include "slimlog/record-inl.h"
 #include "slimlog/sink-inl.h"
+#include "slimlog/sinks/callback_sink-inl.h"
 #include "slimlog/sinks/file_sink-inl.h"
 #include "slimlog/sinks/null_sink-inl.h"
 #include "slimlog/sinks/ostream_sink-inl.h"
@@ -27,6 +29,7 @@ namespace SlimLog {
 template class Logger<std::string, char, SingleThreadedPolicy>;
 template class Logger<std::string, char, MultiThreadedPolicy>;
 template class FormattableSink<std::string>;
+template class CallbackSink<std::string>;
 template class FileSink<std::string>;
 template class OStreamSink<std::string>;
 template class NullSink<std::string>;
@@ -45,6 +48,7 @@ template class FormatValue<std::chrono::sys_seconds, char>;
 template class Logger<std::wstring, wchar_t, SingleThreadedPolicy>;
 template class Logger<std::wstring, wchar_t, MultiThreadedPolicy>;
 template class FormattableSink<std::wstring>;
+template class CallbackSink<std::wstring>;
 template class FileSink<std::wstring>;
 template class OStreamSink<std::wstring>;
 template class NullSink<std::wstring>;
@@ -64,6 +68,7 @@ template class FormatValue<std::chrono::sys_seconds, wchar_t>;
 template class Logger<std::u8string, char8_t, SingleThreadedPolicy>;
 template class Logger<std::u8string, char8_t, MultiThreadedPolicy>;
 template class FormattableSink<std::u8string>;
+template class CallbackSink<std::u8string>;
 template class FileSink<std::u8string>;
 template class OStreamSink<std::u8string>;
 template class NullSink<std::u8string>;
@@ -80,6 +85,7 @@ template class CachedFormatter<std::chrono::sys_seconds, char8_t>;
 template class Logger<std::u16string, char16_t, SingleThreadedPolicy>;
 template class Logger<std::u16string, char16_t, MultiThreadedPolicy>;
 template class FormattableSink<std::u16string>;
+template class CallbackSink<std::u16string>;
 template class FileSink<std::u16string>;
 template class OStreamSink<std::u16string>;
 template class NullSink<std::u16string>;
@@ -96,6 +102,7 @@ template class CachedFormatter<std::chrono::sys_seconds, char16_t>;
 template class Logger<std::u32string, char32_t, SingleThreadedPolicy>;
 template class Logger<std::u32string, char32_t, MultiThreadedPolicy>;
 template class FormattableSink<std::u32string>;
+template class CallbackSink<std::u32string>;
 template class FileSink<std::u32string>;
 template class OStreamSink<std::u32string>;
 template class NullSink<std::u32string>;
