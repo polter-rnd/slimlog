@@ -1,6 +1,7 @@
 // SlimLog
 #include "slimlog/format.h"
 #include "slimlog/logger.h"
+#include "slimlog/sinks/callback_sink.h"
 #include "slimlog/sinks/file_sink.h"
 #include "slimlog/sinks/null_sink.h"
 #include "slimlog/sinks/ostream_sink.h"
@@ -19,6 +20,7 @@
 #include <filesystem>
 #include <initializer_list>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <type_traits>
 
@@ -31,6 +33,7 @@
 
 // IWYU pragma: no_include <utility>
 // IWYU pragma: no_include <fstream>
+// IWYU pragma: no_include <functional>
 // IWYU pragma: no_include <memory>
 // IWYU pragma: no_include <vector>
 // clazy:excludeall=non-pod-global-static
@@ -307,6 +310,34 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
             log->info(message);
             file_sink->flush();
             expect(cap_file.read(), equal_to(message + Char{'\n'}));
+        }
+    });
+
+    _.test("callback_sink", []() {
+        auto log = Logger<String>::create();
+        Level captured_level{Level::Debug};
+        Location captured_location;
+        String captured_message;
+
+        // Create callback that captures the output
+        auto callback = [&](Level level, Location location, std::basic_string_view<Char> message) {
+            captured_level = level;
+            captured_location = location;
+            captured_message = message.data(); // Check that string is null-terminated
+        };
+
+        auto callback_sink = log->template add_sink<CallbackSink>(callback);
+
+        for (const auto& message : unicode_strings<Char>()) {
+            captured_message.clear();
+            log->info(message);
+            expect(captured_location.line(), equal_to(__builtin_LINE() - 1));
+            expect(captured_location.file_name(), equal_to(std::string_view{"basic.cpp"}));
+            expect(
+                captured_location.function_name(),
+                equal_to(std::string_view{__builtin_FUNCTION()}));
+            expect(captured_message, equal_to(message));
+            expect(captured_level, equal_to(Level::Info));
         }
     });
 
