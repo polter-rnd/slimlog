@@ -358,6 +358,7 @@ public:
                     // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                     record.message = RecordStringViewType{callback};
                 } else {
+                    // Either void callback or string type convertible to logger string type
                     record.message = callback;
                 }
             }

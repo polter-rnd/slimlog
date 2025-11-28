@@ -46,7 +46,7 @@ concept IsPair = requires {
  * @tparam String String type.
  * @tparam Char Type of the characters in the string.
  * @param str The input string object to be converted.
- * @return A `std::basic_string_view` of the same character type as the input string.
+ * @return Value of type, convertible to `std::basic_string_view<Char>`.
  */
 template<typename String, typename Char>
 struct ConvertString {
@@ -225,7 +225,7 @@ public:
      * @param record Log record.
      */
     template<typename String>
-    auto format(auto& out, Record<String, Char>& record) -> void;
+    auto format(auto& out, const Record<String, Char>& record) -> void;
 
     /**
      * @brief Sets the message pattern.

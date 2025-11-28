@@ -44,7 +44,7 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(RecordType& record) -> void override;
+    auto message(const RecordType& record) -> void override;
 
     /**
      * @brief Flush operation (no-op for NullSink).

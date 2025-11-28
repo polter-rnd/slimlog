@@ -13,7 +13,7 @@
 namespace SlimLog {
 
 template<typename String, typename Char>
-auto NullSink<String, Char>::message(RecordType& /*unused*/) -> void
+auto NullSink<String, Char>::message(const RecordType& /*unused*/) -> void
 {
 }
 

@@ -56,7 +56,7 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(RecordType& record) -> void override;
+    auto message(const RecordType& record) -> void override;
 
     /**
      * @brief Flushes the output stream.
@@ -73,6 +73,8 @@ protected:
 
     /**
      * @brief Writes a BOM (Byte Order Mark) to the log file.
+     *
+     * @return true if the BOM was written successfully, false otherwise.
      */
     auto write_bom() -> bool;
 

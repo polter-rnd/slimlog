@@ -25,7 +25,7 @@ namespace Detail {
 
 template<typename String, typename Char>
 concept HasConvertString = requires(String value) {
-    { ConvertString<String, Char>{}(value) } -> std::same_as<std::basic_string_view<Char>>;
+    { ConvertString<String, Char>{}(value) } -> std::convertible_to<std::basic_string_view<Char>>;
 };
 
 } // namespace Detail
@@ -91,7 +91,7 @@ template<typename Char>
 
 template<typename Char>
 template<typename String>
-auto Pattern<Char>::format(auto& out, Record<String, Char>& record) -> void
+auto Pattern<Char>::format(auto& out, const Record<String, Char>& record) -> void
 {
     constexpr std::size_t MsecInNsec = 1000000;
     constexpr std::size_t UsecInNsec = 1000;
@@ -145,8 +145,7 @@ auto Pattern<Char>::format(auto& out, Record<String, Char>& record) -> void
                             (void)out;
                             (void)value;
                             (void)arg;
-                            throw FormatError(
-                                "No corresponding Log::ConvertString<> specialization found");
+                            throw FormatError("No suitable ConvertString<> specialization found");
                         }
                     },
                     [&out, &value = item.value](auto&& arg) {

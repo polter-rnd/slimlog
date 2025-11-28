@@ -11,6 +11,7 @@
 #include "slimlog/record.h" // IWYU pragma: associated
 #include "slimlog/util/unicode.h"
 
+#include <atomic>
 #include <utility>
 
 namespace SlimLog {
@@ -18,14 +19,14 @@ namespace SlimLog {
 template<typename T>
 RecordStringView<T>::RecordStringView(const RecordStringView& str_view) noexcept
     : std::basic_string_view<T>(str_view)
-    , m_codepoints(str_view.m_codepoints.load(std::memory_order_relaxed))
+    , m_codepoints(str_view.m_codepoints)
 {
 }
 
 template<typename T>
 RecordStringView<T>::RecordStringView(RecordStringView&& str_view) noexcept
     : std::basic_string_view<T>(std::move(static_cast<std::basic_string_view<T>&&>(str_view)))
-    , m_codepoints(str_view.m_codepoints.load(std::memory_order_relaxed))
+    , m_codepoints(str_view.m_codepoints)
 {
 }
 
@@ -37,8 +38,7 @@ auto RecordStringView<T>::operator=(const RecordStringView& str_view) noexcept -
     }
 
     std::basic_string_view<T>::operator=(str_view);
-    m_codepoints.store(
-        str_view.m_codepoints.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    m_codepoints = str_view.m_codepoints;
     return *this;
 }
 
@@ -51,8 +51,7 @@ auto RecordStringView<T>::operator=(RecordStringView&& str_view) noexcept -> Rec
 
     std::basic_string_view<T>::operator=(
         std::move(static_cast<std::basic_string_view<T>&&>(str_view)));
-    m_codepoints.store(
-        str_view.m_codepoints.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    m_codepoints = str_view.m_codepoints;
     return *this;
 }
 
@@ -61,19 +60,21 @@ auto RecordStringView<T>::operator=(std::basic_string_view<T> str_view) noexcept
     -> RecordStringView&
 {
     std::basic_string_view<T>::operator=(std::move(str_view));
-    m_codepoints.store(std::string_view::npos, std::memory_order_relaxed);
+    m_codepoints = std::string_view::npos;
     return *this;
 }
 
 template<typename T>
-auto RecordStringView<T>::codepoints() -> std::size_t
+auto RecordStringView<T>::codepoints() const noexcept -> std::size_t
 {
-    auto codepoints = m_codepoints.load(std::memory_order_acquire);
-    if (codepoints == std::string_view::npos) {
-        codepoints = Util::Unicode::count_codepoints(this->data(), this->size());
-        m_codepoints.store(codepoints, std::memory_order_release);
+    if (auto expected = std::string_view::npos; m_codepoints == expected) {
+        // Thread-safe lazy initialization using std::atomic_ref
+        // in case of possible concurrent access from multiple sinks
+        const auto calculated = Util::Unicode::count_codepoints(this->data(), this->size());
+        const std::atomic_ref atomic_codepoints{m_codepoints};
+        atomic_codepoints.compare_exchange_strong(expected, calculated, std::memory_order_relaxed);
     }
-    return codepoints;
+    return m_codepoints;
 }
 
 } // namespace SlimLog

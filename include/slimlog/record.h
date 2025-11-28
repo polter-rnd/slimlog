@@ -5,7 +5,6 @@
 
 #pragma once
 
-#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -105,10 +104,10 @@ public:
      *
      * @return Number of code points.
      */
-    auto codepoints() -> std::size_t;
+    auto codepoints() const noexcept -> std::size_t;
 
 private:
-    std::atomic<std::size_t> m_codepoints = std::string_view::npos;
+    mutable std::size_t m_codepoints = std::string_view::npos;
 };
 
 /**

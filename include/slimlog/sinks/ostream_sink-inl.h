@@ -13,7 +13,7 @@
 namespace SlimLog {
 
 template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto OStreamSink<String, Char, BufferSize, Allocator>::message(RecordType& record) -> void
+auto OStreamSink<String, Char, BufferSize, Allocator>::message(const RecordType& record) -> void
 {
     FormatBufferType buffer;
     this->format(buffer, record);

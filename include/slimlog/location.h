@@ -37,6 +37,7 @@ static consteval auto source_basename(const char* path = SLIMLOG_SOURCE_FILE) ->
 /**
  * @brief Represents a specific location in the source code.
  *
+ * Has the same interface as `std::source_location`.
  * Provides information about the source file, function, and line number.
  */
 class Location {
@@ -54,7 +55,7 @@ public:
         const char* function = SLIMLOG_SOURCE_FUNCTION,
         int line = SLIMLOG_SOURCE_LINE) noexcept
     {
-        Location loc{};
+        Location loc;
         loc.m_file = file;
         loc.m_function = function;
         loc.m_line = line;
@@ -92,8 +93,8 @@ public:
     }
 
 private:
-    const char* m_file{""};
-    const char* m_function{""};
+    const char* m_file{nullptr};
+    const char* m_function{nullptr};
     int m_line{};
 };
 

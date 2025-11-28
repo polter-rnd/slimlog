@@ -21,7 +21,7 @@ auto FormattableSink<String, Char, BufferSize, Allocator>::set_pattern(StringVie
 
 template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
 auto FormattableSink<String, Char, BufferSize, Allocator>::format(
-    FormatBufferType& result, RecordType& record) -> void
+    FormatBufferType& result, const RecordType& record) -> void
 {
     m_pattern.format(result, record);
 }

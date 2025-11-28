@@ -122,33 +122,38 @@ const suite<SLIMLOG_CHAR_TYPES> Record("record", type_only, [](auto& _) {
     _.test("codepoints", []() {
         // ASCII string
         const auto ascii = from_utf8<Char>("Hello");
-        RecordStringView<Char> ascii_view(ascii);
+        const RecordStringView<Char> ascii_view(ascii);
         expect(ascii_view.codepoints(), equal_to(5U));
 
         // Unicode string (Cyrillic)
         const auto cyrillic = from_utf8<Char>("Привет");
-        RecordStringView<Char> cyrillic_view(cyrillic);
+        const RecordStringView<Char> cyrillic_view(cyrillic);
         expect(cyrillic_view.codepoints(), equal_to(6U));
 
         // Emoji
         const auto emoji = from_utf8<Char>("Hello 😀 World");
-        RecordStringView<Char> emoji_view(emoji);
+        const RecordStringView<Char> emoji_view(emoji);
         expect(emoji_view.codepoints(), equal_to(13U));
 
         // Empty string
-        RecordStringView<Char> empty_view;
+        const RecordStringView<Char> empty_view;
         expect(empty_view.codepoints(), equal_to(0U));
 
         // Test caching
         RecordStringView<Char> cyrillic_view2 = cyrillic_view;
         expect(cyrillic_view.codepoints(), equal_to(cyrillic_view2.codepoints()));
+
+        // Modify underlying data by assignment and verify cache reset
+        const auto cyrillic2 = from_utf8<Char>("Мир");
+        cyrillic_view2 = std::basic_string_view<Char>(cyrillic2);
+        expect(cyrillic_view2.codepoints(), equal_to(3U));
     });
 
     // Test mixed Unicode content
     _.test("mixed_unicode", []() {
         // Mix of ASCII, Cyrillic, Chinese and Emoji
         const auto mixed = from_utf8<Char>("Hello привет 你好 😀");
-        RecordStringView<Char> view(mixed);
+        const RecordStringView<Char> view(mixed);
         expect(view.codepoints(), equal_to(17U));
     });
 });

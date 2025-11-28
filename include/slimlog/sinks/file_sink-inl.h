@@ -67,7 +67,7 @@ auto FileSink<String, Char, BufferSize, Allocator>::write_bom() -> bool
 }
 
 template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto FileSink<String, Char, BufferSize, Allocator>::message(RecordType& record) -> void
+auto FileSink<String, Char, BufferSize, Allocator>::message(const RecordType& record) -> void
 {
     FormatBufferType buffer;
     this->format(buffer, record);

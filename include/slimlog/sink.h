@@ -71,7 +71,7 @@ public:
      * @param record The log record to process.
      */
     // NOLINTNEXTLINE(portability-template-virtual-member-function)
-    virtual auto message(RecordType& record) -> void = 0;
+    virtual auto message(const RecordType& record) -> void = 0;
 
     /**
      * @brief Flushes any buffered log messages.
@@ -179,7 +179,7 @@ protected:
      * @param result Buffer to store the formatted message.
      * @param record The log record to format.
      */
-    auto format(FormatBufferType& result, RecordType& record) -> void;
+    auto format(FormatBufferType& result, const RecordType& record) -> void;
 
 private:
     Pattern<Char> m_pattern;
