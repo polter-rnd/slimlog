@@ -71,7 +71,12 @@ auto RecordStringView<T>::codepoints() const noexcept -> std::size_t
         // Thread-safe lazy initialization using std::atomic_ref
         // in case of possible concurrent access from multiple sinks
         const auto calculated = Util::Unicode::count_codepoints(this->data(), this->size());
+#ifdef __cpp_lib_atomic_ref
         const std::atomic_ref atomic_codepoints{m_codepoints};
+#else
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        auto& atomic_codepoints = *reinterpret_cast<std::atomic<std::size_t>*>(&m_codepoints);
+#endif
         atomic_codepoints.compare_exchange_strong(expected, calculated, std::memory_order_relaxed);
     }
     return m_codepoints;
