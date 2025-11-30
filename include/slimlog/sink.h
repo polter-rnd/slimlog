@@ -164,7 +164,7 @@ public:
      * );
      * ```
      *
-     * @param levels List of log levels with corresponding names.
+     * @param pairs List of log levels with corresponding names.
      */
     template<typename... Pairs>
     auto set_levels(Pairs&&... pairs) -> void

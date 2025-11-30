@@ -7,6 +7,7 @@
 
 namespace SlimLog {
 
+/** @cond */
 // MSVC doesn't have __has_builtin, source_location supported from MSVC 16.6 (MSVC-PR-229114)
 #if (!defined(__has_builtin) and !defined(_MSC_VER)) or (defined(_MSC_VER) and _MSC_VER < 1926)
 #define SLIMLOG_SOURCE_FILE "unknown"
@@ -18,7 +19,6 @@ namespace SlimLog {
 #define SLIMLOG_SOURCE_LINE __builtin_LINE()
 #endif
 
-/** @cond */
 namespace Detail {
 static consteval auto source_basename(const char* path = SLIMLOG_SOURCE_FILE) -> const char*
 {
