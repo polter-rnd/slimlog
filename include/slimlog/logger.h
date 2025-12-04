@@ -11,7 +11,6 @@
 #include "slimlog/sink.h" // IWYU pragma: export
 #include "slimlog/threading.h" // IWYU pragma: export
 #include "slimlog/util/os.h"
-#include "slimlog/util/types.h"
 
 #include <array>
 #include <chrono>
@@ -385,9 +384,11 @@ public:
                         }
                     }
                 } else if constexpr (std::is_convertible_v<T, RecordStringViewType>) {
-                    // Non-invocable argument: argument is the message itself
                     // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                     record.message = RecordStringViewType{callback};
+                } else if constexpr (std::is_convertible_v<T, StringViewType>) {
+                    // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
+                    record.message = RecordStringViewType{StringViewType{callback}};
                 } else if constexpr (Detail::HasConvertString<T, Char>) {
                     record.message
                         = RecordStringView<Char>{ConvertString<T, Char>{}(callback, buffer)};
