@@ -121,24 +121,18 @@ RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
 /**
  * @brief Represents a log record containing message details.
  *
- * @tparam String String type for storing the message.
  * @tparam Char Character type for the message.
  */
-template<typename String, typename Char>
+template<typename Char>
 struct Record {
-    /** @brief String reference type. */
-    using StringRefType = std::reference_wrapper<const String>;
-    /** @brief String view type. */
-    using StringViewType = RecordStringView<Char>;
-
-    Level level = {}; ///< Log level.
+    std::pair<std::chrono::sys_seconds, std::size_t> time; ///< Record time.
+    RecordStringView<Char> message = {}; ///< Log message.
+    RecordStringView<Char> category = {}; ///< Log category.
     RecordStringView<char> filename = {}; ///< File name.
     RecordStringView<char> function = {}; ///< Function name.
     std::size_t line = {}; ///< Line number.
-    StringViewType category = {}; ///< Log category.
     std::size_t thread_id = {}; ///< Thread ID.
-    std::pair<std::chrono::sys_seconds, std::size_t> time; ///< Record time.
-    std::variant<StringRefType, StringViewType> message = StringViewType{}; ///< Log message.
+    Level level = {}; ///< Log level.
 };
 
 } // namespace SlimLog

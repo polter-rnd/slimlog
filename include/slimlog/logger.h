@@ -28,6 +28,37 @@
 namespace SlimLog {
 
 /**
+ * @brief Converts a string to a `std::basic_string_view`.
+ *
+ * This function takes a String object and returns a `std::basic_string_view`
+ * of the same character type.
+ *
+ * @tparam String String type.
+ * @tparam Char Type of the characters in the string.
+ * @param str The input string object to be converted.
+ * @return Value of type, convertible to `std::basic_string_view<Char>`.
+ */
+template<typename String, typename Char>
+struct ConvertString {
+    // auto operator()(const String&) const -> std::basic_string_view<Char> = delete;
+    auto operator()(const String&, auto&) const -> std::basic_string_view<Char> = delete;
+};
+
+/** @cond */
+namespace Detail {
+
+template<typename String, typename Char>
+concept HasConvertString
+    = requires(String value, FormatBuffer<Char, DefaultBufferSize, std::allocator<Char>> buf) {
+          {
+              ConvertString<String, Char>{}(value, buf)
+          } -> std::convertible_to<std::basic_string_view<Char>>;
+      };
+
+} // namespace Detail
+/** @endcond */
+
+/**
  * @brief Logger front-end class.
  *
  * The Logger class performs log message filtering and emits messages through specified sinks.
@@ -41,18 +72,17 @@ namespace SlimLog {
  * @tparam Allocator Allocator type for the internal buffer.
  */
 template<
-    typename String,
-    typename Char = Util::Types::UnderlyingCharType<String>,
+    typename Char = char,
     typename ThreadingPolicy = DefaultThreadingPolicy,
     std::size_t BufferSize = DefaultBufferSize,
     typename Allocator = std::allocator<Char>>
-class Logger : public std::enable_shared_from_this<
-                   Logger<String, Char, ThreadingPolicy, BufferSize, Allocator>> {
+class Logger
+    : public std::enable_shared_from_this<Logger<Char, ThreadingPolicy, BufferSize, Allocator>> {
 public:
     /** @brief String view type for log categories. */
     using StringViewType = std::basic_string_view<Char>;
     /** @brief Base sink type for the logger. */
-    using SinkType = Sink<String, Char>;
+    using SinkType = Sink<Char>;
     /** @brief Time function type for getting the current time. */
     using TimeFunctionType = std::pair<std::chrono::sys_seconds, std::size_t> (*)();
 
@@ -189,16 +219,16 @@ public:
      * @return Shared pointer to the created sink.
      */
     template<
-        template<typename, typename, std::size_t, typename> // For clang-format < 19
+        template<typename, std::size_t, typename> // For clang-format < 19
         typename T,
         std::size_t SinkBufferSize = DefaultSinkBufferSize,
         typename SinkAllocator = Allocator,
         typename... Args>
-        requires(IsFormattableSink<T<String, Char, SinkBufferSize, SinkAllocator>>)
+        requires(IsFormattableSink<T<Char, SinkBufferSize, SinkAllocator>>)
     auto add_sink(Args&&... args) -> std::shared_ptr<SinkType>
     {
-        auto sink = std::make_shared<T<String, Char, SinkBufferSize, SinkAllocator>>(
-            std::forward<Args>(args)...);
+        auto sink
+            = std::make_shared<T<Char, SinkBufferSize, SinkAllocator>>(std::forward<Args>(args)...);
         return add_sink(sink) ? sink : nullptr;
     }
 
@@ -210,11 +240,11 @@ public:
      * @param args Arguments forwarded to the sink constructor.
      * @return Shared pointer to the created sink.
      */
-    template<template<typename, typename> class T, typename... Args>
-        requires(!IsFormattableSink<T<String, Char>>)
+    template<template<typename> class T, typename... Args>
+        requires(!IsFormattableSink<T<Char>>)
     auto add_sink(Args&&... args) -> std::shared_ptr<SinkType>
     {
-        auto sink = std::make_shared<T<String, Char>>(std::forward<Args>(args)...);
+        auto sink = std::make_shared<T<Char>>(std::forward<Args>(args)...);
         return add_sink(sink) ? sink : nullptr;
     }
 
@@ -305,7 +335,7 @@ public:
         Args&&... args) const -> void
     {
         using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
-        using RecordType = Record<String, Char>;
+        using RecordType = Record<Char>;
 
         if (static_cast<Level>(m_level) < level) [[unlikely]] {
             return;
@@ -323,16 +353,17 @@ public:
             if (!evaluated) [[unlikely]] {
                 evaluated = true;
                 record
-                    = {level,
+                    = {static_cast<TimeFunctionType>(m_time_func)(),
+                       {},
+                       m_category,
                        location.file_name(),
                        location.function_name(),
                        static_cast<std::size_t>(location.line()),
-                       m_category,
                        Util::OS::thread_id(),
-                       static_cast<TimeFunctionType>(m_time_func)()};
+                       level};
 
                 using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
-                using RecordStringViewType = typename RecordType::StringViewType;
+                using RecordStringViewType = RecordStringView<Char>;
                 if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
                     // Callable with buffer argument: message will be stored in buffer.
                     // NOLINTNEXTLINE(*-use-after-move,*-invalid-access-moved)
@@ -357,6 +388,9 @@ public:
                     // Non-invocable argument: argument is the message itself
                     // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                     record.message = RecordStringViewType{callback};
+                } else if constexpr (Detail::HasConvertString<T, Char>) {
+                    record.message
+                        = RecordStringView<Char>{ConvertString<T, Char>{}(callback, buffer)};
                 } else {
                     // Either void callback or string type convertible to logger string type
                     record.message = callback;
@@ -652,22 +686,219 @@ private:
 };
 
 /**
- * @brief Deduction guide for a constructor call with a string.
+ * @brief Creates a logger with automatic character type deduction from string view.
  *
- * @tparam String String type for log messages.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
+ * @tparam Char Character type deduced from string view.
+ * @param category Logger category name.
+ * @param level Logging level.
+ * @return Shared pointer to the created logger.
  */
-template<typename String>
-Logger(String, Level = Level::Info) -> Logger<String>;
+template<
+    typename Char,
+    typename ThreadingPolicy = DefaultThreadingPolicy,
+    std::size_t BufferSize = DefaultBufferSize,
+    typename Allocator = std::allocator<Char>>
+auto create_logger(std::basic_string_view<Char> category, Level level = Level::Info)
+    -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
+{
+    using LoggerType = Logger<Char, ThreadingPolicy, BufferSize, Allocator>;
+    return LoggerType::create(category, level);
+}
 
 /**
- * @brief Deduction guide for a constructor call with a char array.
+ * @brief Creates a logger with automatic character type deduction from string literal.
  *
- * @tparam String String type for log messages.
+ * @tparam Char Character type for the string.
+ * @tparam N Size of the character array.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
+ * @param category Logger category name.
+ * @param level Logging level.
+ * @return Shared pointer to the created logger.
+ */
+template<
+    typename Char,
+    std::size_t N,
+    typename ThreadingPolicy = DefaultThreadingPolicy,
+    std::size_t BufferSize = DefaultBufferSize,
+    typename Allocator = std::allocator<Char>>
+auto create_logger(const Char (&category)[N], Level level = Level::Info)
+    -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
+{
+    return create_logger<Char>(category, level);
+}
+
+/**
+ * @brief Creates a logger with only a level specified.
+ *
+ * @tparam Char Character type for the logger.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
+ * @param level Logging level.
+ * @return Shared pointer to the created logger.
+ */
+template<
+    typename Char = char,
+    typename ThreadingPolicy = DefaultThreadingPolicy,
+    std::size_t BufferSize = DefaultBufferSize,
+    typename Allocator = std::allocator<Char>>
+auto create_logger(Level level = Level::Info)
+    -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
+{
+    using LoggerType = Logger<Char, ThreadingPolicy, BufferSize, Allocator>;
+    return LoggerType::create(level);
+}
+
+/**
+ * @brief Creates a child logger with parent, category and level.
+ *
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
+ * @tparam Char Character type.
+ * @param parent Parent logger to inherit sinks from.
+ * @param category Logger category name.
+ * @param level Logging level.
+ * @return Shared pointer to the created logger.
+ */
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto create_logger(
+    const std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>& parent,
+    std::basic_string_view<Char> category,
+    Level level) -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
+{
+    using LoggerType = Logger<Char, ThreadingPolicy, BufferSize, Allocator>;
+    return LoggerType::create(parent, category, level);
+}
+
+/**
+ * @brief Creates a child logger with parent, category and level from string literal.
+ *
+ * @tparam Char Character type for the string.
+ * @tparam N Size of the character array.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
+ * @param parent Parent logger to inherit sinks from.
+ * @param category Logger category name.
+ * @param level Logging level.
+ * @return Shared pointer to the created logger.
+ */
+template<
+    typename Char,
+    std::size_t N,
+    typename ThreadingPolicy = DefaultThreadingPolicy,
+    std::size_t BufferSize = DefaultBufferSize,
+    typename Allocator = std::allocator<Char>>
+auto create_logger(
+    const std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>& parent,
+    const Char (&category)[N],
+    Level level) -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
+{
+    return create_logger<Char>(parent, category, level);
+}
+
+/**
+ * @brief Creates a child logger with parent and category (level inherited from parent).
+ *
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
+ * @tparam Char Character type.
+ * @param parent Parent logger to inherit sinks from.
+ * @param category Logger category name.
+ * @return Shared pointer to the created logger.
+ */
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto create_logger(
+    const std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>& parent,
+    std::basic_string_view<Char> category)
+    -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
+{
+    using LoggerType = Logger<Char, ThreadingPolicy, BufferSize, Allocator>;
+    return LoggerType::create(parent, category);
+}
+
+/**
+ * @brief Creates a child logger with parent and category from string literal.
+ *
+ * @tparam Char Character type for the string.
+ * @tparam N Size of the character array.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
+ * @param parent Parent logger to inherit sinks from.
+ * @param category Logger category name.
+ * @return Shared pointer to the created logger.
+ */
+template<
+    typename Char,
+    std::size_t N,
+    typename ThreadingPolicy = DefaultThreadingPolicy,
+    std::size_t BufferSize = DefaultBufferSize,
+    typename Allocator = std::allocator<Char>>
+auto create_logger(
+    const std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>& parent,
+    const Char (&category)[N])
+    -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
+{
+    return create_logger<Char>(parent, category);
+}
+
+/**
+ * @brief Creates a child logger with parent and level (category inherited from parent).
+ *
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
+ * @tparam Char Character type.
+ * @param parent Parent logger to inherit sinks from.
+ * @param level Logging level.
+ * @return Shared pointer to the created logger.
+ */
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto create_logger(
+    const std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>& parent,
+    Level level) -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
+{
+    using LoggerType = Logger<Char, ThreadingPolicy, BufferSize, Allocator>;
+    return LoggerType::create(parent, level);
+}
+
+/**
+ * @brief Creates a child logger with parent (category and level inherited from parent).
+ *
+ * @tparam ThreadingPolicy Threading policy for sink operations.
+ * @tparam BufferSize Size of the internal pre-allocated buffer.
+ * @tparam Allocator Allocator type for the internal buffer.
+ * @tparam Char Character type.
+ * @param parent Parent logger to inherit sinks from.
+ * @return Shared pointer to the created logger.
+ */
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto create_logger(
+    const std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>& parent)
+    -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
+{
+    using LoggerType = Logger<Char, ThreadingPolicy, BufferSize, Allocator>;
+    return LoggerType::create(parent);
+}
+
+/**
+ * @brief Deduction guide for a constructor call with a string literal.
+ *
+ * @tparam Char Character type for the string.
+ * @tparam N Size of the character array.
  */
 template<typename Char, std::size_t N>
 Logger(
     const Char (&)[N], // NOLINT(*-avoid-c-arrays)
-    Level = Level::Info) -> Logger<std::basic_string_view<Char>>;
+    Level = Level::Info) -> Logger<Char>;
 
 } // namespace SlimLog
 

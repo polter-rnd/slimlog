@@ -12,8 +12,8 @@
 
 namespace SlimLog {
 
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto CallbackSink<String, Char, BufferSize, Allocator>::message(const RecordType& record) -> void
+template<typename Char, std::size_t BufferSize, typename Allocator>
+auto CallbackSink<Char, BufferSize, Allocator>::message(const RecordType& record) -> void
 {
     FormatBufferType buffer;
     this->format(buffer, record);
@@ -29,8 +29,8 @@ auto CallbackSink<String, Char, BufferSize, Allocator>::message(const RecordType
     }
 }
 
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto CallbackSink<String, Char, BufferSize, Allocator>::flush() -> void
+template<typename Char, std::size_t BufferSize, typename Allocator>
+auto CallbackSink<Char, BufferSize, Allocator>::flush() -> void
 {
     // No buffering, so nothing to flush
 }

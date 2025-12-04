@@ -21,10 +21,10 @@ namespace SlimLog {
  * @tparam String String type for log messages.
  * @tparam Char Character type for the string.
  */
-template<typename String, typename Char = Util::Types::UnderlyingCharType<String>>
-class QMessageLoggerSink : public Sink<String, Char> {
+template<typename Char>
+class QMessageLoggerSink : public Sink<Char> {
 public:
-    using typename Sink<String, Char>::RecordType;
+    using typename Sink<Char>::RecordType;
 
     /**
      * @brief Constructs a new QMessageLoggerSink object.
@@ -35,7 +35,7 @@ public:
      */
     template<typename... Args>
     explicit QMessageLoggerSink(const char* qt_log_category = "default", Args&&... args)
-        : Sink<String, Char>(std::forward<Args>(args)...)
+        : Sink<Char>(std::forward<Args>(args)...)
         , m_qt_log_category(qt_log_category)
     {
     }
@@ -53,27 +53,27 @@ public:
                                                record.line,
                                                record.function.data(),
                                                m_qt_log_category);
-        std::visit([&msg_logger, level = record.level]<typename T>(T&& message) {
-            switch(level) {
+        //std::visit([&msg_logger, level = record.level]<typename T>(T&& message) {
+            switch(record.level) {
             case Level::Trace:
                 [[fallthrough]];
             case Level::Debug:
-                msg_logger.debug().nospace().noquote() << std::forward<T>(message);
+                msg_logger.debug().nospace().noquote() << record.message;
                 break;
             case Level::Info:
-                msg_logger.info().nospace().noquote() << std::forward<T>(message);
+                msg_logger.info().nospace().noquote() << record.message;
                 break;
             case Level::Warning:
-                msg_logger.warning().nospace().noquote() << std::forward<T>(message);
+                msg_logger.warning().nospace().noquote() << record.message;
                 break;
             case Level::Error:
-                msg_logger.critical().nospace().noquote() << std::forward<T>(message);
+                msg_logger.critical().nospace().noquote() << record.message;
                 break;
             case Level::Fatal:
-                msg_logger.fatal().nospace().noquote() << std::forward<T>(message);
+                msg_logger.fatal().nospace().noquote() << record.message;
                 break;
             }
-        }, record.message);
+        //}, record.message);
     }
 
     /**

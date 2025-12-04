@@ -9,37 +9,11 @@
 
 namespace SlimLog {
 template<>
-struct ConvertString<QString, char8_t> {
-    std::u8string operator()(const QString& str) const
-    {
-        const auto utf8Data = str.toUtf8();
-        return {reinterpret_cast<const char8_t*>(utf8Data.data()), static_cast<std::size_t>(utf8Data.size())};
-    }
-};
-
-template<>
-struct ConvertString<QString, char16_t> {
-    std::u16string_view operator()(const QString& str) const
-    {
-        // This is not standard compliant but works in practice everywhere,
-        // because unsigned short is 2 bytes on all platforms Qt supports.
-        return {reinterpret_cast<const char16_t*>(str.utf16()), static_cast<std::size_t>(str.size())};
-    }
-};
-
-template<>
-struct ConvertString<QString, char32_t> {
-    std::u32string operator()(const QString& str) const
-    {
-        return str.toStdU32String();
-    }
-};
-
-template<>
 struct ConvertString<QString, char> {
-    std::string operator()(const QString& str) const
+    std::string_view operator()(const QString& str, auto& buffer) const
     {
-        return str.toStdString();
+        buffer.append(str.toUtf8());
+        return {buffer.data(), buffer.size()};
     }
 };
 

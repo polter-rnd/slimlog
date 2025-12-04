@@ -20,8 +20,8 @@
 
 namespace SlimLog {
 
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto FileSink<String, Char, BufferSize, Allocator>::open(std::string_view filename) -> void
+template<typename Char, std::size_t BufferSize, typename Allocator>
+auto FileSink<Char, BufferSize, Allocator>::open(std::string_view filename) -> void
 {
 #ifdef _WIN32
     FILE* fp = _fsopen(std::string(filename).c_str(), "ab", _SH_DENYWR);
@@ -44,8 +44,8 @@ auto FileSink<String, Char, BufferSize, Allocator>::open(std::string_view filena
     }
 }
 
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto FileSink<String, Char, BufferSize, Allocator>::write_bom() -> bool
+template<typename Char, std::size_t BufferSize, typename Allocator>
+auto FileSink<Char, BufferSize, Allocator>::write_bom() -> bool
 {
     if constexpr (
         std::is_same_v<Char, char16_t> || (sizeof(Char) == 2 && std::is_same_v<Char, wchar_t>)) {
@@ -66,8 +66,8 @@ auto FileSink<String, Char, BufferSize, Allocator>::write_bom() -> bool
     }
 }
 
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto FileSink<String, Char, BufferSize, Allocator>::message(const RecordType& record) -> void
+template<typename Char, std::size_t BufferSize, typename Allocator>
+auto FileSink<Char, BufferSize, Allocator>::message(const RecordType& record) -> void
 {
     FormatBufferType buffer;
     this->format(buffer, record);
@@ -77,8 +77,8 @@ auto FileSink<String, Char, BufferSize, Allocator>::message(const RecordType& re
     }
 }
 
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto FileSink<String, Char, BufferSize, Allocator>::flush() -> void
+template<typename Char, std::size_t BufferSize, typename Allocator>
+auto FileSink<Char, BufferSize, Allocator>::flush() -> void
 {
     if (std::fflush(m_fp.get()) != 0) {
         throw std::system_error({errno, std::system_category()}, "Failed flush to log file");

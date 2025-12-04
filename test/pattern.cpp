@@ -33,8 +33,7 @@ auto create_test_record(
     std::basic_string_view<Char> category = from_utf8<Char>("test_category"),
     std::size_t thread_id = 12345,
     std::pair<std::chrono::sys_seconds, std::uint64_t> time = time_mock(),
-    std::source_location location = std::source_location::current())
-    -> Record<std::basic_string<Char>, Char>
+    std::source_location location = std::source_location::current()) -> Record<Char>
 {
     static thread_local std::basic_string<Char> message_data;
     static thread_local std::basic_string<Char> category_data;
@@ -42,7 +41,7 @@ auto create_test_record(
     message_data = message;
     category_data = category;
 
-    Record<std::basic_string<Char>, Char> record;
+    Record<Char> record;
     record.level = level;
     record.filename = RecordStringView<char>{location.file_name()};
     record.function = RecordStringView<char>{location.function_name()};
@@ -56,7 +55,7 @@ auto create_test_record(
 
 const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
-    using String = std::basic_string<Char>;
+    using String = std::basic_string_view<Char>;
     using StringView = std::basic_string_view<Char>;
     using PatternType = Pattern<Char>;
     using BufferType = typename Util::MemoryBuffer<Char, DefaultBufferSize>;
@@ -125,7 +124,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         fields.thread_id = record.thread_id;
         fields.time = record.time.first;
         fields.nsec = record.time.second;
-        fields.message = std::get<RecordStringView<Char>>(record.message);
+        fields.message = record.message;
 
         const auto expected = pattern_format<Char>(pattern_str, fields);
         expect(StringView(buffer.data(), buffer.size()), equal_to(expected));
@@ -226,7 +225,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         PatternFields<Char> fields;
         fields.time = record.time.first;
         fields.nsec = record.time.second;
-        fields.message = std::get<RecordStringView<Char>>(record.message);
+        fields.message = record.message;
 
         const auto expected = pattern_format<Char>(pattern_str, fields);
         expect(StringView(buffer.data(), buffer.size()), equal_to(expected));
@@ -398,7 +397,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
             = from_utf8<Char>(std::string_view(record.function.data(), record.function.size()));
         fields.time = record.time.first;
         fields.nsec = record.time.second;
-        fields.message = std::get<RecordStringView<Char>>(record.message);
+        fields.message = record.message;
 
         const auto expected = pattern_format<Char>(pattern_str, fields);
         expect(StringView(buffer.data(), buffer.size()), equal_to(expected));

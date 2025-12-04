@@ -22,21 +22,19 @@ namespace SlimLog {
  *
  * This sink calls a callback function to handle log messages.
  *
- * @tparam String String type for log messages.
  * @tparam Char Character type for the string.
  * @tparam BufferSize Size of the internal pre-allocated buffer.
  * @tparam Allocator Allocator type for the internal buffer.
  */
 template<
-    typename String,
-    typename Char = Util::Types::UnderlyingCharType<String>,
+    typename Char,
     std::size_t BufferSize = DefaultSinkBufferSize,
     typename Allocator = std::allocator<Char>>
-class CallbackSink : public FormattableSink<String, Char, BufferSize, Allocator> {
+class CallbackSink : public FormattableSink<Char, BufferSize, Allocator> {
 public:
-    using typename FormattableSink<String, Char, BufferSize, Allocator>::RecordType;
-    using typename FormattableSink<String, Char, BufferSize, Allocator>::StringViewType;
-    using typename FormattableSink<String, Char, BufferSize, Allocator>::FormatBufferType;
+    using typename FormattableSink<Char, BufferSize, Allocator>::RecordType;
+    using typename FormattableSink<Char, BufferSize, Allocator>::StringViewType;
+    using typename FormattableSink<Char, BufferSize, Allocator>::FormatBufferType;
 
     /**
      * @brief Log callback type.
@@ -63,7 +61,7 @@ public:
      */
     template<typename... Args>
     explicit CallbackSink(LogCallback callback, Args&&... args)
-        : FormattableSink<String, Char, BufferSize, Allocator>(std::forward<Args>(args)...)
+        : FormattableSink<Char, BufferSize, Allocator>(std::forward<Args>(args)...)
         , m_callback(std::move(callback))
     {
     }

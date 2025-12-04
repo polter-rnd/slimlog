@@ -20,17 +20,6 @@
 
 namespace SlimLog {
 
-/** @cond */
-namespace Detail {
-
-template<typename String, typename Char>
-concept HasConvertString = requires(String value) {
-    { ConvertString<String, Char>{}(value) } -> std::convertible_to<std::basic_string_view<Char>>;
-};
-
-} // namespace Detail
-/** @endcond */
-
 template<typename Char>
 auto Pattern<Char>::Levels::get(Level level) -> RecordStringView<Char>&
 {
@@ -90,8 +79,7 @@ template<typename Char>
 }
 
 template<typename Char>
-template<typename String>
-auto Pattern<Char>::format(auto& out, const Record<String, Char>& record) -> void
+auto Pattern<Char>::format(auto& out, const Record<Char>& record) -> void
 {
     constexpr std::size_t MsecInNsec = 1000000;
     constexpr std::size_t UsecInNsec = 1000;
@@ -133,26 +121,7 @@ auto Pattern<Char>::format(auto& out, const Record<String, Char>& record) -> voi
             format_generic(out, item.value, record.thread_id);
             break;
         case Placeholder::Type::Message:
-            std::visit(
-                Util::Types::Overloaded{
-                    [&out, &value = item.value](std::reference_wrapper<const String> arg) {
-                        if constexpr (Detail::HasConvertString<String, Char>) {
-                            format_string(
-                                out,
-                                value,
-                                RecordStringView{ConvertString<String, Char>{}(arg.get())});
-                        } else {
-                            (void)out;
-                            (void)value;
-                            (void)arg;
-                            throw FormatError("No suitable ConvertString<> specialization found");
-                        }
-                    },
-                    [&out, &value = item.value](auto&& arg) {
-                        format_string(out, value, std::forward<decltype(arg)>(arg));
-                    },
-                },
-                record.message);
+            format_string(out, item.value, record.message);
             break;
         }
     }

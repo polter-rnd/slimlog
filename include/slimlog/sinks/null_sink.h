@@ -20,10 +20,10 @@ namespace SlimLog {
  * @tparam String String type for log messages.
  * @tparam Char Character type for the string.
  */
-template<typename String, typename Char = Util::Types::UnderlyingCharType<String>>
-class NullSink : public Sink<String, Char> {
+template<typename Char>
+class NullSink : public Sink<Char> {
 public:
-    using typename Sink<String, Char>::RecordType;
+    using typename Sink<Char>::RecordType;
 
     /**
      * @brief Constructs a new NullSink object.
@@ -33,7 +33,7 @@ public:
      */
     template<typename... Args>
     explicit NullSink(Args&&... args)
-        : Sink<String, Char>(std::forward<Args>(args)...)
+        : Sink<Char>(std::forward<Args>(args)...)
     {
     }
 

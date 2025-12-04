@@ -41,7 +41,7 @@ constexpr auto test_constexpr_constructors() -> bool
 
 const suite<SLIMLOG_CHAR_TYPES> Record("record", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
-    using String = std::basic_string<Char>;
+    using String = std::basic_string_view<Char>;
 
     // Compile-time verification
     static_assert(test_constexpr_constructors());

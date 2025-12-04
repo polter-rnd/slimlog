@@ -38,22 +38,6 @@ concept IsPair = requires {
 /** @endcond */
 
 /**
- * @brief Converts a string to a `std::basic_string_view`.
- *
- * This function takes a String object and returns a `std::basic_string_view`
- * of the same character type.
- *
- * @tparam String String type.
- * @tparam Char Type of the characters in the string.
- * @param str The input string object to be converted.
- * @return Value of type, convertible to `std::basic_string_view<Char>`.
- */
-template<typename String, typename Char>
-struct ConvertString {
-    auto operator()(const String&) const -> std::basic_string_view<Char> = delete;
-};
-
-/**
  * @brief Represents a log message pattern specifying the message format.
  *
  * This class defines how log messages are formatted using placeholders.
@@ -224,8 +208,7 @@ public:
      * @param out Buffer storing the raw message to be overwritten with the result.
      * @param record Log record.
      */
-    template<typename String>
-    auto format(auto& out, const Record<String, Char>& record) -> void;
+    auto format(auto& out, const Record<Char>& record) -> void;
 
     /**
      * @brief Sets the message pattern.

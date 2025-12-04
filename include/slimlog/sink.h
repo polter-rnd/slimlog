@@ -39,14 +39,13 @@ using DefaultThreadingPolicy = SingleThreadedPolicy;
  *
  * A sink is a destination for log messages.
  *
- * @tparam String String type for log messages.
  * @tparam Char Character type for the string.
  */
-template<typename String, typename Char = Util::Types::UnderlyingCharType<String>>
+template<typename Char>
 class Sink {
 public:
     /** @brief Log record type. */
-    using RecordType = Record<String, Char>;
+    using RecordType = Record<Char>;
 
     /** @brief Default constructor. */
     Sink() = default;
@@ -92,18 +91,17 @@ public:
  * @tparam Allocator Allocator type for the internal buffer.
  */
 template<
-    typename String,
-    typename Char = Util::Types::UnderlyingCharType<String>,
+    typename Char,
     std::size_t BufferSize = DefaultSinkBufferSize,
     typename Allocator = std::allocator<Char>>
-class FormattableSink : public Sink<String, Char> {
+class FormattableSink : public Sink<Char> {
 public:
     /** @brief Raw string view type. */
     using StringViewType = std::basic_string_view<Char>;
     /** @brief Buffer type used for log message formatting. */
     using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
     /** @brief Log record type. */
-    using RecordType = Record<String, Char>;
+    using RecordType = Record<Char>;
 
     /**
      * @brief Constructs a new Sink object.
@@ -192,8 +190,8 @@ private:
  */
 template<class T>
 concept IsFormattableSink = requires(const T& arg) {
-    []<typename String, typename Char, std::size_t BufferSize, typename Allocator>(
-        const FormattableSink<String, Char, BufferSize, Allocator>&) {}(arg);
+    []<typename Char, std::size_t BufferSize, typename Allocator>(
+        const FormattableSink<Char, BufferSize, Allocator>&) {}(arg);
 };
 
 } // namespace SlimLog
