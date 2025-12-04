@@ -1,6 +1,7 @@
 #pragma once
 
 #include <slimlog/logger.h>
+#include <slimlog/util/types.h>
 
 #include <algorithm>
 
@@ -35,7 +36,8 @@ protected:
             // Direct copy for char and char8_t - QDebug outputs UTF-8
             // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
             std::copy_n(reinterpret_cast<const Char*>(data), len, *m_out);
-        } else if constexpr (std::same_as<Char, char16_t>) {
+        } else if constexpr (
+            std::same_as<Char, char16_t> || (sizeof(Char) == 2 && std::is_same_v<Char, wchar_t>)) {
             // Efficient UTF-8 to UTF-16 conversion using QStringView
             const auto str_view = QUtf8StringView(data, len);
             for (auto codepoint : str_view) {
@@ -48,12 +50,15 @@ protected:
                     *(*m_out)++ = static_cast<char16_t>(0xDC00 + (surrogate & 0x3FF));
                 }
             }
-        } else if constexpr (std::same_as<Char, char32_t>) {
+        } else if constexpr (
+            std::same_as<Char, char32_t> || (sizeof(Char) == 4 && std::is_same_v<Char, wchar_t>)) {
             // Efficient UTF-8 to UTF-32 conversion using QStringView
             const auto str_view = QUtf8StringView(data, len);
             for (auto codepoint : str_view) {
                 *(*m_out)++ = static_cast<char32_t>(codepoint);
             }
+        } else {
+            static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
         }
         return len;
     }
@@ -77,14 +82,24 @@ auto format_qt_type(const T& value, auto out_it)
         return std::copy_n(str_view.data(), str_view.size(), out_it);
     } else if constexpr (
         std::is_same_v<Char, char> && std::is_convertible_v<T, std::u8string_view>) {
-        // In case if we have char and u8string_view, convert to u8string_view first
         const auto str_view = static_cast<std::u8string_view>(value);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         return std::copy_n(reinterpret_cast<const Char*>(str_view.data()), str_view.size(), out_it);
     } else if constexpr (
         std::is_same_v<Char, char8_t> && std::is_convertible_v<T, std::string_view>) {
-        // In case if we have char8_t and string_view, convert to string_view first
         const auto str_view = static_cast<std::string_view>(value);
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        return std::copy_n(reinterpret_cast<const Char*>(str_view.data()), str_view.size(), out_it);
+    } else if constexpr (
+        std::is_same_v<Char, wchar_t> && sizeof(wchar_t) == 2
+        && std::is_convertible_v<T, std::u16string_view>) {
+        const auto str_view = static_cast<std::u16string_view>(value);
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+        return std::copy_n(reinterpret_cast<const Char*>(str_view.data()), str_view.size(), out_it);
+    } else if constexpr (
+        std::is_same_v<Char, char16_t> && sizeof(wchar_t) == 2
+        && std::is_convertible_v<T, std::wstring_view>) {
+        const auto str_view = static_cast<std::wstring_view>(value);
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
         return std::copy_n(reinterpret_cast<const Char*>(str_view.data()), str_view.size(), out_it);
     } else if constexpr (std::is_same_v<T, QLatin1StringView>) {

@@ -11,6 +11,7 @@
 #include "slimlog/sink.h" // IWYU pragma: export
 #include "slimlog/threading.h" // IWYU pragma: export
 #include "slimlog/util/os.h"
+#include "slimlog/util/types.h"
 
 #include <array>
 #include <chrono>
@@ -393,9 +394,10 @@ public:
                 } else if constexpr (Detail::HasConvertString<T, Char>) {
                     record.message
                         = RecordStringView<Char>{ConvertString<T, Char>{}(callback, buffer)};
-                } else {
-                    // Either void callback or string type convertible to logger string type
+                } else if constexpr (std::is_assignable_v<RecordStringView<Char>, T>) {
                     record.message = callback;
+                } else {
+                    static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
                 }
             }
 
