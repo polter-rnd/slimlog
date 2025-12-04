@@ -9,7 +9,6 @@
 #include "slimlog/pattern.h"
 #include "slimlog/record.h"
 #include "slimlog/threading.h"
-#include "slimlog/util/types.h"
 
 #include <cstddef>
 #include <cstdint>

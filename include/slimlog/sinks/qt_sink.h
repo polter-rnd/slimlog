@@ -8,8 +8,10 @@
 #include "slimlog/sink.h"
 #include "slimlog/util/types.h"
 
-#include <QMessageLogger>
 #include <utility>
+
+// Qt includes
+#include <QMessageLogger>
 
 namespace SlimLog {
 
@@ -49,31 +51,27 @@ public:
      */
     auto message(const RecordType& record) -> void override
     {
-        const auto msg_logger = QMessageLogger(record.filename.data(),
-                                               record.line,
-                                               record.function.data(),
-                                               m_qt_log_category);
-        //std::visit([&msg_logger, level = record.level]<typename T>(T&& message) {
-            switch(record.level) {
-            case Level::Trace:
-                [[fallthrough]];
-            case Level::Debug:
-                msg_logger.debug().nospace().noquote() << record.message;
-                break;
-            case Level::Info:
-                msg_logger.info().nospace().noquote() << record.message;
-                break;
-            case Level::Warning:
-                msg_logger.warning().nospace().noquote() << record.message;
-                break;
-            case Level::Error:
-                msg_logger.critical().nospace().noquote() << record.message;
-                break;
-            case Level::Fatal:
-                msg_logger.fatal().nospace().noquote() << record.message;
-                break;
-            }
-        //}, record.message);
+        const auto msg_logger = QMessageLogger(
+            record.filename.data(), record.line, record.function.data(), m_qt_log_category);
+        switch (record.level) {
+        case Level::Trace:
+            [[fallthrough]];
+        case Level::Debug:
+            msg_logger.debug().nospace().noquote() << record.message;
+            break;
+        case Level::Info:
+            msg_logger.info().nospace().noquote() << record.message;
+            break;
+        case Level::Warning:
+            msg_logger.warning().nospace().noquote() << record.message;
+            break;
+        case Level::Error:
+            msg_logger.critical().nospace().noquote() << record.message;
+            break;
+        case Level::Fatal:
+            msg_logger.fatal().nospace().noquote() << record.message;
+            break;
+        }
     }
 
     /**

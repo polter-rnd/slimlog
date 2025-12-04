@@ -22,7 +22,6 @@
 
 #include <chrono>
 #include <cstddef>
-#include <string>
 
 namespace SlimLog {
 // char

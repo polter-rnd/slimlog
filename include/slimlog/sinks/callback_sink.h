@@ -8,7 +8,6 @@
 #include "slimlog/location.h"
 #include "slimlog/record.h"
 #include "slimlog/sink.h"
-#include "slimlog/util/types.h"
 
 #include <cstddef>
 #include <functional>

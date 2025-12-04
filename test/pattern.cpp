@@ -10,7 +10,6 @@
 
 #include <mettle.hpp>
 
-#include <array>
 #include <chrono>
 #include <initializer_list>
 #include <source_location>

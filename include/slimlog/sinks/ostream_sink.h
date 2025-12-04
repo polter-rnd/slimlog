@@ -6,7 +6,6 @@
 #pragma once
 
 #include "slimlog/sink.h"
-#include "slimlog/util/types.h"
 
 #include <cstddef>
 #include <memory>

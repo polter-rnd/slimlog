@@ -14,6 +14,7 @@
 
 #include <array>
 #include <chrono>
+#include <concepts>
 #include <cstddef>
 #include <memory>
 #include <string>
@@ -727,7 +728,7 @@ template<
     typename ThreadingPolicy = DefaultThreadingPolicy,
     std::size_t BufferSize = DefaultBufferSize,
     typename Allocator = std::allocator<Char>>
-auto create_logger(const Char (&category)[N], Level level = Level::Info)
+auto create_logger(const Char (&category)[N], Level level = Level::Info) // NOLINT(*-avoid-c-arrays)
     -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
 {
     return create_logger<Char>(category, level);
@@ -798,7 +799,7 @@ template<
     typename Allocator = std::allocator<Char>>
 auto create_logger(
     const std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>& parent,
-    const Char (&category)[N],
+    const Char (&category)[N], // NOLINT(*-avoid-c-arrays)
     Level level) -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
 {
     return create_logger<Char>(parent, category, level);
@@ -845,7 +846,7 @@ template<
     typename Allocator = std::allocator<Char>>
 auto create_logger(
     const std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>& parent,
-    const Char (&category)[N])
+    const Char (&category)[N]) // NOLINT(*-avoid-c-arrays)
     -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
 {
     return create_logger<Char>(parent, category);

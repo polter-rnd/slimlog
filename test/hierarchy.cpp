@@ -9,6 +9,7 @@
 #include <mettle.hpp>
 
 #include <string>
+#include <string_view>
 
 // IWYU pragma: no_include <memory>
 // IWYU pragma: no_include <sstream>

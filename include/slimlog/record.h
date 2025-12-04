@@ -8,12 +8,9 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <string>
 #include <string_view>
 #include <utility>
-#include <variant>
-#include <version> // IWYU pragma: keep
 
 namespace SlimLog {
 

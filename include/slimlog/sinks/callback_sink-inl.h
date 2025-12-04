@@ -20,11 +20,11 @@ auto CallbackSink<Char, BufferSize, Allocator>::message(const RecordType& record
     buffer.push_back('\0'); // Append null-terminator for safe use in the callback
     if (m_callback) {
         // We can safely convert record.filename and record.function to const char*
-        // because they are initially null-terminated strings.
+        // because it's guaranteed they were null-terminated strings initially.
         m_callback(
             record.level,
-            Location::current(
-                record.filename.data(), record.function.data(), static_cast<int>(record.line)),
+            // NOLINTNEXTLINE(bugprone-suspicious-stringview-data-usage)
+            Location::current(record.filename.data(), record.function.data(), record.line),
             {buffer.begin(), buffer.size() - 1});
     }
 }

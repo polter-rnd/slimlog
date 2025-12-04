@@ -14,7 +14,6 @@
 
 #include <algorithm>
 #include <climits>
-#include <functional>
 #include <limits>
 #include <variant>
 
