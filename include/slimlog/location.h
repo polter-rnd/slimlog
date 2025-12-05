@@ -12,7 +12,7 @@ namespace SlimLog {
 #if (!defined(__has_builtin) and !defined(_MSC_VER)) or (defined(_MSC_VER) and _MSC_VER < 1926)
 #define SLIMLOG_SOURCE_FILE "unknown"
 #define SLIMLOG_SOURCE_FUNCTION "unknown"
-#define SLIMLOG_SOURCE_LINE -1
+#define SLIMLOG_SOURCE_LINE 0
 #else
 #define SLIMLOG_SOURCE_FILE __builtin_FILE()
 #define SLIMLOG_SOURCE_FUNCTION __builtin_FUNCTION()
