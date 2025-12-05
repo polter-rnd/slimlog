@@ -320,7 +320,7 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         std::basic_string<Char> captured_message;
 
         // Create callback that captures the output
-        auto callback = [&](Level level, Location location, std::basic_string_view<Char> message) {
+        auto callback = [&](Level level, const Location& location, String message) {
             captured_level = level;
             captured_location = location;
             captured_message = message.data(); // Check that string is null-terminated

@@ -109,7 +109,7 @@ public:
                  || std::same_as<std::decay_t<T>, const Char*>
                  || std::same_as<std::decay_t<T>, Char*>)
     // NOLINTNEXTLINE(*-explicit-conversions)
-    consteval Format(T fmt, Location loc = Location::current()) // cppcheck-suppress passedByValue
+    consteval Format(T fmt, const Location& loc = Location::current())
         : m_fmt(std::move(fmt))
         , m_loc(loc)
     {

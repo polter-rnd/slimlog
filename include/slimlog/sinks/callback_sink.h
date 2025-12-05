@@ -42,7 +42,8 @@ public:
      * @param location The log location (file, line, function).
      * @param message The formatted log message (guaranteed to be null-terminated).
      */
-    using LogCallback = std::function<void(Level level, Location location, StringViewType message)>;
+    using LogCallback
+        = std::function<void(Level level, const Location& location, StringViewType message)>;
 
     // Disable copy and move semantics because of the reference member.
     CallbackSink(const CallbackSink&) = delete;

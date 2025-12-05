@@ -332,7 +332,7 @@ public:
     auto message(
         Level level,
         const T& callback,
-        Location location = Location::current(), // cppcheck-suppress passedByValue
+        const Location& location = Location::current(),
         Args&&... args) const -> void
     {
         using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
@@ -448,7 +448,7 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T>
-    auto trace(T&& message, Location location = Location::current()) const -> void
+    auto trace(T&& message, const Location& location = Location::current()) const -> void
     {
         this->message(Level::Trace, std::forward<T>(message), location);
     }
@@ -475,7 +475,7 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T>
-    auto debug(T&& message, Location location = Location::current()) const -> void
+    auto debug(T&& message, const Location& location = Location::current()) const -> void
     {
         this->message(Level::Debug, std::forward<T>(message), location);
     }
@@ -518,7 +518,7 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T>
-    auto info(T&& message, Location location = Location::current()) const -> void
+    auto info(T&& message, const Location& location = Location::current()) const -> void
     {
         this->message(Level::Info, std::forward<T>(message), location);
     }
@@ -532,7 +532,7 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T>
-    auto warning(T&& message, Location location = Location::current()) const -> void
+    auto warning(T&& message, const Location& location = Location::current()) const -> void
     {
         this->message(Level::Warning, std::forward<T>(message), location);
     }
@@ -559,7 +559,7 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T>
-    auto error(T&& message, Location location = Location::current()) const -> void
+    auto error(T&& message, const Location& location = Location::current()) const -> void
     {
         this->message(Level::Error, std::forward<T>(message), location);
     }
@@ -586,7 +586,7 @@ public:
      * @param location Caller location (file, line, function).
      */
     template<typename T>
-    auto fatal(T&& message, Location location = Location::current()) const -> void
+    auto fatal(T&& message, const Location& location = Location::current()) const -> void
     {
         this->message(Level::Fatal, std::forward<T>(message), location);
     }
