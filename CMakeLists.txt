@@ -10,15 +10,18 @@ project(
     LANGUAGES CXX
 )
 
-# Compiler / language configuration.
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-set(CMAKE_CXX_VISIBILITY_PRESET "hidden")
-set(CMAKE_VISIBILITY_INLINES_HIDDEN TRUE)
+# Require at least C++20
+if(PROJECT_IS_TOP_LEVEL AND NOT DEFINED CMAKE_CXX_STANDARD)
+    set(CMAKE_CXX_STANDARD 20)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
 
 # Set build type if none specified
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+if(PROJECT_IS_TOP_LEVEL
+   AND NOT DEFINED CMAKE_BUILD_TYPE
+   AND NOT DEFINED CMAKE_CONFIGURATION_TYPES
+)
     message(STATUS "Setting build type to 'Release' as none was specified.")
     set(CMAKE_BUILD_TYPE
         "Release"
@@ -34,18 +37,7 @@ endif()
 option(SLIMLOG_SYSTEM_INCLUDES "Include as system headers (skip for clang-tidy)." OFF)
 
 # CMake include files
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-# TODO: do we really need to change standard variables in cache?
-
-# Compilation database is required for static code analysis
-set(CMAKE_EXPORT_COMPILE_COMMANDS
-    ON
-    CACHE INTERNAL ""
-)
-
-# Specify all standard include directories so that IWYU will able to check them
-set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 # To generate fancy report of used features
 include(FeatureSummary)
@@ -65,13 +57,6 @@ if(ENABLE_FORMATTERS)
     )
 endif()
 
-# TODO: do not touch standard CMake variables in cache
-
-# Reset all static analyzers by default
-unset(CMAKE_CXX_CPPCHECK CACHE)
-unset(CMAKE_CXX_CLANG_TIDY CACHE)
-unset(CMAKE_CXX_INCLUDE_WHAT_YOU_USE CACHE)
-
 # Option for enabling / disabling static analyzers
 option(ENABLE_ANALYZERS "Static code analyzers" OFF)
 add_feature_info("StaticCodeAnalysis" ENABLE_ANALYZERS "code linting and static analysis")
@@ -83,20 +68,29 @@ if(ENABLE_ANALYZERS)
     include(StaticCodeAnalysis)
 
     # Static analyzer configuration
-    set(CLANG_TIDY_EXTRA_ARGS "--header-filter=${CMAKE_SOURCE_DIR}/(include|src|test)/.*")
-    set(IWYU_EXTRA_ARGS
-        --cxx17ns
-        --quoted_includes_first
-        --no_fwd_decls
-        --verbose=3
-        --mapping_file=${CMAKE_SOURCE_DIR}/.iwyu-mappings
-        --check_also=${CMAKE_SOURCE_DIR}/include/*
-        --transitive_includes_only
-    )
-    set(CPPCHECK_EXTRA_ARGS
-        --enable=warning,performance,portability,information,missingInclude --inline-suppr
-        --suppress=missingIncludeSystem --suppress=unmatchedSuppression --check-level=exhaustive
-    )
+    if(ANALYZE_CLANG_TIDY)
+        set(CLANG_TIDY_EXTRA_ARGS "--header-filter=${CMAKE_SOURCE_DIR}/(include|src|test)/.*")
+    endif()
+    if(ANALYZE_IWYU)
+        set(IWYU_EXTRA_ARGS
+            --cxx17ns
+            --quoted_includes_first
+            --no_fwd_decls
+            --verbose=3
+            --mapping_file=${CMAKE_SOURCE_DIR}/.iwyu-mappings
+            --check_also=${CMAKE_SOURCE_DIR}/include/*
+            --transitive_includes_only
+        )
+        # Specify all standard include directories so that IWYU will able to check them
+        set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+    endif()
+    if(ANALYZE_CPPCHECK)
+        set(CPPCHECK_EXTRA_ARGS
+            --enable=warning,performance,portability,information,missingInclude --inline-suppr
+            --suppress=missingIncludeSystem --suppress=unmatchedSuppression
+            --check-level=exhaustive
+        )
+    endif()
 endif()
 
 # Option for enabling / disabling sanitizers
@@ -166,8 +160,7 @@ if(BUILD_DOCS)
     # Write documentation for CMake files
     include(CMakeDocumentation)
     parse_cmake_documentation(INCLUDES "cmake/*")
-    set(cmake_doxygen_file ${PROJECT_BINARY_DIR}/cmake.dox)
-    write_cmake_documentation("${cmake_doxygen_file}" SORTED)
+    write_cmake_documentation(${PROJECT_BINARY_DIR}/cmake.dox SORTED)
 
     # Create docs target
     set(DOXYGEN_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/docs)
