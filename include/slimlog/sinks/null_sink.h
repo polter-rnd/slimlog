@@ -43,16 +43,17 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(const RecordType& record) -> void override;
+    auto message(const RecordType& record) -> void override
+    {
+        (void)record;
+    }
 
     /**
      * @brief Flush operation (no-op for NullSink).
      */
-    auto flush() -> void override;
+    auto flush() -> void override
+    {
+    }
 };
 
 } // namespace SlimLog
-
-#ifdef SLIMLOG_HEADER_ONLY
-#include "slimlog/sinks/null_sink-inl.h" // IWYU pragma: keep
-#endif
