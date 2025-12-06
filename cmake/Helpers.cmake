@@ -143,12 +143,8 @@ function(dump_option_variables filter)
                 continue()
             endif()
 
-            # Case insenstitive match
-            string(TOLOWER "${filter}" filter_lower)
-            string(TOLOWER "${var_name}" var_name_lower)
-
             unset(MATCHED)
-            string(REGEX MATCH ${filter_lower} matched ${var_name_lower})
+            string(REGEX MATCH ${filter} matched ${var_name})
             if(NOT matched)
                 continue()
             endif()
