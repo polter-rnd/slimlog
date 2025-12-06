@@ -3,7 +3,6 @@
 
 #include <mettle.hpp>
 
-#include <string>
 #include <utility>
 
 // Test helpers
