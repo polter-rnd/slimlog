@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.23...3.26)
 
-if(BUILD_TESTING)
+if(SLIMLOG_BUILD_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "testing")
 endif()
 
@@ -44,9 +44,9 @@ include(FeatureSummary)
 include(Helpers)
 
 # Option for enabling / disabling code formatters
-option(ENABLE_FORMATTERS "Code formatters" OFF)
-add_feature_info("CodeFormatting" ENABLE_FORMATTERS "formatting and checking code style")
-if(ENABLE_FORMATTERS)
+option(SLIMLOG_ENABLE_FORMATTERS "Code formatters" OFF)
+add_feature_info("CodeFormatting" SLIMLOG_ENABLE_FORMATTERS "formatting and checking code style")
+if(SLIMLOG_ENABLE_FORMATTERS)
     set(CLANG_FORMAT_MIN_VERSION 15.0)
     include(CodeFormatting)
     add_code_format_targets(
@@ -58,9 +58,9 @@ if(ENABLE_FORMATTERS)
 endif()
 
 # Option for enabling / disabling static analyzers
-option(ENABLE_ANALYZERS "Static code analyzers" OFF)
-add_feature_info("StaticCodeAnalysis" ENABLE_ANALYZERS "code linting and static analysis")
-if(ENABLE_ANALYZERS)
+option(SLIMLOG_ENABLE_ANALYZERS "Static code analyzers" OFF)
+add_feature_info("StaticCodeAnalysis" SLIMLOG_ENABLE_ANALYZERS "code linting and static analysis")
+if(SLIMLOG_ENABLE_ANALYZERS)
     set(CPPCHECK_MIN_VERSION 2.10)
     set(CLANG_TIDY_MIN_VERSION 17.0)
     set(CLANG_FORMAT_MIN_VERSION 17.0)
@@ -94,9 +94,9 @@ if(ENABLE_ANALYZERS)
 endif()
 
 # Option for enabling / disabling sanitizers
-option(ENABLE_SANITIZERS "Code sanitizers" OFF)
-add_feature_info("CodeSanitizing" ENABLE_SANITIZERS "address/leak/UB/thread sanitizers")
-if(ENABLE_SANITIZERS)
+option(SLIMLOG_ENABLE_SANITIZERS "Code sanitizers" OFF)
+add_feature_info("CodeSanitizing" SLIMLOG_ENABLE_SANITIZERS "address/leak/UB/thread sanitizers")
+if(SLIMLOG_ENABLE_SANITIZERS)
     include(CodeSanitizing)
 endif()
 
@@ -106,12 +106,12 @@ if((CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
 )
     find_package_switchable(
         Gcovr
-        OPTION ENABLE_COVERAGE
+        OPTION SLIMLOG_ENABLE_COVERAGE
         PURPOSE "Code coverage reports by gcovr"
     )
-    add_feature_info("GcovrCodeCoverage" ENABLE_COVERAGE "code test coverage")
+    add_feature_info("GcovrCodeCoverage" SLIMLOG_ENABLE_COVERAGE "code test coverage")
 
-    if(ENABLE_COVERAGE)
+    if(SLIMLOG_ENABLE_COVERAGE)
         include(GcovrCodeCoverage)
         add_gcovr_coverage_target(
             GCOV COBERTURA HTML
@@ -123,15 +123,15 @@ if((CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # fmtlib is recommended for better formatting performance
-set(FMT_OPTION ENABLE_FMTLIB)
+set(FMT_OPTION SLIMLOG_ENABLE_FMTLIB)
 set(FMT_PURPOSE "Implementation of C++20 std::format")
-if(ENABLE_FMTLIB AND ENABLE_FMTLIB_HO)
-    message(FATAL_ERROR "ENABLE_FMTLIB and ENABLE_FMTLIB_HO are mutually exclusive")
-elseif(ENABLE_FMTLIB)
-    option(ENABLE_FMTLIB_HO "${FMT_PURPOSE} (header-only)" OFF)
+if(SLIMLOG_ENABLE_FMTLIB AND SLIMLOG_ENABLE_FMTLIB_HO)
+    message(FATAL_ERROR "SLIMLOG_ENABLE_FMTLIB and SLIMLOG_ENABLE_FMTLIB_HO are mutually exclusive")
+elseif(SLIMLOG_ENABLE_FMTLIB)
+    option(SLIMLOG_ENABLE_FMTLIB_HO "${FMT_PURPOSE} (header-only)" OFF)
 else()
-    option(ENABLE_FMTLIB ${FMT_PURPOSE} OFF)
-    set(FMT_OPTION ENABLE_FMTLIB_HO)
+    option(SLIMLOG_ENABLE_FMTLIB ${FMT_PURPOSE} OFF)
+    set(FMT_OPTION SLIMLOG_ENABLE_FMTLIB_HO)
     set(FMT_PURPOSE "${FMT_PURPOSE} (header-only)")
 endif()
 find_package_switchable(
@@ -148,13 +148,13 @@ add_subdirectory(src)
 # Option for building documentation
 find_package_switchable(
     Doxygen
-    OPTION BUILD_DOCS
+    OPTION SLIMLOG_BUILD_DOCS
     DEFAULT OFF
     PURPOSE "Build Doxygen documentation"
 )
-add_feature_info("DoxygenDocumentation" BUILD_DOCS "build documentation")
+add_feature_info("DoxygenDocumentation" SLIMLOG_BUILD_DOCS "build documentation")
 
-if(BUILD_DOCS)
+if(SLIMLOG_BUILD_DOCS)
     find_package(Doxygen REQUIRED)
 
     # Write documentation for CMake files
@@ -172,10 +172,9 @@ if(BUILD_DOCS)
 endif()
 
 # Option for building tests
-option(BUILD_TESTING "Build unit tests" OFF)
-add_feature_info("UnitTests" BUILD_TESTING "isolated logger tests")
-
-if(BUILD_TESTING AND PROJECT_IS_TOP_LEVEL)
+option(SLIMLOG_BUILD_TESTS "Build unit tests" OFF)
+add_feature_info("UnitTests" SLIMLOG_BUILD_TESTS "isolated logger tests")
+if(SLIMLOG_BUILD_TESTS)
     enable_testing()
     add_subdirectory(test)
 endif()
@@ -186,5 +185,5 @@ feature_summary(WHAT ALL)
 # Summary of available options
 message(STATUS "Options summary:")
 message("")
-dump_option_variables("^ENABLE_|^BUILD_|^SANITIZE_|^ANALYZE_|^FORMAT_")
+dump_option_variables("^SLIMLOG_")
 message("")
