@@ -59,15 +59,15 @@ target_include_directories(
 include(GenerateExportHeader)
 generate_export_header(slimlog)
 
-if(ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
+if(SLIMLOG_ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
     target_enable_sanitizers(slimlog)
 endif()
 
-if(ENABLE_COVERAGE AND COMMAND target_enable_coverage)
+if(SLIMLOG_ENABLE_COVERAGE AND COMMAND target_enable_coverage)
     target_enable_coverage(slimlog)
 endif()
 
-if(ENABLE_ANALYZERS AND COMMAND target_enable_static_analysis)
+if(SLIMLOG_ENABLE_ANALYZERS AND COMMAND target_enable_static_analysis)
     target_enable_static_analysis(
         slimlog
         CLANG_TIDY_EXTRA_ARGS ${CLANG_TIDY_EXTRA_ARGS}
@@ -95,14 +95,14 @@ target_include_directories(
 # ---------------------------------------------------------------------------------------
 # Use fmt package if required
 # ---------------------------------------------------------------------------------------
-if(ENABLE_FMTLIB OR ENABLE_FMTLIB_HO)
+if(SLIMLOG_ENABLE_FMTLIB OR SLIMLOG_ENABLE_FMTLIB_HO)
     if(NOT TARGET fmt::fmt)
         find_package(fmt CONFIG REQUIRED)
     endif()
     target_compile_definitions(slimlog PUBLIC SLIMLOG_FMTLIB)
     target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_FMTLIB)
 
-    if(ENABLE_FMTLIB)
+    if(SLIMLOG_ENABLE_FMTLIB)
         set(CMAKE_REQUIRED_LIBRARIES fmt::fmt)
         target_link_libraries(slimlog PUBLIC fmt::fmt)
         target_link_libraries(slimlog-header-only INTERFACE fmt::fmt)

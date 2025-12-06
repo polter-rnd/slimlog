@@ -17,7 +17,7 @@ fetchcontent_declare(
 )
 fetchcontent_makeavailable(fmt)
 
-if(ENABLE_SANITIZERS
+if(SLIMLOG_ENABLE_SANITIZERS
    AND COMMAND target_enable_sanitizers
    AND TARGET libmettle
 )
@@ -27,7 +27,7 @@ endif()
 file(GLOB TEST_HELPERS ${PROJECT_SOURCE_DIR}/test/helpers/*.h)
 
 set(TEST_LINK_LIBRARIES mettle::mettle slimlog::slimlog)
-if(ENABLE_FMTLIB)
+if(SLIMLOG_ENABLE_FMTLIB)
     set(TEST_LINK_LIBRARIES ${TEST_LINK_LIBRARIES} fmt::fmt)
 else()
     set(TEST_LINK_LIBRARIES ${TEST_LINK_LIBRARIES} fmt::fmt-header-only)
@@ -39,15 +39,15 @@ function(slimlog_test name)
     target_link_libraries(test_${name} PRIVATE ${TEST_LINK_LIBRARIES})
     target_sources(test_${name} PRIVATE ${TEST_HELPERS})
 
-    if(ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
+    if(SLIMLOG_ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
         target_enable_sanitizers(test_${name})
     endif()
 
-    if(ENABLE_COVERAGE AND COMMAND target_enable_coverage)
+    if(SLIMLOG_ENABLE_COVERAGE AND COMMAND target_enable_coverage)
         target_enable_coverage(test_${name})
     endif()
 
-    if(ENABLE_ANALYZERS AND COMMAND target_enable_static_analysis)
+    if(SLIMLOG_ENABLE_ANALYZERS AND COMMAND target_enable_static_analysis)
         target_enable_static_analysis(
             test_${name}
             CLANG_TIDY_EXTRA_ARGS ${CLANG_TIDY_EXTRA_ARGS}
