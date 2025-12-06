@@ -35,6 +35,9 @@ endif()
 
 function(slimlog_test name)
     add_executable(test_${name} ${name}.cpp)
+    target_compile_features(test_${name} PRIVATE cxx_std_20)
+    target_link_libraries(test_${name} PRIVATE ${TEST_LINK_LIBRARIES})
+    target_sources(test_${name} PRIVATE ${TEST_HELPERS})
 
     if(ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
         target_enable_sanitizers(test_${name})
@@ -60,8 +63,6 @@ function(slimlog_test name)
     else()
         add_test(NAME test_${name} COMMAND test_${name} --no-subproc -o xunit -f test_${name}.xml)
     endif()
-    target_link_libraries(test_${name} PRIVATE ${TEST_LINK_LIBRARIES})
-    target_sources(test_${name} PRIVATE ${TEST_HELPERS})
 endfunction()
 
 slimlog_test(basic)

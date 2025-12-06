@@ -37,6 +37,13 @@ target_sources(
            ${CMAKE_CURRENT_BINARY_DIR}/slimlog_export.h
 )
 
+# Compiler / language configuration.
+set_target_properties(
+    slimlog
+    PROPERTIES CXX_EXTENSIONS OFF
+               CXX_VISIBILITY_PRESET "hidden"
+               VISIBILITY_INLINES_HIDDEN TRUE
+)
 target_compile_features(slimlog PUBLIC cxx_std_20)
 target_compile_options(
     slimlog PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX> $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall
