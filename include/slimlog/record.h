@@ -5,15 +5,14 @@
 
 #pragma once
 
+#include <slimlog_export.h>
+
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <functional>
 #include <string>
 #include <string_view>
 #include <utility>
-#include <variant>
-#include <version> // IWYU pragma: keep
 
 namespace SlimLog {
 
@@ -44,19 +43,19 @@ class RecordStringView : public std::basic_string_view<T> {
 public:
     using std::basic_string_view<T>::basic_string_view;
 
-    ~RecordStringView() = default;
+    SLIMLOG_EXPORT ~RecordStringView() = default;
 
     /**
      * @brief Copy constructor.
      * @param str_view The RecordStringView to copy from.
      */
-    RecordStringView(const RecordStringView& str_view) noexcept;
+    SLIMLOG_EXPORT RecordStringView(const RecordStringView& str_view) noexcept;
 
     /**
      * @brief Move constructor.
      * @param str_view The RecordStringView to move from.
      */
-    RecordStringView(RecordStringView&& str_view) noexcept;
+    SLIMLOG_EXPORT RecordStringView(RecordStringView&& str_view) noexcept;
 
     /**
      * @brief Constructor from `std::basic_string_view`.
@@ -83,28 +82,28 @@ public:
      * @param str_view The RecordStringView to assign from.
      * @return Reference to this RecordStringView.
      */
-    auto operator=(const RecordStringView& str_view) noexcept -> RecordStringView&;
+    SLIMLOG_EXPORT auto operator=(const RecordStringView& str_view) noexcept -> RecordStringView&;
 
     /**
      * @brief Move assignment operator.
      * @param str_view The RecordStringView to move from.
      * @return Reference to this RecordStringView.
      */
-    auto operator=(RecordStringView&& str_view) noexcept -> RecordStringView&;
+    SLIMLOG_EXPORT auto operator=(RecordStringView&& str_view) noexcept -> RecordStringView&;
 
     /**
      * @brief Assignment from `std::basic_string_view`.
      * @param str_view The std::basic_string_view to assign from.
      * @return Reference to this RecordStringView.
      */
-    auto operator=(std::basic_string_view<T> str_view) noexcept -> RecordStringView&;
+    SLIMLOG_EXPORT auto operator=(std::basic_string_view<T> str_view) noexcept -> RecordStringView&;
 
     /**
      * @brief Calculate the number of Unicode code points.
      *
      * @return Number of code points.
      */
-    auto codepoints() const noexcept -> std::size_t;
+    SLIMLOG_EXPORT auto codepoints() const noexcept -> std::size_t;
 
 private:
     mutable std::size_t m_codepoints = std::string_view::npos;
@@ -121,24 +120,18 @@ RecordStringView(const Char*, std::size_t) -> RecordStringView<Char>;
 /**
  * @brief Represents a log record containing message details.
  *
- * @tparam String String type for storing the message.
  * @tparam Char Character type for the message.
  */
-template<typename String, typename Char>
+template<typename Char>
 struct Record {
-    /** @brief String reference type. */
-    using StringRefType = std::reference_wrapper<const String>;
-    /** @brief String view type. */
-    using StringViewType = RecordStringView<Char>;
-
-    Level level = {}; ///< Log level.
+    std::pair<std::chrono::sys_seconds, std::size_t> time; ///< Record time.
+    RecordStringView<Char> message = {}; ///< Log message.
+    RecordStringView<Char> category = {}; ///< Log category.
     RecordStringView<char> filename = {}; ///< File name.
     RecordStringView<char> function = {}; ///< Function name.
     std::size_t line = {}; ///< Line number.
-    StringViewType category = {}; ///< Log category.
     std::size_t thread_id = {}; ///< Thread ID.
-    std::pair<std::chrono::sys_seconds, std::size_t> time; ///< Record time.
-    std::variant<StringRefType, StringViewType> message = StringViewType{}; ///< Log message.
+    Level level = {}; ///< Log level.
 };
 
 } // namespace SlimLog

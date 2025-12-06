@@ -27,8 +27,23 @@ target_sources(
            ${PROJECT_SOURCE_DIR}/include
            FILES
            ${PUBLIC_HEADERS}
+           FILE_SET
+           generated_headers
+           TYPE
+           HEADERS
+           BASE_DIRS
+           $<TARGET_PROPERTY:slimlog,BINARY_DIR>
+           FILES
+           ${CMAKE_CURRENT_BINARY_DIR}/slimlog_export.h
 )
 
+# Compiler / language configuration.
+set_target_properties(
+    slimlog
+    PROPERTIES CXX_EXTENSIONS OFF
+               CXX_VISIBILITY_PRESET "hidden"
+               VISIBILITY_INLINES_HIDDEN TRUE
+)
 target_compile_features(slimlog PUBLIC cxx_std_20)
 target_compile_options(
     slimlog PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX> $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall
@@ -40,15 +55,19 @@ target_include_directories(
                                              $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-if(ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
+# Generate a header with export macros
+include(GenerateExportHeader)
+generate_export_header(slimlog)
+
+if(SLIMLOG_ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
     target_enable_sanitizers(slimlog)
 endif()
 
-if(ENABLE_COVERAGE AND COMMAND target_enable_coverage)
+if(SLIMLOG_ENABLE_COVERAGE AND COMMAND target_enable_coverage)
     target_enable_coverage(slimlog)
 endif()
 
-if(ENABLE_ANALYZERS AND COMMAND target_enable_static_analysis)
+if(SLIMLOG_ENABLE_ANALYZERS AND COMMAND target_enable_static_analysis)
     target_enable_static_analysis(
         slimlog
         CLANG_TIDY_EXTRA_ARGS ${CLANG_TIDY_EXTRA_ARGS}
@@ -76,14 +95,14 @@ target_include_directories(
 # ---------------------------------------------------------------------------------------
 # Use fmt package if required
 # ---------------------------------------------------------------------------------------
-if(ENABLE_FMTLIB OR ENABLE_FMTLIB_HO)
+if(SLIMLOG_ENABLE_FMTLIB OR SLIMLOG_ENABLE_FMTLIB_HO)
     if(NOT TARGET fmt::fmt)
         find_package(fmt CONFIG REQUIRED)
     endif()
     target_compile_definitions(slimlog PUBLIC SLIMLOG_FMTLIB)
     target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_FMTLIB)
 
-    if(ENABLE_FMTLIB)
+    if(SLIMLOG_ENABLE_FMTLIB)
         set(CMAKE_REQUIRED_LIBRARIES fmt::fmt)
         target_link_libraries(slimlog PUBLIC fmt::fmt)
         target_link_libraries(slimlog-header-only INTERFACE fmt::fmt)
@@ -128,7 +147,7 @@ endif()
 install(
     TARGETS slimlog slimlog-header-only
     EXPORT slimlog-targets
-    FILE_SET public_headers
+    FILE_SET public_headers FILE_SET generated_headers
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

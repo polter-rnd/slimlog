@@ -12,25 +12,27 @@
 
 namespace SlimLog {
 
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto CallbackSink<String, Char, BufferSize, Allocator>::message(const RecordType& record) -> void
+template<typename Char, std::size_t BufferSize, typename Allocator>
+auto CallbackSink<Char, BufferSize, Allocator>::message(const RecordType& record) -> void
 {
     FormatBufferType buffer;
     this->format(buffer, record);
     buffer.push_back('\0'); // Append null-terminator for safe use in the callback
     if (m_callback) {
         // We can safely convert record.filename and record.function to const char*
-        // because they are initially null-terminated strings.
+        // because they're guaranteed to contain null-terminated strings initially.
         m_callback(
             record.level,
             Location::current(
-                record.filename.data(), record.function.data(), static_cast<int>(record.line)),
+                record.filename.data(), // NOLINT(bugprone-suspicious-stringview-data-usage)
+                record.function.data(), // NOLINT(bugprone-suspicious-stringview-data-usage)
+                static_cast<int>(record.line)),
             {buffer.begin(), buffer.size() - 1});
     }
 }
 
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto CallbackSink<String, Char, BufferSize, Allocator>::flush() -> void
+template<typename Char, std::size_t BufferSize, typename Allocator>
+auto CallbackSink<Char, BufferSize, Allocator>::flush() -> void
 {
     // No buffering, so nothing to flush
 }

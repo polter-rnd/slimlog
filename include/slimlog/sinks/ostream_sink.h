@@ -6,7 +6,8 @@
 #pragma once
 
 #include "slimlog/sink.h"
-#include "slimlog/util/types.h"
+
+#include <slimlog_export.h>
 
 #include <cstddef>
 #include <memory>
@@ -20,20 +21,18 @@ namespace SlimLog {
  *
  * This sink writes formatted log messages to an output stream.
  *
- * @tparam String String type for log messages.
  * @tparam Char Character type for the string.
  * @tparam BufferSize Size of the internal pre-allocated buffer.
  * @tparam Allocator Allocator type for the internal buffer.
  */
 template<
-    typename String,
-    typename Char = Util::Types::UnderlyingCharType<String>,
+    typename Char,
     std::size_t BufferSize = DefaultSinkBufferSize,
     typename Allocator = std::allocator<Char>>
-class OStreamSink : public FormattableSink<String, Char, BufferSize, Allocator> {
+class OStreamSink : public FormattableSink<Char, BufferSize, Allocator> {
 public:
-    using typename FormattableSink<String, Char, BufferSize, Allocator>::RecordType;
-    using typename FormattableSink<String, Char, BufferSize, Allocator>::FormatBufferType;
+    using typename FormattableSink<Char, BufferSize, Allocator>::RecordType;
+    using typename FormattableSink<Char, BufferSize, Allocator>::FormatBufferType;
 
     // Disable copy and move semantics because of the reference member.
     OStreamSink(const OStreamSink&) = delete;
@@ -51,7 +50,7 @@ public:
      */
     template<typename... Args>
     explicit OStreamSink(std::basic_ostream<Char>& ostream, Args&&... args)
-        : FormattableSink<String, Char, BufferSize, Allocator>(std::forward<Args>(args)...)
+        : FormattableSink<Char, BufferSize, Allocator>(std::forward<Args>(args)...)
         , m_ostream(ostream)
     {
     }
@@ -65,7 +64,7 @@ public:
      */
     template<typename... Args>
     explicit OStreamSink(std::basic_streambuf<Char>* streambuf, Args&&... args)
-        : FormattableSink<String, Char, BufferSize, Allocator>(std::forward<Args>(args)...)
+        : FormattableSink<Char, BufferSize, Allocator>(std::forward<Args>(args)...)
         , m_ostream(streambuf)
     {
     }
@@ -77,12 +76,12 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(const RecordType& record) -> void override;
+    SLIMLOG_EXPORT auto message(const RecordType& record) -> void override;
 
     /**
      * @brief Flushes the output stream.
      */
-    auto flush() -> void override;
+    SLIMLOG_EXPORT auto flush() -> void override;
 
 private:
     std::basic_ostream<Char>& m_ostream;

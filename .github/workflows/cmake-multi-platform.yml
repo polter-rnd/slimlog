@@ -22,7 +22,7 @@ jobs:
     - name: Configure CMake
       run: >
         cmake -S ${{ github.workspace }} -B ${{ github.workspace }}/build
-        -DENABLE_FORMATTERS=ON -DENABLE_FMTLIB_HO=OFF
+        -DSLIMLOG_ENABLE_FORMATTERS=ON -DSLIMLOG_ENABLE_FMTLIB_HO=OFF
 
     - name: Check formatting
       run: cmake --build ${{ github.workspace }}/build --target formatcheck
@@ -206,11 +206,11 @@ jobs:
         cmake
         -S ${{ github.workspace }}
         -B ${{ steps.strings.outputs.build-output-dir }}
-        -DENABLE_ANALYZERS=ON
-        -DENABLE_SANITIZERS=ON
-        -DBUILD_TESTING=ON
+        -DSLIMLOG_ENABLE_ANALYZERS=ON
+        -DSLIMLOG_ENABLE_SANITIZERS=ON
+        -DSLIMLOG_BUILD_TESTS=ON
         -Dmettle_DIR=${{ steps.strings.outputs.mettle-dir }}/build
-        ${{ matrix.format_lib == 'std' && '-DENABLE_FMTLIB_HO=OFF' || '' }}
+        ${{ matrix.format_lib == 'std' && '-DSLIMLOG_ENABLE_FMTLIB_HO=OFF' || '' }}
 
     - name: Build
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --parallel

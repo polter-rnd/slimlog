@@ -6,7 +6,6 @@
 #pragma once
 
 #include "slimlog/sink.h"
-#include "slimlog/util/types.h"
 
 #include <utility>
 
@@ -20,10 +19,10 @@ namespace SlimLog {
  * @tparam String String type for log messages.
  * @tparam Char Character type for the string.
  */
-template<typename String, typename Char = Util::Types::UnderlyingCharType<String>>
-class NullSink : public Sink<String, Char> {
+template<typename Char>
+class NullSink : public Sink<Char> {
 public:
-    using typename Sink<String, Char>::RecordType;
+    using typename Sink<Char>::RecordType;
 
     /**
      * @brief Constructs a new NullSink object.
@@ -33,7 +32,7 @@ public:
      */
     template<typename... Args>
     explicit NullSink(Args&&... args)
-        : Sink<String, Char>(std::forward<Args>(args)...)
+        : Sink<Char>(std::forward<Args>(args)...)
     {
     }
 
@@ -44,16 +43,17 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(const RecordType& record) -> void override;
+    auto message(const RecordType& record) -> void override
+    {
+        (void)record;
+    }
 
     /**
      * @brief Flush operation (no-op for NullSink).
      */
-    auto flush() -> void override;
+    auto flush() -> void override
+    {
+    }
 };
 
 } // namespace SlimLog
-
-#ifdef SLIMLOG_HEADER_ONLY
-#include "slimlog/sinks/null_sink-inl.h" // IWYU pragma: keep
-#endif

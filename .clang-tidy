@@ -7,6 +7,7 @@ Checks: '*,
         -llvm*,
         -zircon-*,
         -misc-include-cleaner,
+        -portability-avoid-pragma-once,
         -bugprone-easily-swappable-parameters,
         -cppcoreguidelines-pro-bounds-pointer-arithmetic,
 '

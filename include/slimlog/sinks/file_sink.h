@@ -6,7 +6,8 @@
 #pragma once
 
 #include "slimlog/sink.h"
-#include "slimlog/util/types.h"
+
+#include <slimlog_export.h>
 
 #include <cstdio>
 #include <memory>
@@ -20,20 +21,18 @@ namespace SlimLog {
  *
  * This sink writes formatted log messages directly to a file.
  *
- * @tparam String String type for log messages.
  * @tparam Char Character type for the string.
  * @tparam BufferSize Size of the internal pre-allocated buffer.
  * @tparam Allocator Allocator type for the internal buffer.
  */
 template<
-    typename String,
-    typename Char = Util::Types::UnderlyingCharType<String>,
+    typename Char,
     std::size_t BufferSize = DefaultSinkBufferSize,
     typename Allocator = std::allocator<Char>>
-class FileSink : public FormattableSink<String, Char, BufferSize, Allocator> {
+class FileSink : public FormattableSink<Char, BufferSize, Allocator> {
 public:
-    using typename FormattableSink<String, Char, BufferSize, Allocator>::RecordType;
-    using typename FormattableSink<String, Char, BufferSize, Allocator>::FormatBufferType;
+    using typename FormattableSink<Char, BufferSize, Allocator>::RecordType;
+    using typename FormattableSink<Char, BufferSize, Allocator>::FormatBufferType;
 
     /**
      * @brief Constructs a new FileSink object.
@@ -44,7 +43,7 @@ public:
      */
     template<typename... Args>
     explicit FileSink(std::string_view filename, Args&&... args)
-        : FormattableSink<String, Char, BufferSize, Allocator>(std::forward<Args>(args)...)
+        : FormattableSink<Char, BufferSize, Allocator>(std::forward<Args>(args)...)
     {
         open(filename);
     }
@@ -56,12 +55,12 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(const RecordType& record) -> void override;
+    SLIMLOG_EXPORT auto message(const RecordType& record) -> void override;
 
     /**
      * @brief Flushes the output stream.
      */
-    auto flush() -> void override;
+    SLIMLOG_EXPORT auto flush() -> void override;
 
 protected:
     /**
@@ -69,14 +68,14 @@ protected:
      *
      * @param filename Log file name.
      */
-    auto open(std::string_view filename) -> void;
+    SLIMLOG_EXPORT auto open(std::string_view filename) -> void;
 
     /**
      * @brief Writes a BOM (Byte Order Mark) to the log file.
      *
      * @return true if the BOM was written successfully, false otherwise.
      */
-    auto write_bom() -> bool;
+    SLIMLOG_EXPORT auto write_bom() -> bool;
 
 private:
     std::unique_ptr<FILE, int (*)(FILE*)> m_fp = {nullptr, nullptr};

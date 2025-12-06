@@ -12,15 +12,14 @@
 
 namespace SlimLog {
 
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto FormattableSink<String, Char, BufferSize, Allocator>::set_pattern(StringViewType pattern)
-    -> void
+template<typename Char, std::size_t BufferSize, typename Allocator>
+auto FormattableSink<Char, BufferSize, Allocator>::set_pattern(StringViewType pattern) -> void
 {
     m_pattern.set_pattern(std::move(pattern));
 }
 
-template<typename String, typename Char, std::size_t BufferSize, typename Allocator>
-auto FormattableSink<String, Char, BufferSize, Allocator>::format(
+template<typename Char, std::size_t BufferSize, typename Allocator>
+auto FormattableSink<Char, BufferSize, Allocator>::format(
     FormatBufferType& result, const RecordType& record) -> void
 {
     m_pattern.format(result, record);
