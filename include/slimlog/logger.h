@@ -13,6 +13,8 @@
 #include "slimlog/util/os.h"
 #include "slimlog/util/types.h"
 
+#include <slimlog_export.h>
+
 #include <array>
 #include <chrono>
 #include <concepts>
@@ -192,14 +194,14 @@ public:
     /**
      * @brief Destructor for the Logger class.
      */
-    virtual ~Logger() = default;
+    SLIMLOG_EXPORT virtual ~Logger() = default;
 
     /**
      * @brief Gets the logger category.
      *
      * @return Logger category.
      */
-    [[nodiscard]] auto category() const -> StringViewType;
+    [[nodiscard]] SLIMLOG_EXPORT auto category() const -> StringViewType;
 
     /**
      * @brief Adds an existing sink to this logger.
@@ -207,7 +209,7 @@ public:
      * @param sink Shared pointer to the sink.
      * @return true if the sink was added, false if it already exists.
      */
-    auto add_sink(const std::shared_ptr<SinkType>& sink) -> bool;
+    SLIMLOG_EXPORT auto add_sink(const std::shared_ptr<SinkType>& sink) -> bool;
 
     /**
      * @brief Creates and adds a new formattable sink to this logger.
@@ -256,7 +258,7 @@ public:
      * @return \b true if the sink was actually removed.
      * @return \b false if the sink does not exist in this logger.
      */
-    auto remove_sink(const std::shared_ptr<SinkType>& sink) -> bool;
+    SLIMLOG_EXPORT auto remove_sink(const std::shared_ptr<SinkType>& sink) -> bool;
 
     /**
      * @brief Enables or disables a sink for this logger.
@@ -266,7 +268,8 @@ public:
      * @return \b true if the sink exists and is enabled.
      * @return \b false if the sink does not exist in this logger.
      */
-    auto set_sink_enabled(const std::shared_ptr<SinkType>& sink, bool enabled) -> bool;
+    SLIMLOG_EXPORT auto set_sink_enabled(const std::shared_ptr<SinkType>& sink, bool enabled)
+        -> bool;
 
     /**
      * @brief Checks if a sink is enabled.
@@ -275,35 +278,36 @@ public:
      * @return \b true if the sink is enabled.
      * @return \b false if the sink is disabled.
      */
-    [[nodiscard]] auto sink_enabled(const std::shared_ptr<SinkType>& sink) const -> bool;
+    [[nodiscard]] SLIMLOG_EXPORT auto sink_enabled(const std::shared_ptr<SinkType>& sink) const
+        -> bool;
 
     /**
      * @brief Sets whether log messages should propagate to parent loggers.
      *
      * @param enabled If true, log messages will propagate to parent loggers.
      */
-    auto set_propagate(bool enabled) -> void;
+    SLIMLOG_EXPORT auto set_propagate(bool enabled) -> void;
 
     /**
      * @brief Sets the logging level.
      *
      * @param level Level to be set for this logger (e.g., Log::Level::Info).
      */
-    auto set_level(Level level) -> void;
+    SLIMLOG_EXPORT auto set_level(Level level) -> void;
 
     /**
      * @brief Sets the time function used for log timestamps.
      *
      * @param time_func Time function to be set for this logger.
      */
-    auto set_time_func(TimeFunctionType time_func) -> void;
+    SLIMLOG_EXPORT auto set_time_func(TimeFunctionType time_func) -> void;
 
     /**
      * @brief Gets the logging level.
      *
      * @return Logging level for this logger.
      */
-    [[nodiscard]] auto level() const -> Level;
+    [[nodiscard]] SLIMLOG_EXPORT auto level() const -> Level;
 
     /**
      * @brief Checks if a particular logging level is enabled for the logger.
@@ -312,7 +316,7 @@ public:
      * @return \b true if the specified \p level is enabled.
      * @return \b false if the specified \p level is disabled.
      */
-    [[nodiscard]] auto level_enabled(Level level) const noexcept -> bool;
+    [[nodiscard]] SLIMLOG_EXPORT auto level_enabled(Level level) const noexcept -> bool;
 
     /**
      * @brief Emits a new callback-based log message if it fits the specified logging level.
@@ -596,14 +600,14 @@ public:
      *
      * @return Pointer to the parent sink.
      */
-    auto parent() -> std::shared_ptr<Logger>;
+    auto SLIMLOG_EXPORT parent() -> std::shared_ptr<Logger>;
 
     /**
      * @brief Sets the parent sink object.
      *
      * @param parent Pointer to the parent logger.
      */
-    auto set_parent(const std::shared_ptr<Logger>& parent) -> void;
+    auto SLIMLOG_EXPORT set_parent(const std::shared_ptr<Logger>& parent) -> void;
 
 protected:
     /**
@@ -611,14 +615,14 @@ protected:
      *
      * @param child Weak pointer to the child logger.
      */
-    auto add_child(const std::shared_ptr<Logger>& child) -> void;
+    SLIMLOG_EXPORT auto add_child(const std::shared_ptr<Logger>& child) -> void;
 
     /**
      * @brief Removes a child logger.
      *
      * @param child Pointer to the child logger.
      */
-    auto remove_child(const std::shared_ptr<Logger>& child) -> void;
+    SLIMLOG_EXPORT auto remove_child(const std::shared_ptr<Logger>& child) -> void;
 
 private:
     /**
@@ -627,7 +631,7 @@ private:
      * @param category Logger category name.
      * @param level Logging level.
      */
-    explicit Logger(
+    SLIMLOG_EXPORT explicit Logger(
         StringViewType category = StringViewType{DefaultCategory.data()},
         Level level = Level::Info);
 
@@ -636,7 +640,7 @@ private:
      *
      * @param level Logging level.
      */
-    explicit Logger(Level level);
+    SLIMLOG_EXPORT explicit Logger(Level level);
 
     /**
      * @brief Constructs a new child Logger object.
@@ -645,7 +649,8 @@ private:
      * @param category Logger category name. Can be used in logger messages.
      * @param level Logging level.
      */
-    explicit Logger(const std::shared_ptr<Logger>& parent, StringViewType category, Level level);
+    SLIMLOG_EXPORT explicit Logger(
+        const std::shared_ptr<Logger>& parent, StringViewType category, Level level);
 
     /**
      * @brief Constructs a new child Logger object with level inherited from parent.
@@ -653,7 +658,7 @@ private:
      * @param parent Parent logger to inherit sinks.
      * @param category Logger category name. Can be used in logger messages.
      */
-    explicit Logger(const std::shared_ptr<Logger>& parent, StringViewType category);
+    SLIMLOG_EXPORT explicit Logger(const std::shared_ptr<Logger>& parent, StringViewType category);
 
     /**
      * @brief Constructs a new child Logger object with category inherited from parent.
@@ -661,21 +666,21 @@ private:
      * @param parent Parent logger to inherit sinks.
      * @param level Logging level.
      */
-    explicit Logger(const std::shared_ptr<Logger>& parent, Level level);
+    SLIMLOG_EXPORT explicit Logger(const std::shared_ptr<Logger>& parent, Level level);
 
     /**
      * @brief Constructs a new child Logger object with category and level inherited from parent.
      *
      * @param parent Parent logger to inherit sinks.
      */
-    explicit Logger(const std::shared_ptr<Logger>& parent);
+    SLIMLOG_EXPORT explicit Logger(const std::shared_ptr<Logger>& parent);
 
     /**
      * @brief Recursively updates the propagated sinks for
      *        the current logger and its children.
      * @param visited Set of visited loggers to avoid cycles.
      */
-    auto update_propagated_sinks(std::unordered_set<Logger*> visited = {}) -> void;
+    SLIMLOG_EXPORT auto update_propagated_sinks(std::unordered_set<Logger*> visited = {}) -> void;
 
     std::basic_string<Char> m_category;
     AtomicWrapper<Level, ThreadingPolicy> m_level;
