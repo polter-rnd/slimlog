@@ -9,6 +9,8 @@
 #include "slimlog/record.h"
 #include "slimlog/sink.h"
 
+#include <slimlog_export.h>
+
 #include <cstddef>
 #include <functional>
 #include <memory>
@@ -73,12 +75,12 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(const RecordType& record) -> void override;
+    SLIMLOG_EXPORT auto message(const RecordType& record) -> void override;
 
     /**
      * @brief Flushes the output stream.
      */
-    auto flush() -> void override;
+    SLIMLOG_EXPORT auto flush() -> void override;
 
 private:
     LogCallback m_callback;

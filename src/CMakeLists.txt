@@ -27,6 +27,14 @@ target_sources(
            ${PROJECT_SOURCE_DIR}/include
            FILES
            ${PUBLIC_HEADERS}
+           FILE_SET
+           generated_headers
+           TYPE
+           HEADERS
+           BASE_DIRS
+           $<TARGET_PROPERTY:slimlog,BINARY_DIR>
+           FILES
+           ${CMAKE_CURRENT_BINARY_DIR}/slimlog_export.h
 )
 
 target_compile_features(slimlog PUBLIC cxx_std_20)
@@ -39,6 +47,10 @@ target_include_directories(
     slimlog ${SLIMLOG_INCLUDES_LEVEL} PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                                              $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
+
+# Generate a header with export macros
+include(GenerateExportHeader)
+generate_export_header(slimlog)
 
 if(ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
     target_enable_sanitizers(slimlog)
@@ -128,7 +140,7 @@ endif()
 install(
     TARGETS slimlog slimlog-header-only
     EXPORT slimlog-targets
-    FILE_SET public_headers
+    FILE_SET public_headers FILE_SET generated_headers
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}

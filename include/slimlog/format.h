@@ -9,6 +9,8 @@
 #include "slimlog/util/buffer.h"
 #include "slimlog/util/types.h"
 
+#include <slimlog_export.h>
+
 #ifdef SLIMLOG_FMTLIB
 #if __has_include(<fmt/base.h>)
 #include <fmt/base.h>
@@ -377,7 +379,7 @@ public:
      *
      * @param fmt Format string.
      */
-    explicit CachedFormatter(std::basic_string_view<Char> fmt);
+    SLIMLOG_EXPORT explicit CachedFormatter(std::basic_string_view<Char> fmt);
 
     /**
      * @brief Formats the value and writes to the output buffer.
@@ -387,7 +389,7 @@ public:
      * @param value Value to be formatted.
      */
     template<typename Out>
-    void format(Out& out, T value) const;
+    SLIMLOG_EXPORT void format(Out& out, T value) const;
 
 private:
 #ifdef SLIMLOG_FMTLIB

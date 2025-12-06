@@ -5,6 +5,8 @@
 
 #pragma once
 
+#include <slimlog_export.h>
+
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -41,19 +43,19 @@ class RecordStringView : public std::basic_string_view<T> {
 public:
     using std::basic_string_view<T>::basic_string_view;
 
-    ~RecordStringView() = default;
+    SLIMLOG_EXPORT ~RecordStringView() = default;
 
     /**
      * @brief Copy constructor.
      * @param str_view The RecordStringView to copy from.
      */
-    RecordStringView(const RecordStringView& str_view) noexcept;
+    SLIMLOG_EXPORT RecordStringView(const RecordStringView& str_view) noexcept;
 
     /**
      * @brief Move constructor.
      * @param str_view The RecordStringView to move from.
      */
-    RecordStringView(RecordStringView&& str_view) noexcept;
+    SLIMLOG_EXPORT RecordStringView(RecordStringView&& str_view) noexcept;
 
     /**
      * @brief Constructor from `std::basic_string_view`.
@@ -80,28 +82,28 @@ public:
      * @param str_view The RecordStringView to assign from.
      * @return Reference to this RecordStringView.
      */
-    auto operator=(const RecordStringView& str_view) noexcept -> RecordStringView&;
+    SLIMLOG_EXPORT auto operator=(const RecordStringView& str_view) noexcept -> RecordStringView&;
 
     /**
      * @brief Move assignment operator.
      * @param str_view The RecordStringView to move from.
      * @return Reference to this RecordStringView.
      */
-    auto operator=(RecordStringView&& str_view) noexcept -> RecordStringView&;
+    SLIMLOG_EXPORT auto operator=(RecordStringView&& str_view) noexcept -> RecordStringView&;
 
     /**
      * @brief Assignment from `std::basic_string_view`.
      * @param str_view The std::basic_string_view to assign from.
      * @return Reference to this RecordStringView.
      */
-    auto operator=(std::basic_string_view<T> str_view) noexcept -> RecordStringView&;
+    SLIMLOG_EXPORT auto operator=(std::basic_string_view<T> str_view) noexcept -> RecordStringView&;
 
     /**
      * @brief Calculate the number of Unicode code points.
      *
      * @return Number of code points.
      */
-    auto codepoints() const noexcept -> std::size_t;
+    SLIMLOG_EXPORT auto codepoints() const noexcept -> std::size_t;
 
 private:
     mutable std::size_t m_codepoints = std::string_view::npos;

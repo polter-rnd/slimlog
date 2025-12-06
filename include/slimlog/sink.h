@@ -10,6 +10,8 @@
 #include "slimlog/record.h"
 #include "slimlog/threading.h"
 
+#include <slimlog_export.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -142,7 +144,7 @@ public:
      *
      * @param pattern Log message pattern.
      */
-    auto set_pattern(StringViewType pattern) -> void;
+    SLIMLOG_EXPORT auto set_pattern(StringViewType pattern) -> void;
 
     /**
      * @brief Sets the log level names with automatic type deduction.

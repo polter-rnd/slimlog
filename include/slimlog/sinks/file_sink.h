@@ -7,6 +7,8 @@
 
 #include "slimlog/sink.h"
 
+#include <slimlog_export.h>
+
 #include <cstdio>
 #include <memory>
 #include <string_view>
@@ -53,12 +55,12 @@ public:
      *
      * @param record The log record to process.
      */
-    auto message(const RecordType& record) -> void override;
+    SLIMLOG_EXPORT auto message(const RecordType& record) -> void override;
 
     /**
      * @brief Flushes the output stream.
      */
-    auto flush() -> void override;
+    SLIMLOG_EXPORT auto flush() -> void override;
 
 protected:
     /**
@@ -66,14 +68,14 @@ protected:
      *
      * @param filename Log file name.
      */
-    auto open(std::string_view filename) -> void;
+    SLIMLOG_EXPORT auto open(std::string_view filename) -> void;
 
     /**
      * @brief Writes a BOM (Byte Order Mark) to the log file.
      *
      * @return true if the BOM was written successfully, false otherwise.
      */
-    auto write_bom() -> bool;
+    SLIMLOG_EXPORT auto write_bom() -> bool;
 
 private:
     std::unique_ptr<FILE, int (*)(FILE*)> m_fp = {nullptr, nullptr};

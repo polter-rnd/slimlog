@@ -8,6 +8,8 @@
 #include "slimlog/format.h"
 #include "slimlog/record.h"
 
+#include <slimlog_export.h>
+
 #include <array>
 #include <chrono>
 #include <concepts>
@@ -60,7 +62,7 @@ public:
          * @param level The log level.
          * @return A reference to the name of the specified log level.
          */
-        auto get(Level level) -> RecordStringView<Char>&;
+        SLIMLOG_EXPORT auto get(Level level) -> RecordStringView<Char>&;
 
         /**
          * @brief Sets the name for the specified log level.
@@ -68,7 +70,7 @@ public:
          * @param level The log level.
          * @param name The new name for the log level.
          */
-        auto set(Level level, StringViewType name) -> void;
+        SLIMLOG_EXPORT auto set(Level level, StringViewType name) -> void;
 
     private:
         std::basic_string<Char> m_trace = {'T', 'R', 'A', 'C', 'E'};
@@ -197,7 +199,7 @@ public:
      * @return \b true if the pattern is an empty string.
      * @return \b false if the pattern is not an empty string.
      */
-    [[nodiscard]] auto empty() const -> bool;
+    [[nodiscard]] SLIMLOG_EXPORT auto empty() const -> bool;
 
     /**
      * @brief Formats a message according to the pattern.
@@ -208,7 +210,7 @@ public:
      * @param out Buffer storing the raw message to be overwritten with the result.
      * @param record Log record.
      */
-    auto format(auto& out, const Record<Char>& record) -> void;
+    SLIMLOG_EXPORT auto format(auto& out, const Record<Char>& record) -> void;
 
     /**
      * @brief Sets the message pattern.
@@ -223,7 +225,7 @@ public:
      *
      * @param pattern Message pattern.
      */
-    auto set_pattern(StringViewType pattern) -> void;
+    SLIMLOG_EXPORT auto set_pattern(StringViewType pattern) -> void;
 
     /**
      * @brief Sets the log level names with containers.
@@ -278,7 +280,7 @@ protected:
      *
      * @param pattern The pattern string to be compiled.
      */
-    void compile(StringViewType pattern);
+    SLIMLOG_EXPORT void compile(StringViewType pattern);
 
     /**
      * @brief Formats a string according to the specifications.
@@ -295,7 +297,7 @@ protected:
         requires(
             std::same_as<std::remove_cvref_t<StringView>, RecordStringView<Char>>
             || std::same_as<std::remove_cvref_t<StringView>, RecordStringView<char>>)
-    static void format_string(auto& out, const auto& item, StringView&& data);
+    SLIMLOG_EXPORT static void format_string(auto& out, const auto& item, StringView&& data);
 
     /**
      * @brief Formats data according to the cached format context.
@@ -309,7 +311,7 @@ protected:
      * @param data Source data to be formatted.
      */
     template<typename T>
-    static void format_generic(auto& out, const auto& item, T data);
+    SLIMLOG_EXPORT static void format_generic(auto& out, const auto& item, T data);
 
 private:
     /**
