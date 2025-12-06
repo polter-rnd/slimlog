@@ -37,6 +37,13 @@ target_sources(
            ${CMAKE_CURRENT_BINARY_DIR}/slimlog_export.h
 )
 
+# Compiler / language configuration.
+set_target_properties(
+    slimlog
+    PROPERTIES CXX_EXTENSIONS OFF
+               CXX_VISIBILITY_PRESET "hidden"
+               VISIBILITY_INLINES_HIDDEN TRUE
+)
 target_compile_features(slimlog PUBLIC cxx_std_20)
 target_compile_options(
     slimlog PRIVATE $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX> $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall
@@ -99,11 +106,9 @@ if(ENABLE_FMTLIB OR ENABLE_FMTLIB_HO)
     target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_FMTLIB)
 
     if(ENABLE_FMTLIB)
-        set(CMAKE_REQUIRED_LIBRARIES fmt::fmt)
         target_link_libraries(slimlog PUBLIC fmt::fmt)
         target_link_libraries(slimlog-header-only INTERFACE fmt::fmt)
     else()
-        set(CMAKE_REQUIRED_LIBRARIES fmt::fmt-header-only)
         target_link_libraries(slimlog PUBLIC fmt::fmt-header-only)
         target_link_libraries(slimlog-header-only INTERFACE fmt::fmt-header-only)
     endif()
@@ -115,6 +120,14 @@ if(ENABLE_FMTLIB OR ENABLE_FMTLIB_HO)
     else()
         set(fmt_format_context "fmt::buffer_context")
     endif()
+
+    # Push check state and set required includes and definitions for fmtlib
+    include(CMakePushCheckState)
+    cmake_push_check_state(RESET)
+    get_target_property(FMT_INCLUDE_DIRS fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
+    set(CMAKE_REQUIRED_INCLUDES ${FMT_INCLUDE_DIRS})
+    set(CMAKE_REQUIRED_DEFINITIONS -DFMT_HEADER_ONLY)
+
     foreach(size 8 16 32)
         check_cxx_symbol_exists(
             "fmt::make_format_args<${fmt_format_context}<char${size}_t>, std::chrono::sys_seconds>"
@@ -125,6 +138,12 @@ if(ENABLE_FMTLIB OR ENABLE_FMTLIB_HO)
             target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_CHAR${size}_T)
         endif()
     endforeach()
+
+    # Restore check state
+    cmake_pop_check_state()
+
+    # Add dependency to pkg-config file
+    set(PKG_CONFIG_REQUIRES fmt)
 else()
     # If fmtlib is not available, check for C++20 std::format()
     include(CheckCXXSymbolExists)
