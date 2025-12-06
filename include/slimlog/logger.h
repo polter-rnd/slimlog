@@ -390,10 +390,8 @@ public:
                         }
                     }
                 } else if constexpr (std::is_convertible_v<T, RecordStringViewType>) {
-                    // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                     record.message = RecordStringViewType{callback};
                 } else if constexpr (std::is_convertible_v<T, StringViewType>) {
-                    // NOLINTNEXTLINE(*-array-to-pointer-decay,*-no-array-decay)
                     record.message = RecordStringViewType{StringViewType{callback}};
                 } else if constexpr (Detail::HasConvertString<T, Char>) {
                     record.message
