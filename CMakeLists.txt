@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.23...3.26)
 
-if(SLIMLOG_BUILD_TESTS)
+if(SLIMLOG_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "testing")
 endif()
 
@@ -44,34 +44,45 @@ include(FeatureSummary)
 include(Helpers)
 
 # Option for enabling / disabling code formatters
-option(SLIMLOG_ENABLE_FORMATTERS "Code formatters" OFF)
-add_feature_info("CodeFormatting" SLIMLOG_ENABLE_FORMATTERS "formatting and checking code style")
-if(SLIMLOG_ENABLE_FORMATTERS)
-    set(CLANG_FORMAT_MIN_VERSION 15.0)
+option(SLIMLOG_FORMATTERS "Code formatters" OFF)
+add_feature_info("CodeFormatting" SLIMLOG_FORMATTERS "formatting and checking code style")
+if(SLIMLOG_FORMATTERS)
     include(CodeFormatting)
+    detect_available_code_formatters(
+        CLANG_FORMAT_OPTION SLIMLOG_FORMAT_CLANG
+        CLANG_FORMAT_MIN_VERSION 15.0
+        CMAKE_FORMAT_OPTION SLIMLOG_FORMAT_CMAKE
+        CMAKE_FORMAT_MIN_VERSION 0.6.0
+    )
     add_code_format_targets(
         CHECK_TARGET formatcheck
         FORMAT_TARGET format
         SOURCE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/src
         EXCLUDE_DIRS ${CMAKE_BINARY_DIR}
+        CLANG_FORMAT ${SLIMLOG_FORMAT_CLANG}
+        CMAKE_FORMAT ${SLIMLOG_FORMAT_CMAKE}
     )
 endif()
 
 # Option for enabling / disabling static analyzers
-option(SLIMLOG_ENABLE_ANALYZERS "Static code analyzers" OFF)
-add_feature_info("StaticCodeAnalysis" SLIMLOG_ENABLE_ANALYZERS "code linting and static analysis")
-if(SLIMLOG_ENABLE_ANALYZERS)
-    set(CPPCHECK_MIN_VERSION 2.10)
-    set(CLANG_TIDY_MIN_VERSION 17.0)
-    set(CLANG_FORMAT_MIN_VERSION 17.0)
-    set(IWYU_MIN_VERSION 0.23)
+option(SLIMLOG_ANALYZERS "Static code analyzers" OFF)
+add_feature_info("StaticCodeAnalysis" SLIMLOG_ANALYZERS "code linting and static analysis")
+if(SLIMLOG_ANALYZERS)
     include(StaticCodeAnalysis)
+    detect_available_static_analysers(
+        CPPCHECK_OPTION SLIMLOG_ANALYZE_CPPCHECK
+        CPPCHECK_MIN_VERSION 2.10
+        CLANG_TIDY_OPTION SLIMLOG_ANALYZE_CLANG_TIDY
+        CLANG_TIDY_MIN_VERSION 17.0
+        IWYU_OPTION SLIMLOG_ANALYZE_IWYU
+        IWYU_MIN_VERSION 0.21
+    )
 
     # Static analyzer configuration
-    if(ANALYZE_CLANG_TIDY)
+    if(SLIMLOG_ANALYZE_CLANG_TIDY)
         set(CLANG_TIDY_EXTRA_ARGS "--header-filter=${CMAKE_SOURCE_DIR}/(include|src|test)/.*")
     endif()
-    if(ANALYZE_IWYU)
+    if(SLIMLOG_ANALYZE_IWYU)
         set(IWYU_EXTRA_ARGS
             --cxx17ns
             --quoted_includes_first
@@ -84,7 +95,7 @@ if(SLIMLOG_ENABLE_ANALYZERS)
         # Specify all standard include directories so that IWYU will able to check them
         set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
     endif()
-    if(ANALYZE_CPPCHECK)
+    if(SLIMLOG_ANALYZE_CPPCHECK)
         set(CPPCHECK_EXTRA_ARGS
             --enable=warning,performance,portability,information,missingInclude --inline-suppr
             --suppress=missingIncludeSystem --suppress=unmatchedSuppression
@@ -94,10 +105,17 @@ if(SLIMLOG_ENABLE_ANALYZERS)
 endif()
 
 # Option for enabling / disabling sanitizers
-option(SLIMLOG_ENABLE_SANITIZERS "Code sanitizers" OFF)
-add_feature_info("CodeSanitizing" SLIMLOG_ENABLE_SANITIZERS "address/leak/UB/thread sanitizers")
-if(SLIMLOG_ENABLE_SANITIZERS)
+option(SLIMLOG_SANITIZERS "Code sanitizers" OFF)
+add_feature_info("CodeSanitizing" SLIMLOG_SANITIZERS "address/leak/UB/thread sanitizers")
+if(SLIMLOG_SANITIZERS)
     include(CodeSanitizing)
+    detect_available_sanitizers(
+        ASAN_OPTION SLIMLOG_SANITIZE_ADDRESS
+        LSAN_OPTION SLIMLOG_SANITIZE_LEAK
+        MSAN_OPTION SLIMLOG_SANITIZE_MEMORY
+        UBSAN_OPTION SLIMLOG_SANITIZE_UNDEFINED
+        TSAN_OPTION SLIMLOG_SANITIZE_THREAD
+    )
 endif()
 
 # Enable coverage only for Debug builds on GCC and Clang compilers
@@ -106,12 +124,12 @@ if((CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
 )
     find_package_switchable(
         Gcovr
-        OPTION SLIMLOG_ENABLE_COVERAGE
+        OPTION SLIMLOG_COVERAGE
         PURPOSE "Code coverage reports by gcovr"
     )
-    add_feature_info("GcovrCodeCoverage" SLIMLOG_ENABLE_COVERAGE "code test coverage")
+    add_feature_info("GcovrCodeCoverage" SLIMLOG_COVERAGE "code test coverage")
 
-    if(SLIMLOG_ENABLE_COVERAGE)
+    if(SLIMLOG_COVERAGE)
         include(GcovrCodeCoverage)
         add_gcovr_coverage_target(
             GCOV COBERTURA HTML
@@ -123,23 +141,23 @@ if((CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 # fmtlib is recommended for better formatting performance
-set(FMT_OPTION SLIMLOG_ENABLE_FMTLIB)
-set(FMT_PURPOSE "Implementation of C++20 std::format")
-if(SLIMLOG_ENABLE_FMTLIB AND SLIMLOG_ENABLE_FMTLIB_HO)
-    message(FATAL_ERROR "SLIMLOG_ENABLE_FMTLIB and SLIMLOG_ENABLE_FMTLIB_HO are mutually exclusive")
-elseif(SLIMLOG_ENABLE_FMTLIB)
-    option(SLIMLOG_ENABLE_FMTLIB_HO "${FMT_PURPOSE} (header-only)" OFF)
+set(fmt_option SLIMLOG_FMTLIB)
+set(fmt_purpose "Implementation of C++20 std::format")
+if(SLIMLOG_FMTLIB AND SLIMLOG_FMTLIB_HO)
+    message(FATAL_ERROR "SLIMLOG_FMTLIB and SLIMLOGSLIMLOG_FMTLIB mutually exclusive")
+elseif(SLIMLOG_FMTLIB)
+    option(SLIMLOG_FMTLIB_HO "${fmt_purpose} (header-only)" OFF)
 else()
-    option(SLIMLOG_ENABLE_FMTLIB ${FMT_PURPOSE} OFF)
-    set(FMT_OPTION SLIMLOG_ENABLE_FMTLIB_HO)
-    set(FMT_PURPOSE "${FMT_PURPOSE} (header-only)")
+    option(SLIMLOG_FMTLIB ${fmt_purpose} OFF)
+    set(fmt_option SLIMLOG_FMTLIB_HO)
+    set(fmt_purpose "${fmt_purpose} (header-only)")
 endif()
 find_package_switchable(
     fmt
     MIN_VERSION 8.1.0
-    OPTION ${FMT_OPTION}
+    OPTION ${fmt_option}
     DEFAULT ON
-    PURPOSE ${FMT_PURPOSE}
+    PURPOSE ${fmt_purpose}
 )
 
 # Include library targets
@@ -148,13 +166,13 @@ add_subdirectory(src)
 # Option for building documentation
 find_package_switchable(
     Doxygen
-    OPTION SLIMLOG_BUILD_DOCS
+    OPTION SLIMLOG_DOCS
     DEFAULT OFF
     PURPOSE "Build Doxygen documentation"
 )
-add_feature_info("DoxygenDocumentation" SLIMLOG_BUILD_DOCS "build documentation")
+add_feature_info("DoxygenDocumentation" SLIMLOG_DOCS "build documentation")
 
-if(SLIMLOG_BUILD_DOCS)
+if(SLIMLOG_DOCS)
     find_package(Doxygen REQUIRED)
 
     # Write documentation for CMake files
@@ -172,9 +190,9 @@ if(SLIMLOG_BUILD_DOCS)
 endif()
 
 # Option for building tests
-option(SLIMLOG_BUILD_TESTS "Build unit tests" OFF)
-add_feature_info("UnitTests" SLIMLOG_BUILD_TESTS "isolated logger tests")
-if(SLIMLOG_BUILD_TESTS)
+option(SLIMLOG_TESTS "Build unit tests" OFF)
+add_feature_info("UnitTests" SLIMLOG_TESTS "isolated logger tests")
+if(SLIMLOG_TESTS)
     enable_testing()
     add_subdirectory(test)
 endif()

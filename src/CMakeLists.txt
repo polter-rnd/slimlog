@@ -59,19 +59,29 @@ target_include_directories(
 include(GenerateExportHeader)
 generate_export_header(slimlog)
 
-if(SLIMLOG_ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
-    target_enable_sanitizers(slimlog)
+if(SLIMLOG_SANITIZERS AND COMMAND target_enable_sanitizers)
+    target_enable_sanitizers(
+        slimlog
+        ASAN ${SLIMLOG_SANITIZE_ADDRESS}
+        LSAN ${SLIMLOG_SANITIZE_LEAK}
+        MSAN ${SLIMLOG_SANITIZE_MEMORY}
+        UBSAN ${SLIMLOG_SANITIZE_UNDEFINED}
+        TSAN ${SLIMLOG_SANITIZE_THREAD}
+    )
 endif()
 
-if(SLIMLOG_ENABLE_COVERAGE AND COMMAND target_enable_coverage)
+if(SLIMLOG_COVERAGE AND COMMAND target_enable_coverage)
     target_enable_coverage(slimlog)
 endif()
 
-if(SLIMLOG_ENABLE_ANALYZERS AND COMMAND target_enable_static_analysis)
+if(SLIMLOG_ANALYZERS AND COMMAND target_enable_static_analysis)
     target_enable_static_analysis(
         slimlog
+        CLANG_TIDY ${SLIMLOG_ANALYZE_CLANG_TIDY}
         CLANG_TIDY_EXTRA_ARGS ${CLANG_TIDY_EXTRA_ARGS}
+        IWYU ${SLIMLOG_ANALYZE_IWYU}
         IWYU_EXTRA_ARGS ${IWYU_EXTRA_ARGS}
+        CPPCHECK ${SLIMLOG_ANALYZE_CPPCHECK}
         CPPCHECK_EXTRA_ARGS ${CPPCHECK_EXTRA_ARGS}
     )
 endif()
@@ -95,14 +105,17 @@ target_include_directories(
 # ---------------------------------------------------------------------------------------
 # Use fmt package if required
 # ---------------------------------------------------------------------------------------
-if(SLIMLOG_ENABLE_FMTLIB OR SLIMLOG_ENABLE_FMTLIB_HO)
+if(SLIMLOG_FMTLIB OR SLIMLOG_FMTLIB_HO)
     if(NOT TARGET fmt::fmt)
         find_package(fmt CONFIG REQUIRED)
     endif()
     target_compile_definitions(slimlog PUBLIC SLIMLOG_FMTLIB)
     target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_FMTLIB)
 
-    if(SLIMLOG_ENABLE_FMTLIB)
+    include(CMakePushCheckState)
+    cmake_push_check_state(RESET)
+
+    if(SLIMLOG_FMTLIB)
         set(CMAKE_REQUIRED_LIBRARIES fmt::fmt)
         target_link_libraries(slimlog PUBLIC fmt::fmt)
         target_link_libraries(slimlog-header-only INTERFACE fmt::fmt)
@@ -129,6 +142,12 @@ if(SLIMLOG_ENABLE_FMTLIB OR SLIMLOG_ENABLE_FMTLIB_HO)
             target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_CHAR${size}_T)
         endif()
     endforeach()
+
+    # Restore CMAKE_REQUIRED_LIBRARIES back to previous state
+    cmake_pop_check_state()
+
+    # Add dependency to pkg-config file
+    set(PKG_CONFIG_REQUIRES fmt)
 else()
     # If fmtlib is not available, check for C++20 std::format()
     include(CheckCXXSymbolExists)
