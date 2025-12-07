@@ -209,7 +209,7 @@ const suite<SLIMLOG_CHAR_TYPES> Multithread("multithread", type_only, [](auto& _
             if (thread_id % 3 == 0) {
                 // Thread group 1: Create temporary child loggers and attach/detach them
                 auto temp_child = Logger<Char, MultiThreadedPolicy>::create(
-                    from_utf8<Char>(
+                    from_utf8<Char>( // For clang-format < 19
                         "temp_" + std::to_string(thread_id) + "_" + std::to_string(iteration)));
 
                 // Randomly attach to different branches
@@ -232,7 +232,7 @@ const suite<SLIMLOG_CHAR_TYPES> Multithread("multithread", type_only, [](auto& _
                 if (children.empty()) {
                     for (int i = 0; i < 3; ++i) {
                         children.push_back(
-                            Logger<Char, MultiThreadedPolicy>::create(
+                            Logger<Char, MultiThreadedPolicy>::create( // For clang-format < 19
                                 from_utf8<Char>(
                                     "persistent_" + std::to_string(thread_id) + "_"
                                     + std::to_string(i))));
@@ -354,7 +354,7 @@ const suite<SLIMLOG_CHAR_TYPES> Multithread("multithread", type_only, [](auto& _
                     if (iteration % 2 == 0) {
                         // Create and immediately change parent
                         auto temp_child = Logger<Char, MultiThreadedPolicy>::create(
-                            from_utf8<Char>(
+                            from_utf8<Char>( // For clang-format < 19
                                 "temp_child_" + std::to_string(thread_id) + "_"
                                 + std::to_string(iteration)));
                         temp_child->set_parent(parent_logger);
@@ -386,7 +386,7 @@ const suite<SLIMLOG_CHAR_TYPES> Multithread("multithread", type_only, [](auto& _
             loggers.reserve(6);
             for (int i = 0; i < 6; ++i) {
                 loggers.push_back(
-                    Logger<Char, MultiThreadedPolicy>::create(
+                    Logger<Char, MultiThreadedPolicy>::create( // For clang-format < 19
                         from_utf8<Char>("logger_" + std::to_string(i))));
             }
 

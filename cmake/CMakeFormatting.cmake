@@ -34,28 +34,30 @@ function(add_cmake_code_format_targets)
         message(FATAL_ERROR "CMakeFormat source directory list is not specified!")
     endif()
 
+    set(supported_file_patterns "CMakeLists.txt" "*.cmake")
+
     set(check_commands)
     set(format_commands)
     foreach(dir IN LISTS ARG_SOURCE_DIRS)
-        file(
-            GLOB_RECURSE tmp_files
-            LIST_DIRECTORIES false
-            ARG_SOURCE_DIRS "CMakeLists.txt" "*.cmake"
-        )
-
-        foreach(exclude_dir IN LISTS ARG_EXCLUDE_DIRS)
-            list(FILTER tmp_files EXCLUDE REGEX "^${exclude_dir}")
-        endforeach()
-
-        foreach(file IN LISTS tmp_files)
-            # cmake-format: off
-            list(APPEND check_commands
-                 COMMAND ${CMakeFormat_EXECUTABLE} "${file}" | ${Diff_EXECUTABLE} -u "${file}" -
+        foreach(pattern IN LISTS supported_file_patterns)
+            file(
+                GLOB_RECURSE tmp_files
+                LIST_DIRECTORIES false
+                "${dir}/${pattern}"
             )
-            list(APPEND format_commands
-                 COMMAND ${CMakeFormat_EXECUTABLE} -i "${file}"
-            )
-            # cmake-format: on
+            foreach(exclude_dir IN LISTS ARG_EXCLUDE_DIRS)
+                list(FILTER tmp_files EXCLUDE REGEX "^${exclude_dir}")
+            endforeach()
+            foreach(file IN LISTS tmp_files)
+                # cmake-format: off
+                list(APPEND check_commands
+                     COMMAND ${CMakeFormat_EXECUTABLE} "${file}" | ${Diff_EXECUTABLE} -u "${file}" -
+                )
+                list(APPEND format_commands
+                     COMMAND ${CMakeFormat_EXECUTABLE} -i "${file}"
+                )
+                # cmake-format: on
+            endforeach()
         endforeach()
     endforeach()
 
