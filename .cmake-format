@@ -82,9 +82,23 @@ additional_commands = {
    'add_code_format_targets': {
       'kwargs': {
          'CHECK_TARGET': 1,
+         'CLANG_FORMAT': 1,
+         'CMAKE_FORMAT': 1,
          'EXCLUDE_DIRS': '+',
          'FORMAT_TARGET': 1,
          'SOURCE_DIRS': '+'
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '*'
+      }
+   },
+   'detect_available_code_formatters': {
+      'kwargs': {
+         'CLANG_FORMAT_MIN_VERSION': 1,
+         'CLANG_FORMAT_OPTION': 1,
+         'CMAKE_FORMAT_MIN_VERSION': 1,
+         'CMAKE_FORMAT_OPTION': 1
       },
       'pargs': {
          'flags': [],
@@ -105,6 +119,8 @@ additional_commands = {
       'pargs': {
          'flags': [
             'HTML',
+            'LCOV',
+            'GCOV',
             'COBERTURA',
             'COVERALLS',
             'SONARQUBE'
@@ -129,13 +145,16 @@ additional_commands = {
    },
    'target_enable_static_analysis': {
       'kwargs': {
+         'CLANG_TIDY': 1,
          'CLANG_TIDY_EXTRA_ARGS': '+',
+         'CPPCHECK': 1,
          'CPPCHECK_EXTRA_ARGS': '+',
+         'IWYU': 1,
          'IWYU_EXTRA_ARGS': '+'
       },
       'pargs': {
          'flags': [],
-         'nargs': '*'
+         'nargs': '1+'
       }
    },
    'find_package_switchable': {
@@ -210,12 +229,47 @@ additional_commands = {
    },
    'target_enable_coverage': {
       'pargs': {
-         'nargs': 1
+         'nargs': '1+'
       }
    },
    'target_enable_sanitizers': {
+      'kwargs': {
+         'ASAN': 1,
+         'LSAN': 1,
+         'MSAN': 1,
+         'TSAN': 1,
+         'UBSAN': 1
+      },
       'pargs': {
-         'nargs': 1
+         'flags': [],
+         'nargs': '1+'
+      }
+   },
+   'detect_available_sanitizers': {
+      'kwargs': {
+         'ASAN_OPTION': 1,
+         'LSAN_OPTION': 1,
+         'MSAN_OPTION': 1,
+         'TSAN_OPTION': 1,
+         'UBSAN_OPTION': 1
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '*'
+      }
+   },
+   'detect_available_static_analysers': {
+      'kwargs': {
+         'CLANG_TIDY_MIN_VERSION': 1,
+         'CLANG_TIDY_OPTION': 1,
+         'CPPCHECK_MIN_VERSION': 1,
+         'CPPCHECK_OPTION': 1,
+         'IWYU_MIN_VERSION': 1,
+         'IWYU_OPTION': 1
+      },
+      'pargs': {
+         'flags': [],
+         'nargs': '*'
       }
    },
    'write_cmake_documentation': {

@@ -4,41 +4,86 @@
 # Usage example:
 #
 # ~~~{.cmake}
+# set(TARGET hello)
+# add_executable(hello main.cpp)
 # include(StaticCodeAnalysis)
-# target_enable_static_analysis()
+# detect_available_static_analysers()
+# target_enable_static_analysis(hello CLANG_TIDY ON
+#                                     IWYU       ON
+#                                     CPPCHECK   ON)
 # ~~~
 #
 # Defines the following functions:
+# - @ref detect_available_static_analysers
 # - @ref target_enable_static_analysis
-#
-# Uses the following parameters:
-# @arg __ANALYZE_CPPCHECK__:       Enable basic static analysis of C/C++ code
-# @arg __CPPCHECK_MIN_VERSION__:   Minimum required version for `cppcheck`
-# @arg __ANALYZE_CLANG_TIDY__:     Enable clang-based analysis and linting of C/C++ code
-# @arg __CLANG_TIDY_MIN_VERSION__: Minimum required version for `clang-tidy`
-# @arg __ANALYZE_IWYU__:           Enable include file analysis in C and C++ source files
-# @arg __IWYU_MIN_VERSION__:       Minimum required version for `include-what-you-use`
 # [/cmake_documentation]
 
-include(Helpers)
-find_package_switchable(
-    Cppcheck
-    OPTION ANALYZE_CPPCHECK
-    PURPOSE "Basic static analysis of C/C++ code"
-    MIN_VERSION ${CPPCHECK_MIN_VERSION}
-)
-find_package_switchable(
-    ClangTidy
-    OPTION ANALYZE_CLANG_TIDY
-    PURPOSE "Clang-based analysis and linting of C/C++ code"
-    MIN_VERSION ${CLANG_TIDY_MIN_VERSION}
-)
-find_package_switchable(
-    Iwyu
-    OPTION ANALYZE_IWYU
-    PURPOSE "Analyze includes in C and C++ source files"
-    MIN_VERSION ${IWYU_MIN_VERSION}
-)
+# [cmake_documentation] detect_available_static_analysers()
+#
+# Detects available static code analyzers and sets corresponding options to toggle them.
+# Default option names are:
+# - ANALYZE_CPPCHECK:     Enable `cppcheck` analyzer
+# - ANALYZE_CLANG_TIDY:   Enable `clang-tidy` analyzer
+# - ANALYZE_IWYU:         Enable `include-what-you-use` analyzer
+#
+# @param CPPCHECK_OPTION         Name of the flag for detection `cppcheck` analyzer
+# @param CPPCHECK_MIN_VERSION    Minimum required version for `cppcheck`
+# @param CLANG_TIDY_OPTION       Name of the flag for detection `clang-tidy` analyzer
+# @param CLANG_TIDY_MIN_VERSION  Minimum required version for `clang-tidy`
+# @param IWYU_OPTION             Name of the flag for detection `include-what-you-use` analyzer
+# @param IWYU_MIN_VERSION        Minimum required version for `include-what-you-use`
+# [/cmake_documentation]
+function(detect_available_static_analysers)
+    set(options "")
+    set(oneValueArgs CPPCHECK_OPTION CLANG_TIDY_OPTION IWYU_OPTION CPPCHECK_MIN_VERSION
+                     CLANG_TIDY_MIN_VERSION IWYU_MIN_VERSION
+    )
+    set(multipleValueArgs "")
+    cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multipleValueArgs}" ${ARGN})
+
+    if(NOT ARG_CLANG_TIDY_OPTION)
+        set(ARG_CLANG_TIDY_OPTION ANALYZE_CLANG_TIDY)
+    endif()
+    if(NOT ARG_IWYU_OPTION)
+        set(ARG_IWYU_OPTION ANALYZE_IWYU)
+    endif()
+    if(NOT ARG_CPPCHECK_OPTION)
+        set(ARG_CPPCHECK_OPTION ANALYZE_CPPCHECK)
+    endif()
+
+    include(Helpers)
+    find_package_switchable(
+        Cppcheck
+        OPTION ${ARG_CPPCHECK_OPTION}
+        PURPOSE "Basic static analysis of C/C++ code"
+        MIN_VERSION ${ARG_CPPCHECK_MIN_VERSION}
+    )
+    find_package_switchable(
+        ClangTidy
+        OPTION ${ARG_CLANG_TIDY_OPTION}
+        PURPOSE "Clang-based analysis and linting of C/C++ code"
+        MIN_VERSION ${ARG_CLANG_TIDY_MIN_VERSION}
+    )
+    find_package_switchable(
+        Iwyu
+        OPTION ${ARG_IWYU_OPTION}
+        PURPOSE "Analyze includes in C and C++ source files"
+        MIN_VERSION ${ARG_IWYU_MIN_VERSION}
+    )
+
+    set(${ARG_CPPCHECK_OPTION}
+        ${${ARG_CPPCHECK_OPTION}}
+        PARENT_SCOPE
+    )
+    set(${ARG_CLANG_TIDY_OPTION}
+        ${${ARG_CLANG_TIDY_OPTION}}
+        PARENT_SCOPE
+    )
+    set(${ARG_IWYU_OPTION}
+        ${${ARG_IWYU_OPTION}}
+        PARENT_SCOPE
+    )
+endfunction()
 
 # [cmake_documentation] target_enable_static_analysis()
 #
@@ -48,13 +93,16 @@ find_package_switchable(
 # Required arguments:
 # @arg __targetName__: Name of the target for which analyzers should be enabled
 #
+# @param CPPCHECK                    Enable `cppcheck` analyzer
 # @param CPPCHECK_EXTRA_ARGS         Additional flags for `cppcheck`
+# @param CLANG_TIDY                  Enable `clang-tidy` analyzer
 # @param CLANG_TIDY_EXTRA_ARGS       Additional arguments for `clang-tidy`
+# @param IWYU                        Enable `include-what-you-use` analyzer
 # @param IWYU_EXTRA_ARGS             Additional arguments for `include-what-you-use`
 # [/cmake_documentation]
 function(target_enable_static_analysis targetName)
     set(options "")
-    set(oneValueArgs "")
+    set(oneValueArgs CPPCHECK CLANG_TIDY IWYU)
     set(multipleValueArgs CPPCHECK_EXTRA_ARGS CLANG_TIDY_EXTRA_ARGS IWYU_EXTRA_ARGS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multipleValueArgs}" ${ARGN})
 
@@ -68,7 +116,7 @@ function(target_enable_static_analysis targetName)
         )
     endif()
 
-    if(ANALYZE_CPPCHECK)
+    if(ARG_CPPCHECK)
         foreach(language ${target_languages})
             if(language MATCHES "^C|CXX$")
                 set_property(
@@ -79,7 +127,7 @@ function(target_enable_static_analysis targetName)
         endforeach()
     endif()
 
-    if(ANALYZE_CLANG_TIDY)
+    if(ARG_CLANG_TIDY)
         foreach(language ${target_languages})
             if(language MATCHES "^C|CXX|OBJC|OBJCXX$")
                 set_property(
@@ -90,7 +138,7 @@ function(target_enable_static_analysis targetName)
         endforeach()
     endif()
 
-    if(ANALYZE_IWYU)
+    if(ARG_IWYU)
         if(ARG_IWYU_EXTRA_ARGS)
             set(iwyu_extra_args "")
             foreach(extra_arg ${ARG_IWYU_EXTRA_ARGS})

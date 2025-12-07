@@ -17,7 +17,7 @@ fetchcontent_declare(
 )
 fetchcontent_makeavailable(fmt)
 
-if(SLIMLOG_ENABLE_SANITIZERS
+if(SLIMLOG_SANITIZERS
    AND COMMAND target_enable_sanitizers
    AND TARGET libmettle
 )
@@ -27,7 +27,7 @@ endif()
 file(GLOB TEST_HELPERS ${PROJECT_SOURCE_DIR}/test/helpers/*.h)
 
 set(TEST_LINK_LIBRARIES mettle::mettle slimlog::slimlog)
-if(SLIMLOG_ENABLE_FMTLIB)
+if(SLIMLOG_FMTLIB)
     set(TEST_LINK_LIBRARIES ${TEST_LINK_LIBRARIES} fmt::fmt)
 else()
     set(TEST_LINK_LIBRARIES ${TEST_LINK_LIBRARIES} fmt::fmt-header-only)
@@ -39,19 +39,22 @@ function(slimlog_test name)
     target_link_libraries(test_${name} PRIVATE ${TEST_LINK_LIBRARIES})
     target_sources(test_${name} PRIVATE ${TEST_HELPERS})
 
-    if(SLIMLOG_ENABLE_SANITIZERS AND COMMAND target_enable_sanitizers)
+    if(SLIMLOG_SANITIZERS AND COMMAND target_enable_sanitizers)
         target_enable_sanitizers(test_${name})
     endif()
 
-    if(SLIMLOG_ENABLE_COVERAGE AND COMMAND target_enable_coverage)
+    if(SLIMLOG_COVERAGE AND COMMAND target_enable_coverage)
         target_enable_coverage(test_${name})
     endif()
 
-    if(SLIMLOG_ENABLE_ANALYZERS AND COMMAND target_enable_static_analysis)
+    if(SLIMLOG_ANALYZERS AND COMMAND target_enable_static_analysis)
         target_enable_static_analysis(
             test_${name}
+            CLANG_TIDY ${SLIMLOG_ANALYZE_CLANG_TIDY}
             CLANG_TIDY_EXTRA_ARGS ${CLANG_TIDY_EXTRA_ARGS}
+            IWYU ${SLIMLOG_ANALYZE_IWYU}
             IWYU_EXTRA_ARGS ${IWYU_EXTRA_ARGS} --check_also=${CMAKE_SOURCE_DIR}/test/*.h
+            CPPCHECK ${SLIMLOG_ANALYZE_CPPCHECK}
             CPPCHECK_EXTRA_ARGS ${CPPCHECK_EXTRA_ARGS} --suppress=*:${CMAKE_BINARY_DIR}/*
         )
     endif()
