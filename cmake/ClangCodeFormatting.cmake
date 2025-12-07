@@ -34,11 +34,12 @@ function(add_clang_code_format_targets)
         message(FATAL_ERROR "ClangFormat source directory list is not specified!")
     endif()
 
-    set(supported_file_excensions
+    set(supported_file_patterns
         "*.cpp"
         "*.cxx"
         "*.c++"
         "*.c"
+        "*.cc"
         "*.h"
         "*.h++"
         "*.hxx"
@@ -48,11 +49,11 @@ function(add_clang_code_format_targets)
     set(check_commands)
     set(format_commands)
     foreach(dir IN LISTS ARG_SOURCE_DIRS)
-        foreach(ext IN LISTS supported_file_excensions)
+        foreach(pattern IN LISTS supported_file_patterns)
             file(
                 GLOB_RECURSE tmp_files
                 LIST_DIRECTORIES false
-                "${dir}/${ext}"
+                "${dir}/${pattern}"
             )
             foreach(exclude_dir IN LISTS ARG_EXCLUDE_DIRS)
                 list(FILTER tmp_files EXCLUDE REGEX "^${exclude_dir}")
