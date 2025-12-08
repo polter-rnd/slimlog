@@ -20,8 +20,8 @@ else()
     check_compiler_flags_list("${flag_candidates}" "MemorySanitizer" "MSan")
 endif()
 
-if(MSan_DETECTED)
-    set(MSan_SUPPORTED "MemorySanitizer is supported by compiler")
+if(MSan_COMPILERS)
+    set(MSan_SUPPORTED "MemorySanitizer is supported (${MSan_COMPILERS})")
 endif()
 
 include(FindPackageHandleStandardArgs)

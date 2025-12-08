@@ -14,8 +14,8 @@ set(flag_candidates
 include(Helpers)
 check_compiler_flags_list("${flag_candidates}" "LeakSanitizer" "LSan")
 
-if(LSan_DETECTED)
-    set(LSan_SUPPORTED "LeakSanitizer is supported by compiler")
+if(LSan_COMPILERS)
+    set(LSan_SUPPORTED "LeakSanitizer is supported (${LSan_COMPILERS})")
 endif()
 
 include(FindPackageHandleStandardArgs)

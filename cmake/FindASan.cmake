@@ -15,8 +15,8 @@ set(flag_candidates
 include(Helpers)
 check_compiler_flags_list("${flag_candidates}" "AddressSanitizer" "ASan")
 
-if(ASan_DETECTED)
-    set(ASan_SUPPORTED "AddressSanitizer is supported by compiler")
+if(ASan_COMPILERS)
+    set(ASan_SUPPORTED "AddressSanitizer is supported (${ASan_COMPILERS})")
 endif()
 
 include(FindPackageHandleStandardArgs)

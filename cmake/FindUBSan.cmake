@@ -5,12 +5,12 @@
 # [/cmake_documentation]
 
 set(flag_candidates
-    # GNU
-    "-g -fsanitize=undefined -fno-omit-frame-pointer"
     # Clang
     "-g -fsanitize=undefined -fno-omit-frame-pointer \
      -fsanitize=array-bounds -fsanitize=implicit-conversion \
      -fsanitize=nullability -fsanitize=integer"
+    # GNU
+    "-g -fsanitize=undefined -fno-omit-frame-pointer"
     # MSVC uses
     "/fsanitize=undefined"
 )
@@ -18,8 +18,8 @@ set(flag_candidates
 include(Helpers)
 check_compiler_flags_list("${flag_candidates}" "UndefinedBehaviorSanitizer" "UBSan")
 
-if(UBSan_DETECTED)
-    set(UBSan_SUPPORTED "UndefinedBehaviorSanitizer is supported by compiler")
+if(UBSan_COMPILERS)
+    set(UBSan_SUPPORTED "UndefinedBehaviorSanitizer is supported (${UBSan_COMPILERS})")
 endif()
 
 include(FindPackageHandleStandardArgs)

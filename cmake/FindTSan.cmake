@@ -20,8 +20,8 @@ else()
     check_compiler_flags_list("${flag_candidates}" "ThreadSanitizer" "TSan")
 endif()
 
-if(TSan_DETECTED)
-    set(TSan_SUPPORTED "ThreadSanitizer is supported by compiler")
+if(TSan_COMPILERS)
+    set(TSan_SUPPORTED "ThreadSanitizer is supported (${TSan_COMPILERS})")
 endif()
 
 include(FindPackageHandleStandardArgs)

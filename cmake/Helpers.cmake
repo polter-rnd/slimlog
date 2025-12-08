@@ -273,20 +273,33 @@ endfunction()
 # ~~~
 # [/cmake_documentation]
 function(check_compiler_flags flag lang variable)
-    unset(${variable} CACHE)
-    set(CMAKE_REQUIRED_FLAGS "${flag}")
+    # Use try_compile directly to avoid automatic CMAKE_${lang}_FLAGS injection. Otherwise flags
+    # from CMAKE_${lang}_FLAGS may interfere with the test.
+    set(test_source_dir "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp")
     if(${lang} STREQUAL "C")
-        include(CheckCCompilerFlag)
-        check_c_compiler_flag("" ${variable})
+        set(test_file "${test_source_dir}/test_flag.c")
+        set(test_content "int main(void) { return 0; }")
     elseif(${lang} STREQUAL "CXX")
-        include(CheckCXXCompilerFlag)
-        check_cxx_compiler_flag("" ${variable})
+        set(test_file "${test_source_dir}/test_flag.cpp")
+        set(test_content "int main() { return 0; }")
     elseif(${lang} STREQUAL "Fortran")
-        include(CheckFortranCompilerFlag)
-        check_fortran_compiler_flag("" ${variable})
-    elseif(NOT CMAKE_REQUIRED_QUIET)
-        message(STATUS "Language ${lang} is not supported for checking compiler flags")
+        set(test_file "${test_source_dir}/test_flag.f90")
+        set(test_content "program test\nend program test")
+    else()
+        if(NOT CMAKE_REQUIRED_QUIET)
+            message(STATUS "Language ${lang} is not supported for checking compiler flags")
+        endif()
+        return()
     endif()
+
+    # Use try_compile with CMAKE_FLAGS to override language flags completely
+    file(WRITE "${test_file}" "${test_content}")
+    try_compile(
+        ${variable} "${CMAKE_BINARY_DIR}"
+        "${test_file}"
+        CMAKE_FLAGS "-DCOMPILE_DEFINITIONS=${flag}"
+        OUTPUT_VARIABLE compile_output
+    )
 endfunction()
 
 # [cmake_documentation] get_lang_of_source(fileName, variable)
@@ -392,6 +405,7 @@ endfunction()
 #
 # For each used compiler, may set the following variables:
 #
+# - `varPrefix`_COMPILERS (e.g. `ASan_COMPILERS`)
 # - `varPrefix`_`compiler`_DETECTED (e.g. `ASan_Clang_DETECTED`)
 # - `varPrefix`_`compiler`_FLAGS (e.g. `ASan_Clang_FLAGS`)
 #
@@ -422,14 +436,21 @@ function(check_compiler_flags_list flagCandidates featureName varPrefix)
         # Sanitizer flags are not dependend on language, but the used compiler. So instead of
         # searching flags foreach language, search flags foreach compiler used.
         set(compiler ${CMAKE_${lang}_COMPILER_ID})
-        if(compiler AND NOT DEFINED ${varPrefix}_${compiler}_FLAGS)
+        if(NOT compiler)
+            continue()
+        endif()
+        if(NOT DEFINED ${varPrefix}_${compiler}_FLAGS)
             foreach(flags ${flagCandidates})
+                # Normalize flags by subsequent whitespace with single spaces
+                string(REGEX REPLACE "[ \t\n]+" " " flags "${flags}")
+                string(STRIP "${flags}" flags)
+
                 if(NOT CMAKE_REQUIRED_QUIET)
-                    message(STATUS "Try ${compiler} ${featureName} flags = [${flags}]")
+                    message(STATUS "Try ${compiler} ${featureName} flags [${flags}]")
                 endif()
 
-                check_compiler_flags("${flags}" ${lang} ${varPrefix}_DETECTED)
-                if(${varPrefix}_DETECTED)
+                check_compiler_flags("${flags}" ${lang} ${varPrefix}_${compiler}_DETECTED)
+                if(${varPrefix}_${compiler}_DETECTED)
                     set(${varPrefix}_${compiler}_FLAGS
                         "${flags}"
                         CACHE STRING "${featureName} flags for ${compiler} compiler."
@@ -439,18 +460,24 @@ function(check_compiler_flags_list flagCandidates featureName varPrefix)
                 endif()
             endforeach()
 
-            if(NOT ${varPrefix}_DETECTED)
+            if(NOT ${varPrefix}_${compiler}_DETECTED)
                 set(${varPrefix}_${compiler}_FLAGS
                     ""
                     CACHE STRING "${featureName} flags for ${compiler} compiler."
                 )
                 mark_as_advanced(${varPrefix}_${compiler}_FLAGS)
 
-                message(STATUS "${featureName} is not available for ${compiler} "
-                               "compiler. Targets using this compiler will be "
-                               "compiled without ${featureName}."
-                )
+                if(NOT CMAKE_REQUIRED_QUIET)
+                    message(STATUS "${featureName} is NOT available for ${compiler} compiler.")
+                endif()
             endif()
+        endif()
+        if(${varPrefix}_${compiler}_FLAGS AND NOT ${compiler} IN_LIST ${varPrefix}_COMPILERS)
+            list(APPEND ${varPrefix}_COMPILERS ${compiler})
+            set(${varPrefix}_COMPILERS
+                ${${varPrefix}_COMPILERS}
+                PARENT_SCOPE
+            )
         endif()
     endforeach()
 endfunction()
