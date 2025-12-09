@@ -26,8 +26,15 @@
 
 namespace SlimLog {
 // char
+#if defined(_WIN32) && (!defined(__clang__) || defined(_MSC_VER))
+// On Windows with MSVC/MinGW/clang-cl: avoid C2487 error by not exporting template instantiations
+template class Logger<char, SingleThreadedPolicy>;
+template class Logger<char, MultiThreadedPolicy>;
+#else
+// On Linux/Unix, or Windows with vanilla Clang: need explicit export due to hidden visibility
 template class SLIMLOG_EXPORT Logger<char, SingleThreadedPolicy>;
 template class SLIMLOG_EXPORT Logger<char, MultiThreadedPolicy>;
+#endif
 template class FormattableSink<char>;
 template class CallbackSink<char>;
 template class FileSink<char>;
@@ -45,8 +52,13 @@ template class FormatValue<std::chrono::sys_seconds, char>;
 #endif
 
 // wchar_t
+#if defined(_WIN32) && (!defined(__clang__) || defined(_MSC_VER))
+template class Logger<wchar_t, SingleThreadedPolicy>;
+template class Logger<wchar_t, MultiThreadedPolicy>;
+#else
 template class SLIMLOG_EXPORT Logger<wchar_t, SingleThreadedPolicy>;
 template class SLIMLOG_EXPORT Logger<wchar_t, MultiThreadedPolicy>;
+#endif
 template class FormattableSink<wchar_t>;
 template class CallbackSink<wchar_t>;
 template class FileSink<wchar_t>;
@@ -65,8 +77,13 @@ template class FormatValue<std::chrono::sys_seconds, wchar_t>;
 
 // char8_t
 #ifdef SLIMLOG_CHAR8_T
+#if defined(_WIN32) && (!defined(__clang__) || defined(_MSC_VER))
+template class Logger<char8_t, SingleThreadedPolicy>;
+template class Logger<char8_t, MultiThreadedPolicy>;
+#else
 template class SLIMLOG_EXPORT Logger<char8_t, SingleThreadedPolicy>;
 template class SLIMLOG_EXPORT Logger<char8_t, MultiThreadedPolicy>;
+#endif
 template class FormattableSink<char8_t>;
 template class CallbackSink<char8_t>;
 template class FileSink<char8_t>;
@@ -82,8 +99,13 @@ template class CachedFormatter<std::chrono::sys_seconds, char8_t>;
 
 // char16_t
 #ifdef SLIMLOG_CHAR16_T
+#if defined(_WIN32) && (!defined(__clang__) || defined(_MSC_VER))
+template class Logger<char16_t, SingleThreadedPolicy>;
+template class Logger<char16_t, MultiThreadedPolicy>;
+#else
 template class SLIMLOG_EXPORT Logger<char16_t, SingleThreadedPolicy>;
 template class SLIMLOG_EXPORT Logger<char16_t, MultiThreadedPolicy>;
+#endif
 template class FormattableSink<char16_t>;
 template class CallbackSink<char16_t>;
 template class FileSink<char16_t>;
@@ -99,8 +121,13 @@ template class CachedFormatter<std::chrono::sys_seconds, char16_t>;
 
 // char32_t
 #ifdef SLIMLOG_CHAR32_T
+#if defined(_WIN32) && (!defined(__clang__) || defined(_MSC_VER))
+template class Logger<char32_t, SingleThreadedPolicy>;
+template class Logger<char32_t, MultiThreadedPolicy>;
+#else
 template class SLIMLOG_EXPORT Logger<char32_t, SingleThreadedPolicy>;
 template class SLIMLOG_EXPORT Logger<char32_t, MultiThreadedPolicy>;
+#endif
 template class FormattableSink<char32_t>;
 template class CallbackSink<char32_t>;
 template class FileSink<char32_t>;
