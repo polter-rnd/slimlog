@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "slimlog/util/os.h"
+
 #include <atomic>
 #include <mutex>
 #include <shared_mutex>
@@ -152,6 +154,90 @@ public:
 
 private:
     std::atomic<T> m_value;
+};
+
+/**
+ * @brief A simple spinlock implementation.
+ *
+ * Provides basic lock, unlock, and try_lock functionality using atomic operations.
+ * Based on Erik Rigtorp's code (https://rigtorp.se/spinlock/)
+ */
+class SpinLock {
+public:
+    SpinLock() noexcept = default;
+    ~SpinLock() = default;
+
+    // Delete copy constructor and copy assignment
+    SpinLock(const SpinLock&) = delete;
+    auto operator=(const SpinLock&) -> SpinLock& = delete;
+
+    /**
+     * @brief Move constructor.
+     *
+     * Creates a new SpinLock by transferring the lock state from another SpinLock.
+     * Other spinlock will be unlocked after the move.
+     *
+     * @param other The other SpinLock to move from.
+     */
+    SpinLock(SpinLock&& other) noexcept
+        : m_locked(other.m_locked.exchange(false, std::memory_order_release))
+    {
+    }
+
+    /**
+     * @brief Move assignment operator.
+     *
+     * Resets the current lock state to that of the other SpinLock.
+     * Other spinlock will be unlocked after the move.
+     *
+     * @param other The other SpinLock to move from.
+     * @return Reference to this SpinLock.
+     */
+    auto operator=(SpinLock&& other) noexcept -> SpinLock&
+    {
+        m_locked.store(
+            other.m_locked.exchange(false, std::memory_order_relaxed), std::memory_order_relaxed);
+        return *this;
+    }
+
+    /**
+     * @brief Locks the spinlock, blocking until it is acquired.
+     */
+    auto lock() noexcept -> void
+    {
+        for (;;) {
+            // Optimistically assume the lock is free on the first try
+            if (!m_locked.exchange(true, std::memory_order_acquire)) {
+                return;
+            }
+            // Wait for lock to be released without generating cache misses
+            while (m_locked.load(std::memory_order_relaxed)) {
+                Util::OS::yield_processor();
+            }
+        }
+    }
+
+    /**
+     * @brief Tries to lock the spinlock without blocking.
+     */
+    [[nodiscard]] auto try_lock() noexcept -> bool
+    {
+        // First do a relaxed load to check if lock is free in order to prevent
+        // unnecessary cache misses if someone does while(!try_lock())
+        return !m_locked.load(std::memory_order_relaxed)
+            && !m_locked.exchange(true, std::memory_order_acquire);
+    }
+
+    /**
+     * @brief Unlocks the spinlock.
+     */
+    auto unlock() noexcept -> void
+    {
+        m_locked.store(false, std::memory_order_release);
+    }
+
+private:
+    std::atomic<bool> m_locked{false};
 };
 
 } // namespace SlimLog
