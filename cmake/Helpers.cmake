@@ -273,33 +273,22 @@ endfunction()
 # ~~~
 # [/cmake_documentation]
 function(check_compiler_flags flag lang variable)
-    # Use try_compile directly to avoid automatic CMAKE_${lang}_FLAGS injection. Otherwise flags
-    # from CMAKE_${lang}_FLAGS may interfere with the test.
-    set(test_source_dir "${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/CMakeTmp")
+    include(CMakePushCheckState)
+    cmake_push_check_state(RESET)
+    set(CMAKE_REQUIRED_FLAGS "${flag}")
     if(${lang} STREQUAL "C")
-        set(test_file "${test_source_dir}/test_flag.c")
-        set(test_content "int main(void) { return 0; }")
+        include(CheckCCompilerFlag)
+        check_c_compiler_flag("" ${variable})
     elseif(${lang} STREQUAL "CXX")
-        set(test_file "${test_source_dir}/test_flag.cpp")
-        set(test_content "int main() { return 0; }")
+        include(CheckCXXCompilerFlag)
+        check_cxx_compiler_flag("" ${variable})
     elseif(${lang} STREQUAL "Fortran")
-        set(test_file "${test_source_dir}/test_flag.f90")
-        set(test_content "program test\nend program test")
-    else()
-        if(NOT CMAKE_REQUIRED_QUIET)
-            message(STATUS "Language ${lang} is not supported for checking compiler flags")
-        endif()
-        return()
+        include(CheckFortranCompilerFlag)
+        check_fortran_compiler_flag("" ${variable})
+    elseif(NOT CMAKE_REQUIRED_QUIET)
+        message(STATUS "Language ${lang} is not supported for checking compiler flags")
     endif()
-
-    # Use try_compile with CMAKE_FLAGS to override language flags completely
-    file(WRITE "${test_file}" "${test_content}")
-    try_compile(
-        ${variable} "${CMAKE_BINARY_DIR}"
-        "${test_file}"
-        CMAKE_FLAGS "-DCOMPILE_DEFINITIONS=${flag}"
-        OUTPUT_VARIABLE compile_output
-    )
+    cmake_pop_check_state()
 endfunction()
 
 # [cmake_documentation] get_lang_of_source(fileName, variable)
