@@ -61,18 +61,70 @@ CachedFormatter<T, Char>::CachedFormatter(std::basic_string_view<Char> fmt)
 }
 
 template<typename T, Formattable<T> Char>
+CachedFormatter<T, Char>::CachedFormatter(CachedFormatter&& other) noexcept
+    : Formatter<T, Char>(other)
+    , m_active(other.m_active.load(std::memory_order_relaxed))
+    , m_value(other.m_value.load(std::memory_order_relaxed))
+#ifdef SLIMLOG_FMTLIB
+    , m_empty(other.m_empty)
+#endif
+    , m_lock(std::move(other.m_lock))
+    , m_buffer(std::move(other.m_buffer))
+{
+}
+
+template<typename T, Formattable<T> Char>
+auto CachedFormatter<T, Char>::operator=(CachedFormatter&& other) noexcept -> CachedFormatter&
+{
+    if (this == &other) {
+        return *this;
+    }
+    Formatter<T, Char>::operator=(other);
+    this->m_active.store(other.m_active.load(std::memory_order_relaxed), std::memory_order_relaxed);
+    this->m_value.store(other.m_value.load(std::memory_order_relaxed), std::memory_order_relaxed);
+#ifdef SLIMLOG_FMTLIB
+    this->m_empty = other.m_empty;
+#endif
+    this->m_lock = std::move(other.m_lock);
+    this->m_buffer = std::move(other.m_buffer);
+    return *this;
+}
+
+template<typename T, Formattable<T> Char>
 template<typename Out>
 void CachedFormatter<T, Char>::format(Out& out, T value) const
 {
-    if (!m_value || value != *m_value) [[unlikely]] {
-        m_value = std::move(value);
-        m_buffer.clear();
+    std::int8_t idx = 0;
+    bool needs_formatting = false;
+    if (auto active = m_active.load(std::memory_order_acquire); active == -1) [[unlikely]] {
+        // First initialization - always format to buffer 0
+        m_value.store(value, std::memory_order_relaxed);
+        needs_formatting = true;
+    } else {
+        // Check if value changed since initialization
+        T expected = m_value.load(std::memory_order_relaxed);
+        if (expected != value
+            && m_value.compare_exchange_weak(expected, value, std::memory_order_relaxed))
+            [[unlikely]] {
+            needs_formatting = true;
+            idx = static_cast<std::int8_t>(1 - active);
+        } else {
+            idx = active;
+        }
+    }
+
+    auto& buffer = m_buffer[idx]; // NOLINT(*constant-array-index)
+    if (needs_formatting) {
+        m_lock.lock();
+        buffer.clear();
 #ifdef SLIMLOG_FMTLIB
         // Shortcut for numeric types without formatting
         if constexpr (std::is_arithmetic_v<T> && std::is_integral_v<T>) {
             if (m_empty) [[likely]] {
-                m_buffer.append(fmt::format_int(*m_value));
-                out.append(m_buffer);
+                buffer.append(fmt::format_int(value));
+                m_active.store(idx, std::memory_order_release);
+                m_lock.unlock();
+                out.append(buffer);
                 return;
             }
         }
@@ -83,22 +135,24 @@ void CachedFormatter<T, Char>::format(Out& out, T value) const
             std::is_same_v<Char, char>,
             fmt::appender,
 #if FMT_VERSION < 110000
-            std::back_insert_iterator<decltype(m_buffer)>
+            std::back_insert_iterator<decltype(buffer)>
 #else
             fmt::basic_appender<Char>
 #endif
             >;
-        fmt::basic_format_context<Appender, Char> fmt_context(Appender(m_buffer), {});
-        Formatter<T, Char>::format(*m_value, fmt_context);
+        fmt::basic_format_context<Appender, Char> fmt_context(Appender(buffer), {});
+        Formatter<T, Char>::format(value, fmt_context);
 #else
         // For std::format there is no way to build a custom format context,
         // so we have to use dummy format string (empty string will be omitted),
         // and pass FormatValue with a reference to CachedFormatter as an argument.
         static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
-        m_buffer.vformat(Fmt.data(), m_buffer.make_format_args(FormatValue(*this, *m_value)));
+        buffer.vformat(Fmt.data(), buffer.make_format_args(FormatValue(*this, value)));
 #endif
+        m_active.store(idx, std::memory_order_release);
+        m_lock.unlock();
     }
-    out.append(m_buffer);
+    out.append(buffer);
 }
 
 } // namespace SlimLog

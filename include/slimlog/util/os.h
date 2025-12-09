@@ -44,6 +44,20 @@
 #endif
 #endif
 
+// Architecture detection macros
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+#define SLIMLOG_ARCH_X86
+#elif defined(__aarch64__) || defined(_M_ARM64) || defined(__arm__) || defined(_M_ARM)
+#define SLIMLOG_ARCH_ARM
+#elif defined(__riscv)
+#define SLIMLOG_ARCH_RISCV
+#endif
+
+#if defined(_MSC_VER) && (defined(SLIMLOG_ARCH_X86) || defined(SLIMLOG_ARCH_ARM))
+#include <intrin.h>
+#include <xatomic.h>
+#endif
+
 namespace SlimLog::Util::OS {
 
 /**
@@ -160,6 +174,46 @@ namespace SlimLog::Util::OS {
     }
 
     return std::make_pair(cached_local, static_cast<std::size_t>(curtime.tv_nsec));
+}
+
+/**
+ * @brief Yields the CPU to allow other threads to run.
+ *
+ * This function provides a platform-specific implementation to yield the CPU,
+ * helping to reduce busy-waiting in spinlocks or other synchronization mechanisms.
+ */
+inline auto yield_processor() noexcept -> void
+{
+#ifdef __has_builtin
+#define SLIMLOG_HAS_BUILTIN(x) __has_builtin(x) // NOLINT(cppcoreguidelines-macro-usage)
+#else
+#define SLIMLOG_HAS_BUILTIN(x) 0 // NOLINT(cppcoreguidelines-macro-usage)
+#endif
+
+#if SLIMLOG_HAS_BUILTIN(__yield)
+    __yield(); // Generic
+#elif defined(_YIELD_PROCESSOR) && defined(_MSC_VER)
+    _YIELD_PROCESSOR(); // Generic; MSVC's <atomic>
+#elif SLIMLOG_HAS_BUILTIN(__builtin_ia32_pause)
+    __builtin_ia32_pause();
+#elif defined(SLIMLOG_ARCH_X86) && defined(__GNUC__)
+    // GCC < 10 didn't have __has_builtin()
+    __builtin_ia32_pause();
+#elif defined(SLIMLOG_ARCH_X86) && defined(_MSC_VER)
+    _mm_pause();
+#elif defined(SLIMLOG_ARCH_X86)
+    __asm__("pause"); // hopefully asm() works in this compiler
+#elif SLIMLOG_HAS_BUILTIN(__builtin_arm_yield)
+    __builtin_arm_yield();
+#elif defined(SLIMLOG_ARCH_ARM) && defined(__GNUC__)
+    __asm__("yield"); // this works everywhere
+#elif defined(SLIMLOG_ARCH_RISCV)
+    __asm__(".word 0x0100000f"); // a.k.a. "pause"
+#elif defined(_YIELD_PROCESSOR) && defined(__ghs)
+    _YIELD_PROCESSOR; // Green Hills (INTEGRITY), but only on ARM
+#endif
+
+#undef SLIMLOG_HAS_BUILTIN
 }
 
 } // namespace SlimLog::Util::OS
