@@ -10,12 +10,18 @@
 
 #include <mettle.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <initializer_list>
+#include <latch>
+#include <random>
 #include <source_location>
 #include <string>
 #include <string_view>
+#include <thread>
+#include <vector>
 
+// IWYU pragma: no_include <functional>
 // IWYU pragma: no_include <utility>
 // clazy:excludeall=non-pod-global-static
 
@@ -412,6 +418,82 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         pattern.format(buffer, record);
 
         expect(StringView(buffer.data(), buffer.size()), equal_to(pattern_str));
+    });
+
+    // Test concurrent formatting, ensure CachedFormatter thread-safety
+    _.test("pattern_thread_safety", []() {
+        constexpr int NumThreads = 8;
+        constexpr int IterationsPerThread = 500;
+
+        // Create a pattern with fields that are processed by CachedFormatter internally:
+        // thread_id, time components (msec, usec, nsec) - these use CachedFormatter for formatting
+        const auto pattern_str = from_utf8<Char>("Thread {thread}: {level}|{time:%Y-%m-%d "
+                                                 "%X}.{msec:_>#10x}:{nsec:_^#16o}:{usec:_<#24b}");
+        PatternType pattern(pattern_str);
+
+        std::vector<std::thread> threads;
+        std::latch start_latch(NumThreads + 1);
+        std::atomic<int> successful_formats{0};
+
+        threads.reserve(NumThreads);
+        for (int i = 0; i < NumThreads; ++i) {
+            threads.emplace_back([&, thread_id = i]() {
+                start_latch.arrive_and_wait();
+
+                BufferType local_buffer;
+                std::random_device rd;
+                std::mt19937 gen(rd() + thread_id);
+                std::uniform_int_distribution<std::uint64_t> nsec_dist(0, 999999999);
+
+                for (int j = 0; j < IterationsPerThread; ++j) {
+                    local_buffer.clear();
+
+                    // Create records with varying thread_ids and time components to trigger
+                    // CachedFormatter buffer switching and spinlock contention
+                    auto base_time = std::chrono::sys_seconds(
+                        std::chrono::seconds(1609459200 + j)); // 2021-01-01 + j seconds
+                    auto nsec_value = nsec_dist(gen); // Random nanoseconds
+                    auto record = create_test_record<Char>(
+                        Level::Info,
+                        {},
+                        {},
+                        1000 + (thread_id * 100) + (j % 50), // Random thread ID
+                        std::make_pair(base_time, nsec_value));
+                    PatternFields<Char> fields;
+                    fields.level = from_utf8<Char>("INFO");
+                    fields.thread_id = record.thread_id;
+                    fields.time = record.time.first;
+                    fields.nsec = record.time.second;
+
+                    // This will internally use CachedFormatter for thread_id, msec, usec, nsec
+                    // formatting Multiple threads formatting different values will cause
+                    // spinlock contention
+                    pattern.format(local_buffer, record);
+
+                    const auto actual = StringView{local_buffer.data(), local_buffer.size()};
+                    const auto expected = pattern_format<Char>(pattern_str, fields);
+                    expect(actual, equal_to(expected));
+
+                    successful_formats.fetch_add(1, std::memory_order_relaxed);
+
+                    // Add occasional yields to increase lock contention
+                    if (j % 25 == 0) {
+                        std::this_thread::yield();
+                    }
+                }
+            });
+        }
+
+        // Start all threads simultaneously to maximize contention
+        start_latch.arrive_and_wait();
+
+        // Wait for all threads to complete
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        // Verify all formatting operations completed successfully
+        expect(successful_formats.load(), equal_to(NumThreads * IterationsPerThread));
     });
 });
 
