@@ -74,23 +74,6 @@ CachedFormatter<T, Char>::CachedFormatter(CachedFormatter&& other) noexcept
 }
 
 template<typename T, Formattable<T> Char>
-auto CachedFormatter<T, Char>::operator=(CachedFormatter&& other) noexcept -> CachedFormatter&
-{
-    if (this == &other) {
-        return *this;
-    }
-    Formatter<T, Char>::operator=(other);
-    this->m_active.store(other.m_active.load(std::memory_order_relaxed), std::memory_order_relaxed);
-    this->m_value.store(other.m_value.load(std::memory_order_relaxed), std::memory_order_relaxed);
-#ifdef SLIMLOG_FMTLIB
-    this->m_empty = other.m_empty;
-#endif
-    this->m_lock = std::move(other.m_lock);
-    this->m_buffer = std::move(other.m_buffer);
-    return *this;
-}
-
-template<typename T, Formattable<T> Char>
 template<typename Out>
 void CachedFormatter<T, Char>::format(Out& out, T value) const
 {

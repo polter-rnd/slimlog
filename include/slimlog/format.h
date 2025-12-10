@@ -380,13 +380,17 @@ public:
     CachedFormatter() noexcept = delete;
     ~CachedFormatter() = default;
 
-    // Delete copy constructor and copy assignment
+    // Delete copy constructor, copy assignment and move assignment
     CachedFormatter(const CachedFormatter&) = delete;
     auto operator=(const CachedFormatter&) -> CachedFormatter& = delete;
+    auto operator=(CachedFormatter&& other) -> CachedFormatter& = delete;
 
-    // Default move constructor and move assignment
+    /**
+     * @brief Move constructor.
+     *
+     * @param other Other CachedFormatter to move from.
+     */
     CachedFormatter(CachedFormatter&& other) noexcept;
-    auto operator=(CachedFormatter&& other) noexcept -> CachedFormatter&;
 
     /**
      * @brief Constructs a new CachedFormatter object from a format string.

@@ -167,9 +167,10 @@ public:
     SpinLock() noexcept = default;
     ~SpinLock() = default;
 
-    // Delete copy constructor and copy assignment
+    // Delete copy constructor, copy assignment and move assignment
     SpinLock(const SpinLock&) = delete;
     auto operator=(const SpinLock&) -> SpinLock& = delete;
+    auto operator=(SpinLock&& other) -> SpinLock& = delete;
 
     /**
      * @brief Move constructor.
@@ -182,22 +183,6 @@ public:
     SpinLock(SpinLock&& other) noexcept
         : m_locked(other.m_locked.exchange(false, std::memory_order_release))
     {
-    }
-
-    /**
-     * @brief Move assignment operator.
-     *
-     * Resets the current lock state to that of the other SpinLock.
-     * Other spinlock will be unlocked after the move.
-     *
-     * @param other The other SpinLock to move from.
-     * @return Reference to this SpinLock.
-     */
-    auto operator=(SpinLock&& other) noexcept -> SpinLock&
-    {
-        m_locked.store(
-            other.m_locked.exchange(false, std::memory_order_relaxed), std::memory_order_relaxed);
-        return *this;
     }
 
     /**
