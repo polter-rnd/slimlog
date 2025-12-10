@@ -2,6 +2,7 @@
 include(GNUInstallDirs)
 
 set(SLIMLOG_INCLUDES_LEVEL "")
+option(SLIMLOG_SYSTEM_INCLUDES "Use system includes for SlimLog headers" OFF)
 if(SLIMLOG_SYSTEM_INCLUDES)
     message(WARNING "SYSTEM INCLUDES")
     set(SLIMLOG_INCLUDES_LEVEL "SYSTEM")
@@ -153,9 +154,16 @@ if(SLIMLOG_FMTLIB OR SLIMLOG_FMTLIB_HO)
             "fmt::make_format_args<${fmt_format_context}<char${size}_t>, std::chrono::sys_seconds>"
             "fmt/format.h;fmt/chrono.h;chrono" CHAR${size}_T_FORMATTABLE
         )
-        if(CHAR${size}_T_FORMATTABLE)
-            target_compile_definitions(slimlog PUBLIC SLIMLOG_CHAR${size}_T)
-            target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_CHAR${size}_T)
+        option(SLIMLOG_CHAR${size}_T "Enable support for char${size}_t"
+               ${$CHAR${size}_T_FORMATTABLE}
+        )
+        if(SLIMLOG_CHAR${size}_T)
+            if(CHAR${size}_T_FORMATTABLE)
+                target_compile_definitions(slimlog PUBLIC SLIMLOG_CHAR${size}_T)
+                target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_CHAR${size}_T)
+            else()
+                message(FATAL_ERROR "fmtlib does not support char${size}_t on this platform")
+            endif()
         endif()
     endforeach()
 
