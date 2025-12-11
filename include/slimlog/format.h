@@ -6,7 +6,6 @@
 #pragma once
 
 #include "slimlog/location.h"
-#include "slimlog/threading.h"
 #include "slimlog/util/buffer.h"
 #include "slimlog/util/types.h"
 
@@ -31,10 +30,7 @@
 #include <iterator>
 #endif
 
-#include <array>
-#include <atomic>
 #include <concepts>
-#include <cstdint>
 #include <cstring>
 #include <memory>
 #include <string_view>
@@ -378,7 +374,7 @@ public:
     using Formatter<T, Char>::format;
 
     CachedFormatter() noexcept = delete;
-    ~CachedFormatter() = default;
+    SLIMLOG_EXPORT ~CachedFormatter();
 
     // Delete copy constructor, copy assignment and move assignment
     CachedFormatter(const CachedFormatter&) = delete;
@@ -390,7 +386,7 @@ public:
      *
      * @param other Other CachedFormatter to move from.
      */
-    CachedFormatter(CachedFormatter&& other) noexcept;
+    SLIMLOG_EXPORT CachedFormatter(CachedFormatter&& other) noexcept;
 
     /**
      * @brief Constructs a new CachedFormatter object from a format string.
@@ -410,13 +406,16 @@ public:
     SLIMLOG_EXPORT void format(Out& out, T value) const;
 
 private:
-    mutable std::atomic<std::int8_t> m_active{-1};
-    mutable std::atomic<T> m_value;
+    /**
+     * @brief Gets the cache map for storing formatters.
+     *
+     * @return Reference to the cache map.
+     */
+    static inline auto get_cache() noexcept -> auto&;
+
 #ifdef SLIMLOG_FMTLIB
     bool m_empty;
 #endif
-    mutable SpinLock m_lock;
-    mutable std::array<FormatBuffer<Char, 32>, 2> m_buffer;
 };
 
 } // namespace SlimLog
