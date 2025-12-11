@@ -24,7 +24,33 @@
 #include <array>
 #endif
 
+#include <tuple>
+#include <unordered_map>
+
 namespace SlimLog {
+
+/** @cond */
+namespace Detail {
+inline auto is_tls_alive() -> bool
+{
+    static thread_local bool alive = true;
+    struct Guard {
+        Guard() = default;
+        Guard(const Guard&) = delete;
+        auto operator=(const Guard&) -> Guard& = delete;
+        Guard(Guard&&) = delete;
+        auto operator=(Guard&&) -> Guard& = delete;
+
+        ~Guard()
+        {
+            alive = false;
+        }
+    };
+    static const thread_local Guard guard;
+    return alive;
+}
+} // namespace Detail
+/** @endcond */
 
 #ifndef SLIMLOG_FMTLIB
 template<typename T, Formattable<T> Char>
@@ -43,6 +69,15 @@ auto FormatValue<T, Char>::format(Context& context) const
 #endif
 
 template<typename T, Formattable<T> Char>
+CachedFormatter<T, Char>::~CachedFormatter()
+{
+    // First check if TLS is still alive, otherwise we get use-after-free
+    if (Detail::is_tls_alive()) {
+        get_cache().erase(this);
+    }
+}
+
+template<typename T, Formattable<T> Char>
 CachedFormatter<T, Char>::CachedFormatter(std::basic_string_view<Char> fmt)
 #ifdef SLIMLOG_FMTLIB
     : m_empty(fmt.empty())
@@ -58,59 +93,46 @@ CachedFormatter<T, Char>::CachedFormatter(std::basic_string_view<Char> fmt)
 #if defined(__GNUC__) and not defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
+
+    get_cache().emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(this),
+        std::forward_as_tuple(T{}, FormatBuffer<Char, 32>{}));
 }
 
 template<typename T, Formattable<T> Char>
 CachedFormatter<T, Char>::CachedFormatter(CachedFormatter&& other) noexcept
     : Formatter<T, Char>(other)
-    , m_active(other.m_active.load(std::memory_order_relaxed))
-    , m_value(other.m_value.load(std::memory_order_relaxed))
 #ifdef SLIMLOG_FMTLIB
     , m_empty(other.m_empty)
 #endif
-    , m_lock(std::move(other.m_lock))
-    , m_buffer(std::move(other.m_buffer))
 {
+    auto& cache = get_cache();
+    cache[this] = std::move(cache[&other]);
+    cache.erase(&other);
 }
 
 template<typename T, Formattable<T> Char>
 template<typename Out>
 void CachedFormatter<T, Char>::format(Out& out, T value) const
 {
-    // Fast path: try lock-free cache read with single m_active read
-    auto active = m_active.load(std::memory_order_acquire);
-    if (active >= 0 && m_value.load(std::memory_order_acquire) == value) {
-        // Stable state and value matches, use cache
-        out.append(m_buffer[active]); // NOLINT(*-pro-bounds-constant-array-index)
+    auto& [cached_value, buffer] = get_cache()[this];
+
+    // Check cache for this specific formatter instance
+    if (buffer.size() != 0 && cached_value == value) {
+        out.append(buffer);
         return;
     }
 
-    // Slow path: need to format under lock
-    m_lock.lock();
-
-    // Re-read active state under lock (may have changed)
-    active = m_active.load(std::memory_order_relaxed);
-    if (active >= 0 && m_value.load(std::memory_order_relaxed) == value) {
-        m_lock.unlock();
-        out.append(m_buffer[active]); // NOLINT(*-pro-bounds-constant-array-index)
-        return;
-    }
-
-    // Mark update in progress
-    m_active.store(-2, std::memory_order_release);
-
-    // Format to alternate buffer
-    const auto idx = static_cast<std::int8_t>(active == -1 ? 0 : 1 - active);
-    auto& buffer = m_buffer[idx]; // NOLINT(*-pro-bounds-constant-array-index)
+    // Cache miss - format value
     buffer.clear();
+
 #ifdef SLIMLOG_FMTLIB
     // Shortcut for numeric types without formatting
     if constexpr (std::is_arithmetic_v<T> && std::is_integral_v<T>) {
         if (m_empty) [[likely]] {
             buffer.append(fmt::format_int(value));
-            m_value.store(value, std::memory_order_release);
-            m_active.store(idx, std::memory_order_release);
-            m_lock.unlock();
+            cached_value = value;
             out.append(buffer);
             return;
         }
@@ -122,7 +144,7 @@ void CachedFormatter<T, Char>::format(Out& out, T value) const
         std::is_same_v<Char, char>,
         fmt::appender,
 #if FMT_VERSION < 110000
-        std::back_insert_iterator<Out>
+        std::back_insert_iterator<std::remove_reference_t<decltype(buffer)>>
 #else
         fmt::basic_appender<Char>
 #endif
@@ -137,12 +159,17 @@ void CachedFormatter<T, Char>::format(Out& out, T value) const
     buffer.vformat(Fmt.data(), buffer.make_format_args(FormatValue(*this, value)));
 #endif
 
-    // Publish new cache entry
-    m_value.store(value, std::memory_order_release);
-    m_active.store(idx, std::memory_order_release);
-    m_lock.unlock();
+    // Update cache
+    cached_value = value;
 
     out.append(buffer);
+}
+
+template<typename T, Formattable<T> Char>
+auto CachedFormatter<T, Char>::get_cache() noexcept -> auto&
+{
+    thread_local std::unordered_map<const void*, std::pair<T, FormatBuffer<Char, 32>>> cache;
+    return cache;
 }
 
 } // namespace SlimLog
