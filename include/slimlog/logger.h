@@ -342,67 +342,64 @@ public:
         using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
         using RecordType = Record<Char>;
 
+        // Early exit if the level is not enabled
         if (static_cast<Level>(m_level) < level) [[unlikely]] {
             return;
         }
 
-        FormatBufferType buffer; // NOLINT(misc-const-correctness)
-        RecordType record;
-
-        // Flag to check that message has been evaluated
-        bool evaluated = false;
-
         const typename ThreadingPolicy::ReadLock lock(m_mutex);
-        // TODO: speed up this. Take first sink and evaluate, then loop through others.
-        for (const auto sink : m_propagated_sinks) {
-            if (!evaluated) [[unlikely]] {
-                evaluated = true;
-                record
-                    = {static_cast<TimeFunctionType>(m_time_func)(),
-                       {},
-                       m_category,
-                       location.file_name(),
-                       location.function_name(),
-                       static_cast<std::size_t>(location.line()),
-                       Util::OS::thread_id(),
-                       level};
+        // Early exit if there are no sinks to propagate to
+        if (m_propagated_sinks.empty()) [[unlikely]] {
+            return;
+        }
 
-                using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
-                using RecordStringViewType = RecordStringView<Char>;
-                if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
-                    // Callable with buffer argument: message will be stored in buffer.
-                    // NOLINTNEXTLINE(*-use-after-move,*-invalid-access-moved)
-                    callback(buffer, std::forward<Args>(args)...);
-                    record.message = RecordStringViewType{buffer.data(), buffer.size()};
-                } else if constexpr (std::is_invocable_v<T, Args...>) {
-                    using RetType = typename std::invoke_result_t<T, Args...>;
-                    if constexpr (std::is_void_v<RetType>) {
-                        // Void callable without arguments: there is no message, just a callback
-                        callback(std::forward<Args>(args)...);
-                        break;
-                    } else {
-                        // Non-void callable without arguments: message is the return value
-                        auto message = callback(std::forward<Args>(args)...);
-                        if constexpr (std::is_convertible_v<RetType, RecordStringViewType>) {
-                            record.message = RecordStringViewType{std::move(message)};
-                        } else {
-                            record.message = message;
-                        }
-                    }
-                } else if constexpr (std::is_convertible_v<T, RecordStringViewType>) {
-                    record.message = RecordStringViewType{callback};
-                } else if constexpr (std::is_convertible_v<T, StringViewType>) {
-                    record.message = RecordStringViewType{StringViewType{callback}};
-                } else if constexpr (Detail::HasConvertString<T, Char>) {
-                    record.message
-                        = RecordStringView<Char>{ConvertString<T, Char>{}(callback, buffer)};
-                } else if constexpr (std::is_assignable_v<RecordStringView<Char>, T>) {
-                    record.message = callback;
+        FormatBufferType buffer; // NOLINT(misc-const-correctness)
+        RecordType record
+            = {static_cast<TimeFunctionType>(m_time_func)(),
+               {},
+               m_category,
+               location.file_name(),
+               location.function_name(),
+               static_cast<std::size_t>(location.line()),
+               Util::OS::thread_id(),
+               level};
+
+        // Determine how to get the message from the callback (value)
+        using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
+        using RecordStringViewType = RecordStringView<Char>;
+        if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
+            // Callable with buffer argument: message will be stored in buffer.
+            callback(buffer, std::forward<Args>(args)...);
+            record.message = RecordStringViewType{buffer.data(), buffer.size()};
+        } else if constexpr (std::is_invocable_v<T, Args...>) {
+            using RetType = typename std::invoke_result_t<T, Args...>;
+            if constexpr (std::is_void_v<RetType>) {
+                // Void callable without arguments: there is no message, just a callback
+                callback(std::forward<Args>(args)...);
+                return;
+            } else {
+                // Non-void callable without arguments: message is the return value
+                auto message = callback(std::forward<Args>(args)...);
+                if constexpr (std::is_convertible_v<RetType, RecordStringViewType>) {
+                    record.message = RecordStringViewType{std::move(message)};
                 } else {
-                    static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
+                    record.message = message;
                 }
             }
+        } else if constexpr (std::is_convertible_v<T, RecordStringViewType>) {
+            record.message = RecordStringViewType{callback};
+        } else if constexpr (std::is_convertible_v<T, StringViewType>) {
+            record.message = RecordStringViewType{StringViewType{callback}};
+        } else if constexpr (Detail::HasConvertString<T, Char>) {
+            record.message = RecordStringView<Char>{ConvertString<T, Char>{}(callback, buffer)};
+        } else if constexpr (std::is_assignable_v<RecordStringView<Char>, T>) {
+            record.message = callback;
+        } else {
+            static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
+        }
 
+        // Propagate the message to all sinks
+        for (const auto sink : m_propagated_sinks) {
             sink->message(record);
         }
     }
