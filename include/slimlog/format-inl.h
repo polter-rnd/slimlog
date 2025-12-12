@@ -24,7 +24,33 @@
 #include <array>
 #endif
 
+#include <tuple>
+#include <unordered_map>
+
 namespace SlimLog {
+
+/** @cond */
+namespace Detail {
+inline auto is_tls_alive() -> bool
+{
+    static thread_local bool alive = true;
+    struct Guard {
+        Guard() = default;
+        Guard(const Guard&) = delete;
+        auto operator=(const Guard&) -> Guard& = delete;
+        Guard(Guard&&) = delete;
+        auto operator=(Guard&&) -> Guard& = delete;
+
+        ~Guard()
+        {
+            alive = false;
+        }
+    };
+    static const thread_local Guard guard;
+    return alive;
+}
+} // namespace Detail
+/** @endcond */
 
 #ifndef SLIMLOG_FMTLIB
 template<typename T, Formattable<T> Char>
@@ -43,6 +69,15 @@ auto FormatValue<T, Char>::format(Context& context) const
 #endif
 
 template<typename T, Formattable<T> Char>
+CachedFormatter<T, Char>::~CachedFormatter()
+{
+    // First check if TLS is still alive, otherwise we get use-after-free
+    if (Detail::is_tls_alive()) {
+        get_cache().erase(this);
+    }
+}
+
+template<typename T, Formattable<T> Char>
 CachedFormatter<T, Char>::CachedFormatter(std::basic_string_view<Char> fmt)
 #ifdef SLIMLOG_FMTLIB
     : m_empty(fmt.empty())
@@ -58,47 +93,83 @@ CachedFormatter<T, Char>::CachedFormatter(std::basic_string_view<Char> fmt)
 #if defined(__GNUC__) and not defined(__clang__)
 #pragma GCC diagnostic pop
 #endif
+
+    get_cache().emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(this),
+        std::forward_as_tuple(T{}, FormatBuffer<Char, 32>{}));
+}
+
+template<typename T, Formattable<T> Char>
+CachedFormatter<T, Char>::CachedFormatter(CachedFormatter&& other) noexcept
+    : Formatter<T, Char>(other)
+#ifdef SLIMLOG_FMTLIB
+    , m_empty(other.m_empty)
+#endif
+{
+    auto& cache = get_cache();
+    cache[this] = std::move(cache[&other]);
+    cache.erase(&other);
 }
 
 template<typename T, Formattable<T> Char>
 template<typename Out>
 void CachedFormatter<T, Char>::format(Out& out, T value) const
 {
-    if (!m_value || value != *m_value) [[unlikely]] {
-        m_value = std::move(value);
-        m_buffer.clear();
-#ifdef SLIMLOG_FMTLIB
-        // Shortcut for numeric types without formatting
-        if constexpr (std::is_arithmetic_v<T> && std::is_integral_v<T>) {
-            if (m_empty) [[likely]] {
-                m_buffer.append(fmt::format_int(*m_value));
-                out.append(m_buffer);
-                return;
-            }
-        }
+    auto& [cached_value, buffer] = get_cache()[this];
 
-        // For libfmt it's possible to create a custom fmt::basic_format_context
-        // appending to the buffer directly, which is the most efficient way.
-        using Appender = std::conditional_t<
-            std::is_same_v<Char, char>,
-            fmt::appender,
-#if FMT_VERSION < 110000
-            std::back_insert_iterator<decltype(m_buffer)>
-#else
-            fmt::basic_appender<Char>
-#endif
-            >;
-        fmt::basic_format_context<Appender, Char> fmt_context(Appender(m_buffer), {});
-        Formatter<T, Char>::format(*m_value, fmt_context);
-#else
-        // For std::format there is no way to build a custom format context,
-        // so we have to use dummy format string (empty string will be omitted),
-        // and pass FormatValue with a reference to CachedFormatter as an argument.
-        static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
-        m_buffer.vformat(Fmt.data(), m_buffer.make_format_args(FormatValue(*this, *m_value)));
-#endif
+    // Check cache for this specific formatter instance
+    if (buffer.size() != 0 && cached_value == value) {
+        out.append(buffer);
+        return;
     }
-    out.append(m_buffer);
+
+    // Cache miss - format value
+    buffer.clear();
+
+#ifdef SLIMLOG_FMTLIB
+    // Shortcut for numeric types without formatting
+    if constexpr (std::is_arithmetic_v<T> && std::is_integral_v<T>) {
+        if (m_empty) [[likely]] {
+            buffer.append(fmt::format_int(value));
+            cached_value = value;
+            out.append(buffer);
+            return;
+        }
+    }
+
+    // For libfmt it's possible to create a custom fmt::basic_format_context
+    // appending to the buffer directly, which is the most efficient way.
+    using Appender = std::conditional_t<
+        std::is_same_v<Char, char>,
+        fmt::appender,
+#if FMT_VERSION < 110000
+        std::back_insert_iterator<decltype(buffer)>
+#else
+        fmt::basic_appender<Char>
+#endif
+        >;
+    fmt::basic_format_context<Appender, Char> fmt_context(Appender(buffer), {});
+    Formatter<T, Char>::format(value, fmt_context);
+#else
+    // For std::format there is no way to build a custom format context,
+    // so we have to use dummy format string (empty string will be omitted),
+    // and pass FormatValue with a reference to CachedFormatter as an argument.
+    static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
+    buffer.vformat(Fmt.data(), buffer.make_format_args(FormatValue(*this, value)));
+#endif
+
+    // Update cache
+    cached_value = value;
+
+    out.append(buffer);
+}
+
+template<typename T, Formattable<T> Char>
+auto CachedFormatter<T, Char>::get_cache() noexcept -> auto&
+{
+    thread_local std::unordered_map<const void*, std::pair<T, FormatBuffer<Char, 32>>> cache;
+    return cache;
 }
 
 } // namespace SlimLog
