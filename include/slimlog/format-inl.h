@@ -63,7 +63,7 @@ CachedFormatter<T, Char>::CachedFormatter(std::basic_string_view<Char> fmt)
 template<typename T, Formattable<T> Char>
 CachedFormatter<T, Char>::CachedFormatter(CachedFormatter&& other) noexcept
     : Formatter<T, Char>(other)
-    , m_active(other.m_active.load(std::memory_order_relaxed))
+    , m_version(other.m_version.load(std::memory_order_relaxed))
     , m_value(other.m_value.load(std::memory_order_relaxed))
 #ifdef SLIMLOG_FMTLIB
     , m_empty(other.m_empty)
@@ -77,41 +77,47 @@ template<typename T, Formattable<T> Char>
 template<typename Out>
 void CachedFormatter<T, Char>::format(Out& out, T value) const
 {
-    // Fast path: try lock-free cache read with single m_active read
-    auto active = m_active.load(std::memory_order_acquire);
-    if (active >= 0 && m_value.load(std::memory_order_acquire) == value) {
-        // Stable state and value matches, use cache
-        out.append(m_buffer[active]); // NOLINT(*-pro-bounds-constant-array-index)
-        return;
+    while (true) {
+        auto v1 = m_version.load(std::memory_order_acquire);
+        if (v1 & 1) {
+            Util::OS::yield_processor();
+            continue; // update in progress, retry
+        }
+
+        auto cached_value = m_value.load(std::memory_order_acquire);
+
+        // Copy buffer to a local variable
+        decltype(m_buffer) local_buffer;
+        local_buffer.append(m_buffer);
+
+        auto v2 = m_version.load(std::memory_order_acquire);
+        if (v1 != v2) {
+            Util::OS::yield_processor();
+            continue; // changed, retry
+        }
+
+        if (cached_value == value) {
+            out.append(local_buffer);
+            return;
+        }
+        break; // not found, go to slow path
     }
 
     // Slow path: need to format under lock
     m_lock.lock();
-
-    // Re-read active state under lock (may have changed)
-    active = m_active.load(std::memory_order_relaxed);
-    if (active >= 0 && m_value.load(std::memory_order_relaxed) == value) {
-        m_lock.unlock();
-        out.append(m_buffer[active]); // NOLINT(*-pro-bounds-constant-array-index)
-        return;
-    }
-
-    // Mark update in progress
-    m_active.store(-2, std::memory_order_release);
+    m_version.fetch_add(1, std::memory_order_acq_rel); // odd: update in progress
 
     // Format to alternate buffer
-    const auto idx = static_cast<std::int8_t>(active == -1 ? 0 : 1 - active);
-    auto& buffer = m_buffer[idx]; // NOLINT(*-pro-bounds-constant-array-index)
-    buffer.clear();
+    m_buffer.clear();
 #ifdef SLIMLOG_FMTLIB
     // Shortcut for numeric types without formatting
     if constexpr (std::is_arithmetic_v<T> && std::is_integral_v<T>) {
         if (m_empty) [[likely]] {
-            buffer.append(fmt::format_int(value));
+            m_buffer.append(fmt::format_int(value));
             m_value.store(value, std::memory_order_release);
-            m_active.store(idx, std::memory_order_release);
+            m_version.fetch_add(1, std::memory_order_release); // even: update done
+            out.append(m_buffer);
             m_lock.unlock();
-            out.append(buffer);
             return;
         }
     }
@@ -122,27 +128,27 @@ void CachedFormatter<T, Char>::format(Out& out, T value) const
         std::is_same_v<Char, char>,
         fmt::appender,
 #if FMT_VERSION < 110000
-        std::back_insert_iterator<decltype(buffer)>
+        std::back_insert_iterator<decltype(m_buffer)>
 #else
         fmt::basic_appender<Char>
 #endif
         >;
-    fmt::basic_format_context<Appender, Char> fmt_context(Appender(buffer), {});
+    fmt::basic_format_context<Appender, Char> fmt_context(Appender(m_buffer), {});
     Formatter<T, Char>::format(value, fmt_context);
 #else
     // For std::format there is no way to build a custom format context,
     // so we have to use dummy format string (empty string will be omitted),
     // and pass FormatValue with a reference to CachedFormatter as an argument.
     static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
-    buffer.vformat(Fmt.data(), buffer.make_format_args(FormatValue(*this, value)));
+    m_buffer.vformat(Fmt.data(), m_buffer.make_format_args(FormatValue(*this, value)));
 #endif
 
     // Publish new cache entry
     m_value.store(value, std::memory_order_release);
-    m_active.store(idx, std::memory_order_release);
-    m_lock.unlock();
+    m_version.fetch_add(1, std::memory_order_release); // even: update done
 
-    out.append(buffer);
+    out.append(m_buffer);
+    m_lock.unlock();
 }
 
 } // namespace SlimLog

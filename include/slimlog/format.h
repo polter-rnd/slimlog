@@ -410,13 +410,13 @@ public:
     SLIMLOG_EXPORT void format(Out& out, T value) const;
 
 private:
-    mutable std::atomic<std::int8_t> m_active{-1};
+    mutable std::atomic<std::uint64_t> m_version{0};
     mutable std::atomic<T> m_value;
 #ifdef SLIMLOG_FMTLIB
     bool m_empty;
 #endif
     mutable SpinLock m_lock;
-    mutable std::array<FormatBuffer<Char, 32>, 2> m_buffer;
+    mutable FormatBuffer<Char, 32> m_buffer;
 };
 
 } // namespace SlimLog
