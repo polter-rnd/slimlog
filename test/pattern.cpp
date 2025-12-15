@@ -1,9 +1,9 @@
 // SlimLog
 #include "slimlog/pattern.h"
 
+#include "slimlog/format.h"
 #include "slimlog/record.h"
 #include "slimlog/sink.h"
-#include "slimlog/util/buffer.h"
 
 // Test helpers
 #include "helpers/common.h"
@@ -57,7 +57,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
     using String = std::basic_string_view<Char>;
     using StringView = std::basic_string_view<Char>;
     using PatternType = Pattern<Char>;
-    using BufferType = typename Util::MemoryBuffer<Char, DefaultBufferSize>;
+    using BufferType = FormatBuffer<Char, DefaultBufferSize>;
 
     // Test empty pattern
     _.test("empty_pattern", []() {
