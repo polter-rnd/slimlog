@@ -78,7 +78,8 @@ template<typename Char>
 }
 
 template<typename Char>
-auto Pattern<Char>::format(auto& out, const Record<Char>& record) -> void
+template<std::size_t BufferSize>
+auto Pattern<Char>::format(FormatBuffer<Char, BufferSize>& out, const Record<Char>& record) -> void
 {
     constexpr std::size_t MsecInNsec = 1000000;
     constexpr std::size_t UsecInNsec = 1000;
@@ -237,7 +238,7 @@ constexpr auto Pattern<Char>::parse_nonnegative_int(
     constexpr auto Base = 10ULL;
     while (ptr != end && '0' <= *ptr && *ptr <= '9') {
         prev = value;
-        value = value * Base + static_cast<unsigned>(*ptr - '0');
+        value = (value * Base) + static_cast<unsigned>(*ptr - '0');
         ++ptr;
     }
     const auto num_digits = ptr - begin;
@@ -251,7 +252,7 @@ constexpr auto Pattern<Char>::parse_nonnegative_int(
     // Check for overflow.
     constexpr auto MaxInt = std::numeric_limits<int>::max();
     return num_digits == Digits10 + 1
-            && prev * Base + static_cast<unsigned>(ptr[-1] - '0') <= MaxInt
+            && (prev * Base) + static_cast<unsigned>(ptr[-1] - '0') <= MaxInt
         ? static_cast<int>(value)
         : error_value;
 }

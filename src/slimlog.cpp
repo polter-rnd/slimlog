@@ -43,7 +43,7 @@ template class NullSink<char>;
 template class RecordStringView<char>;
 template class Pattern<char>;
 template SLIMLOG_EXPORT void Pattern<char>::format(
-    Util::MemoryBuffer<char, DefaultBufferSize>&, const Record<char>&);
+    FormatBuffer<char, DefaultBufferSize>&, const Record<char>&);
 template class CachedFormatter<std::size_t, char>;
 template class CachedFormatter<std::chrono::sys_seconds, char>;
 #ifndef SLIMLOG_FMTLIB
@@ -67,7 +67,7 @@ template class NullSink<wchar_t>;
 template class RecordStringView<wchar_t>;
 template class Pattern<wchar_t>;
 template SLIMLOG_EXPORT void Pattern<wchar_t>::format(
-    Util::MemoryBuffer<wchar_t, DefaultBufferSize>&, const Record<wchar_t>&);
+    FormatBuffer<wchar_t, DefaultBufferSize>&, const Record<wchar_t>&);
 template class CachedFormatter<std::size_t, wchar_t>;
 template class CachedFormatter<std::chrono::sys_seconds, wchar_t>;
 #ifndef SLIMLOG_FMTLIB
@@ -92,7 +92,7 @@ template class NullSink<char8_t>;
 template class RecordStringView<char8_t>;
 template class Pattern<char8_t>;
 template SLIMLOG_EXPORT void Pattern<char8_t>::format(
-    Util::MemoryBuffer<char8_t, DefaultBufferSize>&, const Record<char8_t>&);
+    FormatBuffer<char8_t, DefaultBufferSize>&, const Record<char8_t>&);
 template class CachedFormatter<std::size_t, char8_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char8_t>;
 #endif
@@ -114,7 +114,7 @@ template class NullSink<char16_t>;
 template class RecordStringView<char16_t>;
 template class Pattern<char16_t>;
 template SLIMLOG_EXPORT void Pattern<char16_t>::format(
-    Util::MemoryBuffer<char16_t, DefaultBufferSize>&, const Record<char16_t>&);
+    FormatBuffer<char16_t, DefaultBufferSize>&, const Record<char16_t>&);
 template class CachedFormatter<std::size_t, char16_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char16_t>;
 #endif
@@ -136,7 +136,7 @@ template class NullSink<char32_t>;
 template class RecordStringView<char32_t>;
 template class Pattern<char32_t>;
 template SLIMLOG_EXPORT void Pattern<char32_t>::format(
-    Util::MemoryBuffer<char32_t, DefaultBufferSize>&, const Record<char32_t>&);
+    FormatBuffer<char32_t, DefaultBufferSize>&, const Record<char32_t>&);
 template class CachedFormatter<std::size_t, char32_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char32_t>;
 #endif

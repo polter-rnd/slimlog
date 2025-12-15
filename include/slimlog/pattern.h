@@ -210,7 +210,9 @@ public:
      * @param out Buffer storing the raw message to be overwritten with the result.
      * @param record Log record.
      */
-    SLIMLOG_EXPORT auto format(auto& out, const Record<Char>& record) -> void;
+    template<std::size_t BufferSize>
+    SLIMLOG_EXPORT auto format(FormatBuffer<Char, BufferSize>& out, const Record<Char>& record)
+        -> void;
 
     /**
      * @brief Sets the message pattern.
@@ -297,7 +299,7 @@ protected:
         requires(
             std::same_as<std::remove_cvref_t<StringView>, RecordStringView<Char>>
             || std::same_as<std::remove_cvref_t<StringView>, RecordStringView<char>>)
-    SLIMLOG_EXPORT static void format_string(auto& out, const auto& item, StringView&& data);
+    static void format_string(auto& out, const auto& item, StringView&& data);
 
     /**
      * @brief Formats data according to the cached format context.
@@ -311,7 +313,7 @@ protected:
      * @param data Source data to be formatted.
      */
     template<typename T>
-    SLIMLOG_EXPORT static void format_generic(auto& out, const auto& item, T data);
+    static void format_generic(auto& out, const auto& item, T data);
 
 private:
     /**
