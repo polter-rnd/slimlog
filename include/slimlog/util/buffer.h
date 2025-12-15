@@ -193,12 +193,12 @@ public:
     void append(const U* begin, const U* end)
     {
         while (begin != end) {
+            auto free_cap = m_capacity - m_size;
             auto count = Util::Types::to_unsigned(end - begin);
-            try_reserve(m_size + count);
-
-            const auto free_cap = m_capacity - m_size;
             if (free_cap < count) {
-                count = free_cap;
+                m_grow(*this, m_size + count);
+                free_cap = m_capacity - m_size;
+                count = (count < free_cap) ? count : free_cap;
             }
             if constexpr (std::is_same_v<T, U>) {
                 std::uninitialized_copy_n(begin, count, m_ptr + m_size);
