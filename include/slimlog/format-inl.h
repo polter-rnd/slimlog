@@ -83,7 +83,7 @@ void CachedFormatter<T, Char>::format(Out& out, T value) const
             std::is_same_v<Char, char>,
             fmt::appender,
 #if FMT_VERSION < 110000
-            std::back_insert_iterator<decltype(m_buffer)>
+            std::back_insert_iterator<Out>
 #else
             fmt::basic_appender<Char>
 #endif
