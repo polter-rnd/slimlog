@@ -72,7 +72,8 @@ auto FileSink<Char, BufferSize, Allocator>::message(const RecordType& record) ->
     FormatBufferType buffer;
     this->format(buffer, record);
     buffer.push_back(static_cast<Char>('\n'));
-    if (std::fwrite(buffer.data(), buffer.size() * sizeof(Char), 1, m_fp.get()) != 1) {
+    if (const auto size = buffer.size() * sizeof(Char);
+        std::fwrite(buffer.data(), 1, size, m_fp.get()) != size) {
         throw std::system_error({errno, std::system_category()}, "Failed writing to log file");
     }
 }
