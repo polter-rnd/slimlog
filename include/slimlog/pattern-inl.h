@@ -59,6 +59,8 @@ auto Pattern<Char>::Levels::set(Level level, StringViewType name) -> void
         m_debug = std::move(name);
         break;
     case Level::Trace:
+        [[fallthrough]];
+    default:
         m_trace = std::move(name);
         break;
     }
@@ -164,26 +166,22 @@ void Pattern<Char>::compile(StringViewType pattern)
 
             inside_placeholder = true;
         } else if (inside_placeholder && chr == '}') {
-            bool found = false;
-            auto find_placeholder = [&found, &pattern, &pos, this]<typename PlaceholderType>() {
-                if (found) {
-                    return;
-                }
+            std::size_t delta = 0;
+            auto find_placeholder = [&delta, &pattern, &pos, this]<typename PlaceholderType>() {
                 if constexpr (!std::is_same_v<PlaceholderType, StringViewType>) {
                     const StringViewType placeholder{
                         PlaceholderType::Name.data(), PlaceholderType::Name.size()};
-                    if (pattern.starts_with(placeholder)) {
-                        const auto delta = placeholder.size();
+                    if (delta == 0 && pattern.starts_with(placeholder)) {
+                        delta = placeholder.size();
                         m_pattern.append(pattern.substr(delta, pos + 1 - delta));
                         pattern = pattern.substr(pos + 1);
                         append_placeholder<PlaceholderType>(pos - delta);
-                        found = true;
                     }
                 }
             };
             Util::Types::variant_for_each_type<FormatterVariant>(find_placeholder);
 
-            if (!found) {
+            if (delta == 0) {
                 throw FormatError("format error: unknown pattern placeholder found");
             }
 
