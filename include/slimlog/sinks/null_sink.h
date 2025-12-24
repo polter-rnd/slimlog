@@ -7,6 +7,7 @@
 
 #include "slimlog/sink.h"
 
+#include <tuple>
 #include <utility>
 
 namespace SlimLog {
@@ -45,7 +46,7 @@ public:
      */
     auto message(const RecordType& record) -> void override
     {
-        (void)record;
+        std::ignore = record;
     }
 
     /**
