@@ -148,10 +148,13 @@ public:
     static auto create(const std::shared_ptr<Logger>& parent, StringViewType category)
         -> std::shared_ptr<Logger>
     {
-        auto logger = std::shared_ptr<Logger>(new Logger(parent, category));
+        std::shared_ptr<Logger> logger;
         if (parent) {
+            logger = std::shared_ptr<Logger>(new Logger(parent, category));
             parent->add_child(logger);
             logger->update_propagated_sinks();
+        } else {
+            logger = std::shared_ptr<Logger>(new Logger(category));
         }
         return logger;
     }
@@ -166,10 +169,13 @@ public:
     static auto create(const std::shared_ptr<Logger>& parent, Level level)
         -> std::shared_ptr<Logger>
     {
-        auto logger = std::shared_ptr<Logger>(new Logger(parent, level));
+        std::shared_ptr<Logger> logger;
         if (parent) {
+            logger = std::shared_ptr<Logger>(new Logger(parent, level));
             parent->add_child(logger);
             logger->update_propagated_sinks();
+        } else {
+            logger = std::shared_ptr<Logger>(new Logger(level));
         }
         return logger;
     }
@@ -182,10 +188,13 @@ public:
      */
     static auto create(const std::shared_ptr<Logger>& parent) -> std::shared_ptr<Logger>
     {
-        auto logger = std::shared_ptr<Logger>(new Logger(parent));
+        std::shared_ptr<Logger> logger;
         if (parent) {
+            logger = std::shared_ptr<Logger>(new Logger(parent));
             parent->add_child(logger);
             logger->update_propagated_sinks();
+        } else {
+            logger = std::shared_ptr<Logger>(new Logger());
         }
         return logger;
     }
