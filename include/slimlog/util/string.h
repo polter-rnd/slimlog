@@ -16,10 +16,11 @@
 namespace SlimLog {
 
 /**
- * @brief Record string view type.
+ * @brief Non-owning string view type with cached codepoints.
  *
- * This is similar to `std::basic_string_view<T>` but includes a `codepoints()` method
- * to calculate the number of symbols in a Unicode string.
+ * This class extends `std::basic_string_view<T>` and includes a `codepoints()` method
+ * to calculate and cache the number of Unicode code points in a string. It is implicitly
+ * convertible from `std::basic_string_view<T>` and `std::basic_string<T>`.
  *
  * @tparam T Character type.
  */
@@ -40,6 +41,7 @@ public:
 
     /**
      * @brief Copy constructor.
+     *
      * @param str_view The CachedStringView to copy from.
      */
     constexpr CachedStringView(const CachedStringView& str_view) noexcept
@@ -51,6 +53,7 @@ public:
 
     /**
      * @brief Move constructor.
+     *
      * @param str_view The CachedStringView to move from.
      */
     constexpr CachedStringView(CachedStringView&& str_view) noexcept
@@ -62,6 +65,7 @@ public:
 
     /**
      * @brief Constructor from `std::basic_string_view`.
+     *
      * @param str_view The std::basic_string_view to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
@@ -72,6 +76,7 @@ public:
 
     /**
      * @brief Constructor from `std::basic_string`.
+     *
      * @param str The std::basic_string to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
@@ -82,6 +87,7 @@ public:
 
     /**
      * @brief Assignment operator.
+     *
      * @param str_view The CachedStringView to assign from.
      * @return Reference to this CachedStringView.
      */
@@ -99,6 +105,7 @@ public:
 
     /**
      * @brief Move assignment operator.
+     *
      * @param str_view The CachedStringView to move from.
      * @return Reference to this CachedStringView.
      */
@@ -117,6 +124,7 @@ public:
 
     /**
      * @brief Assignment from `std::basic_string_view`.
+     *
      * @param str_view The std::basic_string_view to assign from.
      * @return Reference to this CachedStringView.
      */
@@ -182,6 +190,8 @@ public:
 
     /**
      * @brief Copy constructor - preserves cached codepoints.
+     *
+     * @param other The CachedString to copy from.
      */
     CachedString(const CachedString& other)
         : std::basic_string<T>(other)
@@ -191,6 +201,8 @@ public:
 
     /**
      * @brief Move constructor - preserves cached codepoints.
+     *
+     * @param other The CachedString to move from.
      */
     CachedString(CachedString&& other) noexcept
         : std::basic_string<T>(std::move(other))
@@ -200,6 +212,8 @@ public:
 
     /**
      * @brief Constructor from std::basic_string - invalidates codepoints cache.
+     *
+     * @param str The std::basic_string to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
     CachedString(const std::basic_string<T>& str)
@@ -209,6 +223,8 @@ public:
 
     /**
      * @brief Move constructor from std::basic_string - invalidates codepoints cache.
+     *
+     * @param str The std::basic_string to move from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
     CachedString(std::basic_string<T>&& str) noexcept
@@ -218,6 +234,9 @@ public:
 
     /**
      * @brief Copy assignment - preserves cached codepoints.
+     *
+     * @param other The CachedString to assign from.
+     * @return Reference to this CachedString.
      */
     auto operator=(const CachedString& other) -> CachedString&
     {
@@ -230,6 +249,9 @@ public:
 
     /**
      * @brief Move assignment - preserves cached codepoints.
+     *
+     * @param other The CachedString to move from.
+     * @return Reference to this CachedString.
      */
     auto operator=(CachedString&& other) noexcept -> CachedString&
     {
@@ -242,6 +264,9 @@ public:
 
     /**
      * @brief Assignment from std::basic_string - invalidates codepoints cache.
+     *
+     * @param str The std::basic_string to assign from.
+     * @return Reference to this CachedString.
      */
     auto operator=(const std::basic_string<T>& str) -> CachedString&
     {
@@ -252,6 +277,9 @@ public:
 
     /**
      * @brief Move assignment from std::basic_string - invalidates codepoints cache.
+     *
+     * @param str The std::basic_string to move from.
+     * @return Reference to this CachedString.
      */
     auto operator=(std::basic_string<T>&& str) noexcept -> CachedString&
     {
@@ -262,6 +290,9 @@ public:
 
     /**
      * @brief Assignment from CachedStringView - preserves cached codepoints.
+     *
+     * @param view The CachedStringView to assign from.
+     * @return Reference to this CachedString.
      */
     auto operator=(const CachedStringView<T>& view) -> CachedString&
     {
@@ -272,6 +303,9 @@ public:
 
     /**
      * @brief Assignment from std::basic_string_view - invalidates codepoints cache.
+     *
+     * @param view The std::basic_string_view to assign from.
+     * @return Reference to this CachedString.
      */
     auto operator=(std::basic_string_view<T> view) -> CachedString&
     {
@@ -285,6 +319,8 @@ public:
      *
      * The returned view shares the codepoints cache with this CachedString,
      * so calculating codepoints in either object updates both.
+     *
+     * @return A CachedStringView that references this CachedString.
      */
     operator CachedStringView<T>() const noexcept // NOLINT(hicpp-explicit-conversions)
     {
