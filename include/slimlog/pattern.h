@@ -85,7 +85,15 @@ public:
         CachedString<Char> m_fatal = {'F', 'A', 'T', 'A', 'L'}; ///< Fatal level
     };
 
+    /**
+     * @brief Base formatter for string-based log record fields.
+     *
+     * Provides formatting capabilities with alignment, width, and fill character support.
+     */
     struct StringFormatter {
+        /**
+         * @brief Specifications for string formatting.
+         */
         struct StringSpecs {
             /** @brief Field alignment options. */
             enum class Align : std::uint8_t { None, Left, Right, Center };
@@ -98,8 +106,20 @@ public:
             static constexpr std::array<Char, 2> DefaultFill{' ', '\0'};
         };
 
+        /**
+         * @brief Constructs a StringFormatter with optional format specification.
+         *
+         * @param value Format specification string.
+         */
         explicit StringFormatter(StringViewType value = {});
 
+        /**
+         * @brief Formats string data into the output buffer.
+         * @tparam BufferType Type of the output buffer.
+         * @tparam T Character type of the data string.
+         * @param out Output buffer where formatted data will be written.
+         * @param data Source string to format.
+         */
         template<typename BufferType, typename T>
         constexpr void format(BufferType& out, const CachedStringView<T>& data) const
         {
@@ -167,10 +187,18 @@ public:
         bool m_has_padding = false;
     };
 
+    /** @brief Formatter for the log category field. */
     struct CategoryFormatter : public StringFormatter {
         using StringFormatter::StringFormatter;
         static constexpr std::array<Char, 8> Name{'c', 'a', 't', 'e', 'g', 'o', 'r', 'y'};
 
+        /**
+         * @brief Formats the category field into the output buffer.
+         *
+         * @tparam BufferType Type of the output buffer.
+         * @param out Output buffer where the category will be written.
+         * @param record Log record containing the category.
+         */
         template<typename BufferType>
         auto format(BufferType& out, const Record<Char>& record) const -> void
         {
@@ -178,15 +206,24 @@ public:
         }
     };
 
+    /** @brief Formatter for the log level field. */
     struct LevelFormatter : public StringFormatter {
         using StringFormatter::StringFormatter;
         static constexpr std::array<Char, 5> Name{'l', 'e', 'v', 'e', 'l'};
     };
 
+    /** @brief Formatter for the source file field. */
     struct FileFormatter : public StringFormatter {
         using StringFormatter::StringFormatter;
         static constexpr std::array<Char, 4> Name{'f', 'i', 'l', 'e'};
 
+        /**
+         * @brief Formats the filename field into the output buffer.
+         *
+         * @tparam BufferType Type of the output buffer.
+         * @param out Output buffer where the filename will be written.
+         * @param record Log record containing the filename.
+         */
         template<typename BufferType>
         auto format(BufferType& out, const Record<Char>& record) const -> void
         {
@@ -194,10 +231,18 @@ public:
         }
     };
 
+    /** @brief Formatter for the function name field. */
     struct FunctionFormatter : public StringFormatter {
         using StringFormatter::StringFormatter;
         static constexpr std::array<Char, 8> Name{'f', 'u', 'n', 'c', 't', 'i', 'o', 'n'};
 
+        /**
+         * @brief Formats the function name field into the output buffer.
+         *
+         * @tparam BufferType Type of the output buffer.
+         * @param out Output buffer where the function name will be written.
+         * @param record Log record containing the function name.
+         */
         template<typename BufferType>
         auto format(BufferType& out, const Record<Char>& record) const -> void
         {
@@ -205,10 +250,18 @@ public:
         }
     };
 
+    /** @brief Formatter for the log message field. */
     struct MessageFormatter : public StringFormatter {
         using StringFormatter::StringFormatter;
         static constexpr std::array<Char, 7> Name{'m', 'e', 's', 's', 'a', 'g', 'e'};
 
+        /**
+         * @brief Formats the message field into the output buffer.
+         *
+         * @tparam BufferType Type of the output buffer.
+         * @param out Output buffer where the message will be written.
+         * @param record Log record containing the message.
+         */
         template<typename BufferType>
         auto format(BufferType& out, const Record<Char>& record) const -> void
         {
@@ -216,10 +269,18 @@ public:
         }
     };
 
+    /** @brief Formatter for the source line number field. */
     struct LineFormatter : public CachedFormatter<std::size_t, Char> {
         using CachedFormatter<std::size_t, Char>::CachedFormatter;
         static constexpr std::array<Char, 4> Name{'l', 'i', 'n', 'e'};
 
+        /**
+         * @brief Formats the line number field into the output buffer.
+         *
+         * @tparam BufferType Type of the output buffer.
+         * @param out Output buffer where the line number will be written.
+         * @param record Log record containing the line number.
+         */
         template<typename BufferType>
         auto format(BufferType& out, const Record<Char>& record) const -> void
         {
@@ -227,22 +288,51 @@ public:
         }
     };
 
+    /**
+     * @brief Formatter for the thread ID field.
+     *
+     * Formats the thread identifier where the log statement was invoked.
+     */
     struct ThreadFormatter : public CachedFormatter<std::size_t, Char> {
         using CachedFormatter<std::size_t, Char>::CachedFormatter;
         static constexpr std::array<Char, 6> Name{'t', 'h', 'r', 'e', 'a', 'd'};
     };
+
+    /**
+     * @brief Formatter for the timestamp field.
+     *
+     * Formats the timestamp of the log record in seconds.
+     */
     struct TimeFormatter : public CachedFormatter<std::chrono::sys_seconds, Char> {
         using CachedFormatter<std::chrono::sys_seconds, Char>::CachedFormatter;
         static constexpr std::array<Char, 4> Name{'t', 'i', 'm', 'e'};
     };
+
+    /**
+     * @brief Formatter for milliseconds component of the timestamp.
+     *
+     * Formats the millisecond part of the log timestamp (0-999).
+     */
     struct MsecFormatter : public CachedFormatter<std::size_t, Char> {
         using CachedFormatter<std::size_t, Char>::CachedFormatter;
         static constexpr std::array<Char, 4> Name{'m', 's', 'e', 'c'};
     };
+
+    /**
+     * @brief Formatter for microseconds component of the timestamp.
+     *
+     * Formats the microsecond part of the log timestamp (0-999999).
+     */
     struct UsecFormatter : public CachedFormatter<std::size_t, Char> {
         using CachedFormatter<std::size_t, Char>::CachedFormatter;
         static constexpr std::array<Char, 4> Name{'u', 's', 'e', 'c'};
     };
+
+    /**
+     * @brief Formatter for nanoseconds component of the timestamp.
+     *
+     * Formats the nanosecond part of the log timestamp (0-999999999).
+     */
     struct NsecFormatter : public CachedFormatter<std::size_t, Char> {
         using CachedFormatter<std::size_t, Char>::CachedFormatter;
         static constexpr std::array<Char, 4> Name{'n', 's', 'e', 'c'};
@@ -341,6 +431,9 @@ public:
      * std::vector<std::pair<Level, std::string_view>> levels = {{Level::Info, "INFO"}};
      * pattern.set_levels(levels);
      * ```
+     *
+     * @tparam Container Type of container holding level-name pairs.
+     * @param container Container of level-name pairs.
      */
     template<typename Container>
         requires(!Detail::IsPair<std::remove_cvref_t<Container>>)
@@ -363,6 +456,7 @@ public:
      * );
      * ```
      *
+     * @tparam Pairs Types of level-name pairs.
      * @param pairs Variadic list of level-name pairs.
      */
     template<typename... Pairs>
@@ -394,9 +488,8 @@ private:
      *
      * This function creates the appropriate wrapper formatter and appends it to the list.
      *
-     * @param field_type Field type identifier.
+     * @tparam PlaceholderType Type of the placeholder formatter.
      * @param count Placeholder length.
-     * @param shift Margin from the end of the pattern string.
      */
     template<typename PlaceholderType>
     void append_placeholder(std::size_t count);
