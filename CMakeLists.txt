@@ -121,26 +121,23 @@ if(SLIMLOG_SANITIZERS)
     )
 endif()
 
-# Enable coverage only for Debug builds on GCC and Clang compilers
-if((CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
-   AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+# Option for enabling / disabling code coverage
+find_package_switchable(
+    Gcovr
+    OPTION SLIMLOG_COVERAGE
+    DEFAULT OFF
+    PURPOSE "Code coverage reports by gcovr"
 )
-    find_package_switchable(
-        Gcovr
-        OPTION SLIMLOG_COVERAGE
-        PURPOSE "Code coverage reports by gcovr"
-    )
-    add_feature_info("GcovrCodeCoverage" SLIMLOG_COVERAGE "code test coverage")
+add_feature_info("GcovrCodeCoverage" SLIMLOG_COVERAGE "code test coverage")
 
-    if(SLIMLOG_COVERAGE)
-        include(GcovrCodeCoverage)
-        add_gcovr_coverage_target(
-            GCOV COBERTURA HTML
-            COVERAGE_TARGET coverage
-            COVERAGE_INIT_TARGET coverage-clean
-            GCOVR_EXCLUDE ${CMAKE_SOURCE_DIR}/test
-        )
-    endif()
+if(SLIMLOG_COVERAGE)
+    include(GcovrCodeCoverage)
+    add_gcovr_coverage_target(
+        GCOV COBERTURA HTML
+        COVERAGE_TARGET coverage
+        COVERAGE_INIT_TARGET coverage-clean
+        GCOVR_EXCLUDE ${CMAKE_SOURCE_DIR}/test
+    )
 endif()
 
 # fmtlib is recommended for better formatting performance

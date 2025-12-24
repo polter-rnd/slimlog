@@ -212,6 +212,7 @@ jobs:
         -DSLIMLOG_SANITIZERS=ON
         -DSLIMLOG_TESTS=ON
         -Dmettle_DIR=${{ steps.strings.outputs.mettle-dir }}/build
+        ${{ runner.os != 'Windows' && '-DSLIMLOG_COVERAGE=ON' || '' }}
         ${{ matrix.format_lib == 'std' && '-DSLIMLOG_FMTLIB_HO=OFF' || '' }}
         ${{ env.VSINSTALLDIR && format('-DLLVM_ROOT="{0}\VC\Tools\Llvm\x64"', env.VSINSTALLDIR) || '' }}
 
