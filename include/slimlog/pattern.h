@@ -217,12 +217,8 @@ public:
     };
 
     struct LineFormatter : public CachedFormatter<std::size_t, Char> {
+        using CachedFormatter<std::size_t, Char>::CachedFormatter;
         static constexpr std::array<Char, 4> Name{'l', 'i', 'n', 'e'};
-
-        explicit LineFormatter(StringViewType fmt)
-            : CachedFormatter<std::size_t, Char>(std::move(fmt))
-        {
-        }
 
         template<typename BufferType>
         auto format(BufferType& out, const Record<Char>& record) const -> void

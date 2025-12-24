@@ -23,7 +23,7 @@ Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(StringViewType cate
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(Level level)
-    : Logger(nullptr, StringViewType{DefaultCategory.data()}, level)
+    : Logger(nullptr, StringViewType{DefaultCategory.data(), DefaultCategory.size()}, level)
 {
 }
 

@@ -90,3 +90,7 @@ CheckOptions:
   # Workaround for https://github.com/llvm/llvm-project/issues/46097
   - key: readability-identifier-naming.TypeTemplateParameterIgnoredRegexp
     value: expr-type
+  - key: modernize-use-trailing-return-type.TransformLambdas
+    value: all_except_auto
+  - key: readability-function-cognitive-complexity.Threshold
+    value: 35

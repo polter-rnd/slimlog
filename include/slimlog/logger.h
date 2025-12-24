@@ -16,7 +16,6 @@
 #include <slimlog_export.h>
 
 #include <array>
-#include <chrono>
 #include <concepts>
 #include <cstddef>
 #include <memory>
@@ -28,6 +27,7 @@
 #include <vector>
 
 // IWYU pragma: no_include <string>
+// IWYU pragma: no_include <chrono>
 
 namespace SlimLog {
 
@@ -87,8 +87,6 @@ public:
     using StringViewType = std::basic_string_view<Char>;
     /** @brief Base sink type for the logger. */
     using SinkType = Sink<Char>;
-    /** @brief Time function type for getting the current time. */
-    using TimeFunctionType = std::pair<std::chrono::sys_seconds, std::size_t> (*)();
 
     Logger(const Logger&) = delete;
     Logger(Logger&&) = delete;
@@ -103,7 +101,7 @@ public:
      * @return Shared pointer to the created logger.
      */
     static auto create(
-        StringViewType category = StringViewType{DefaultCategory.data()},
+        StringViewType category = StringViewType{DefaultCategory.data(), DefaultCategory.size()},
         Level level = Level::Info) // For clang-format < 19
         -> std::shared_ptr<Logger>
     {
@@ -345,7 +343,7 @@ public:
         }
 
         FormatBuffer<Char, BufferSize, Allocator> buffer; // NOLINT(misc-const-correctness)
-        StringViewType message; // NOLINT(misc-const-correctness)
+        StringViewType message;
 
         // Determine how to get the message from the callback (value)
         if constexpr (std::is_invocable_v<T, decltype(buffer)&, Args...>) {
@@ -382,13 +380,13 @@ public:
             static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported string type");
         }
 
-        const Record<Char> record
-            = {message,
-               m_category,
-               location.file_name(),
-               location.function_name(),
-               static_cast<std::size_t>(location.line()),
-               level};
+        const Record<Char> record{
+            message,
+            m_category,
+            location.file_name(),
+            location.function_name(),
+            static_cast<std::size_t>(location.line()),
+            level};
 
         // Propagate the message to all sinks
         for (const auto sink : m_propagated_sinks) {
@@ -620,7 +618,7 @@ private:
      * @param level Logging level.
      */
     SLIMLOG_EXPORT explicit Logger(
-        StringViewType category = StringViewType{DefaultCategory.data()},
+        StringViewType category = StringViewType{DefaultCategory.data(), DefaultCategory.size()},
         Level level = Level::Info);
 
     /**
@@ -678,7 +676,7 @@ private:
     std::vector<SinkType*> m_propagated_sinks;
     std::unordered_map<std::shared_ptr<SinkType>, bool> m_sinks;
     mutable ThreadingPolicy::Mutex m_mutex;
-    static constexpr std::array<Char, 8> DefaultCategory{'d', 'e', 'f', 'a', 'u', 'l', 't', '\0'};
+    static constexpr std::array<Char, 7> DefaultCategory{'d', 'e', 'f', 'a', 'u', 'l', 't'};
 };
 
 /**
