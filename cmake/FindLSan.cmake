@@ -6,7 +6,7 @@
 
 set(flag_candidates
     # GNU/Clang
-    "-g -fsanitize=leak"
+    "-fsanitize=leak"
     # MSVC uses
     "/fsanitize=leak"
 )

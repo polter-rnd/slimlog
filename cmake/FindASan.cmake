@@ -6,7 +6,7 @@
 
 set(flag_candidates
     # GNU/Clang
-    "-g -fsanitize=address -fno-omit-frame-pointer \
+    "-fsanitize=address -fno-omit-frame-pointer \
      -fno-optimize-sibling-calls -fsanitize-address-use-after-scope"
     # MSVC uses
     "/fsanitize=address"
