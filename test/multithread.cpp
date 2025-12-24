@@ -6,9 +6,11 @@
 
 // Test helpers
 #include "helpers/common.h"
+#include "helpers/file_capturer.h"
 
 #include <mettle.hpp>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <filesystem>
@@ -73,7 +75,9 @@ const suite<SLIMLOG_CHAR_TYPES> Multithread("multithread", type_only, [](auto& _
         constexpr int IterationsPerThread = 1000;
 
         auto log = Logger<Char, MultiThreadedPolicy>::create();
-        auto file_sink = std::make_shared<FileSink<Char>>(log_filename);
+
+        FileCapturer<Char> cap_file(log_filename);
+        auto file_sink = std::make_shared<FileSink<Char>>(cap_file.path().string());
         log->add_sink(file_sink);
 
         // For char and wchar_t, also log to console
@@ -107,10 +111,13 @@ const suite<SLIMLOG_CHAR_TYPES> Multithread("multithread", type_only, [](auto& _
             out->clear();
         }
 
-        // Final flush and verify file exists with content
         file_sink->flush();
-        expect(std::filesystem::exists(log_filename), equal_to(true));
-        expect(std::filesystem::file_size(log_filename), greater(0ULL));
+
+        // Verify file contains expected number of lines
+        const auto file_output = cap_file.read();
+        const auto line_count = std::count_if(
+            file_output.begin(), file_output.end(), [](Char chr) { return chr == '\n'; });
+        expect(line_count, equal_to(NumThreads * IterationsPerThread));
     });
 
     // Test concurrent sink management
