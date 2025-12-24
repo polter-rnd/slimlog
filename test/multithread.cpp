@@ -19,7 +19,6 @@
 #include <memory>
 #include <random>
 #include <string>
-#include <string_view>
 #include <thread>
 #include <type_traits>
 #include <vector>
@@ -64,7 +63,7 @@ auto run_concurrent_test(int num_threads, int iterations, auto test_func) -> voi
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 const suite<SLIMLOG_CHAR_TYPES> Multithread("multithread", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
-    using String = std::basic_string_view<Char>;
+    using LoggerType = Logger<Char, MultiThreadedPolicy>;
 
     static auto log_filename = get_log_filename<Char>("multithread");
     std::filesystem::remove(log_filename);

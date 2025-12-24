@@ -9,7 +9,6 @@
 #include <mettle.hpp>
 
 #include <string>
-#include <string_view>
 
 // IWYU pragma: no_include <memory>
 // IWYU pragma: no_include <sstream>
@@ -21,9 +20,10 @@ namespace {
 using namespace mettle;
 using namespace SlimLog;
 
-const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
-    using Char = mettle::fixture_type_t<decltype(_)>;
-    using String = std::basic_string_view<Char>;
+const suite<SLIMLOG_LOGGER_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
+    using LoggerType = mettle::fixture_type_t<decltype(_)>;
+    using StringView = LoggerType::StringViewType;
+    using Char = StringView::value_type;
 
     // Test dynamic parent changes
     _.test("parent_changes", []() {
@@ -36,10 +36,10 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Test message");
 
         // Create multiple potential parents and a child without parent
-        auto root_log = Logger<Char>::create(from_utf8<Char>("root"));
-        auto parent1_log = Logger<Char>::create(root_log, from_utf8<Char>("parent1"));
-        auto parent2_log = Logger<Char>::create(root_log, from_utf8<Char>("parent2"));
-        auto child_log = Logger<Char>::create(from_utf8<Char>("child"));
+        auto root_log = LoggerType::create(from_utf8<Char>("root"));
+        auto parent1_log = LoggerType::create(root_log, from_utf8<Char>("parent1"));
+        auto parent2_log = LoggerType::create(root_log, from_utf8<Char>("parent2"));
+        auto child_log = LoggerType::create(from_utf8<Char>("child"));
 
         // Add sinks to all loggers
         root_log->template add_sink<OStreamSink>(cap_root, pattern);
@@ -56,9 +56,9 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         // Initially, child has no parent
         child_log->info(message);
         expect(cap_child.read(), equal_to(from_utf8<Char>("[child] ") + message + Char{'\n'}));
-        expect(cap_parent1.read(), equal_to(String{}));
-        expect(cap_parent2.read(), equal_to(String{}));
-        expect(cap_root.read(), equal_to(String{}));
+        expect(cap_parent1.read(), equal_to(StringView{}));
+        expect(cap_parent2.read(), equal_to(StringView{}));
+        expect(cap_root.read(), equal_to(StringView{}));
 
         // Set parent1 as parent
         child_log->set_parent(parent1_log);
@@ -66,7 +66,7 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         child_log->info(message);
         expect(cap_child.read(), equal_to(from_utf8<Char>("[child] ") + message + Char{'\n'}));
         expect(cap_parent1.read(), equal_to(from_utf8<Char>("[child] ") + message + Char{'\n'}));
-        expect(cap_parent2.read(), equal_to(String{}));
+        expect(cap_parent2.read(), equal_to(StringView{}));
         expect(cap_root.read(), equal_to(from_utf8<Char>("[child] ") + message + Char{'\n'}));
 
         // Change parent to parent2
@@ -74,7 +74,7 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(child_log->parent(), equal_to(parent2_log));
         child_log->info(message);
         expect(cap_child.read(), equal_to(from_utf8<Char>("[child] ") + message + Char{'\n'}));
-        expect(cap_parent1.read(), equal_to(String{})); // No longer gets messages
+        expect(cap_parent1.read(), equal_to(StringView{})); // No longer gets messages
         expect(cap_parent2.read(), equal_to(from_utf8<Char>("[child] ") + message + Char{'\n'}));
         expect(cap_root.read(), equal_to(from_utf8<Char>("[child] ") + message + Char{'\n'}));
 
@@ -83,17 +83,17 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(child_log->parent(), equal_to(nullptr));
         child_log->info(message);
         expect(cap_child.read(), equal_to(from_utf8<Char>("[child] ") + message + Char{'\n'}));
-        expect(cap_parent1.read(), equal_to(String{}));
-        expect(cap_parent2.read(), equal_to(String{}));
-        expect(cap_root.read(), equal_to(String{}));
+        expect(cap_parent1.read(), equal_to(StringView{}));
+        expect(cap_parent2.read(), equal_to(StringView{}));
+        expect(cap_root.read(), equal_to(StringView{}));
 
         // Set root as direct parent
         child_log->set_parent(root_log);
         expect(child_log->parent(), equal_to(root_log));
         child_log->info(message);
         expect(cap_child.read(), equal_to(from_utf8<Char>("[child] ") + message + Char{'\n'}));
-        expect(cap_parent1.read(), equal_to(String{}));
-        expect(cap_parent2.read(), equal_to(String{}));
+        expect(cap_parent1.read(), equal_to(StringView{}));
+        expect(cap_parent2.read(), equal_to(StringView{}));
         expect(cap_root.read(), equal_to(from_utf8<Char>("[child] ") + message + Char{'\n'}));
     });
 
@@ -108,10 +108,10 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Propagation test message");
 
         // Create a deep hierarchy: root -> parent -> child -> grandchild
-        auto root_log = Logger<Char>::create(from_utf8<Char>("root"));
-        auto parent_log = Logger<Char>::create(root_log, from_utf8<Char>("parent"));
-        auto child_log = Logger<Char>::create(parent_log, from_utf8<Char>("child"));
-        auto grandchild_log = Logger<Char>::create(child_log, from_utf8<Char>("grandchild"));
+        auto root_log = LoggerType::create(from_utf8<Char>("root"));
+        auto parent_log = LoggerType::create(root_log, from_utf8<Char>("parent"));
+        auto child_log = LoggerType::create(parent_log, from_utf8<Char>("child"));
+        auto grandchild_log = LoggerType::create(child_log, from_utf8<Char>("grandchild"));
 
         // Add sinks to all loggers
         root_log->template add_sink<OStreamSink>(cap_root, pattern);
@@ -136,8 +136,8 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
             cap_grandchild.read(),
             equal_to(from_utf8<Char>("[grandchild] ") + message + Char{'\n'}));
         expect(cap_child.read(), equal_to(from_utf8<Char>("[grandchild] ") + message + Char{'\n'}));
-        expect(cap_parent.read(), equal_to(String{}));
-        expect(cap_root.read(), equal_to(String{}));
+        expect(cap_parent.read(), equal_to(StringView{}));
+        expect(cap_root.read(), equal_to(StringView{}));
 
         // Stop propagation at grandchild level
         grandchild_log->set_propagate(false);
@@ -146,9 +146,9 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(
             cap_grandchild.read(),
             equal_to(from_utf8<Char>("[grandchild] ") + message + Char{'\n'}));
-        expect(cap_child.read(), equal_to(String{}));
-        expect(cap_parent.read(), equal_to(String{}));
-        expect(cap_root.read(), equal_to(String{}));
+        expect(cap_child.read(), equal_to(StringView{}));
+        expect(cap_parent.read(), equal_to(StringView{}));
+        expect(cap_root.read(), equal_to(StringView{}));
 
         // Test middle-level propagation block
         grandchild_log->set_propagate(true);
@@ -161,7 +161,7 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(cap_child.read(), equal_to(from_utf8<Char>("[grandchild] ") + message + Char{'\n'}));
         expect(
             cap_parent.read(), equal_to(from_utf8<Char>("[grandchild] ") + message + Char{'\n'}));
-        expect(cap_root.read(), equal_to(String{}));
+        expect(cap_root.read(), equal_to(StringView{}));
 
         // Re-enable all propagation
         parent_log->set_propagate(true);
@@ -195,13 +195,13 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         StreamCapturer<Char> cap_leaf3;
         StreamCapturer<Char> cap_leaf4;
 
-        auto root_log = Logger<Char>::create(from_utf8<Char>("root"));
-        auto branch1_log = Logger<Char>::create(root_log, from_utf8<Char>("branch1"));
-        auto branch2_log = Logger<Char>::create(root_log, from_utf8<Char>("branch2"));
-        auto leaf1_log = Logger<Char>::create(branch1_log, from_utf8<Char>("leaf1"));
-        auto leaf2_log = Logger<Char>::create(branch1_log, from_utf8<Char>("leaf2"));
-        auto leaf3_log = Logger<Char>::create(branch2_log, from_utf8<Char>("leaf3"));
-        auto leaf4_log = Logger<Char>::create(branch2_log, from_utf8<Char>("leaf4"));
+        auto root_log = LoggerType::create(from_utf8<Char>("root"));
+        auto branch1_log = LoggerType::create(root_log, from_utf8<Char>("branch1"));
+        auto branch2_log = LoggerType::create(root_log, from_utf8<Char>("branch2"));
+        auto leaf1_log = LoggerType::create(branch1_log, from_utf8<Char>("leaf1"));
+        auto leaf2_log = LoggerType::create(branch1_log, from_utf8<Char>("leaf2"));
+        auto leaf3_log = LoggerType::create(branch2_log, from_utf8<Char>("leaf3"));
+        auto leaf4_log = LoggerType::create(branch2_log, from_utf8<Char>("leaf4"));
 
         // Add sinks to all loggers
         root_log->template add_sink<OStreamSink>(cap_root, pattern);
@@ -225,20 +225,20 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(cap_leaf1.read(), equal_to(from_utf8<Char>("[leaf1] ") + message + Char{'\n'}));
         expect(cap_branch1.read(), equal_to(from_utf8<Char>("[leaf1] ") + message + Char{'\n'}));
         expect(cap_root.read(), equal_to(from_utf8<Char>("[leaf1] ") + message + Char{'\n'}));
-        expect(cap_branch2.read(), equal_to(String{}));
-        expect(cap_leaf2.read(), equal_to(String{}));
-        expect(cap_leaf3.read(), equal_to(String{}));
-        expect(cap_leaf4.read(), equal_to(String{}));
+        expect(cap_branch2.read(), equal_to(StringView{}));
+        expect(cap_leaf2.read(), equal_to(StringView{}));
+        expect(cap_leaf3.read(), equal_to(StringView{}));
+        expect(cap_leaf4.read(), equal_to(StringView{}));
 
         // Test propagation within branch2
         leaf3_log->info(message);
         expect(cap_leaf3.read(), equal_to(from_utf8<Char>("[leaf3] ") + message + Char{'\n'}));
         expect(cap_branch2.read(), equal_to(from_utf8<Char>("[leaf3] ") + message + Char{'\n'}));
         expect(cap_root.read(), equal_to(from_utf8<Char>("[leaf3] ") + message + Char{'\n'}));
-        expect(cap_branch1.read(), equal_to(String{}));
-        expect(cap_leaf1.read(), equal_to(String{}));
-        expect(cap_leaf2.read(), equal_to(String{}));
-        expect(cap_leaf4.read(), equal_to(String{}));
+        expect(cap_branch1.read(), equal_to(StringView{}));
+        expect(cap_leaf1.read(), equal_to(StringView{}));
+        expect(cap_leaf2.read(), equal_to(StringView{}));
+        expect(cap_leaf4.read(), equal_to(StringView{}));
 
         // Test cross-branch reparenting
         // Move leaf2 from branch1 to branch2
@@ -250,17 +250,17 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
             cap_branch2.read(),
             equal_to(from_utf8<Char>("[leaf2] ") + message + Char{'\n'})); // Now gets messages
         expect(cap_root.read(), equal_to(from_utf8<Char>("[leaf2] ") + message + Char{'\n'}));
-        expect(cap_branch1.read(), equal_to(String{})); // No longer gets messages
-        expect(cap_leaf1.read(), equal_to(String{}));
-        expect(cap_leaf3.read(), equal_to(String{}));
-        expect(cap_leaf4.read(), equal_to(String{}));
+        expect(cap_branch1.read(), equal_to(StringView{})); // No longer gets messages
+        expect(cap_leaf1.read(), equal_to(StringView{}));
+        expect(cap_leaf3.read(), equal_to(StringView{}));
+        expect(cap_leaf4.read(), equal_to(StringView{}));
 
         // Test branch level propagation control
         branch1_log->set_propagate(false);
         leaf1_log->info(message);
         expect(cap_leaf1.read(), equal_to(from_utf8<Char>("[leaf1] ") + message + Char{'\n'}));
         expect(cap_branch1.read(), equal_to(from_utf8<Char>("[leaf1] ") + message + Char{'\n'}));
-        expect(cap_root.read(), equal_to(String{})); // No longer gets messages from branch1
+        expect(cap_root.read(), equal_to(StringView{})); // No longer gets messages from branch1
 
         // Verify branch2 still propagates to root
         leaf3_log->info(message);
@@ -279,9 +279,9 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Level test message");
 
         // Create hierarchy with different levels
-        auto root_log = Logger<Char>::create(from_utf8<Char>("root"), Level::Warning);
-        auto parent_log = Logger<Char>::create(root_log, from_utf8<Char>("parent"), Level::Info);
-        auto child_log = Logger<Char>::create(parent_log, from_utf8<Char>("child"), Level::Debug);
+        auto root_log = LoggerType::create(from_utf8<Char>("root"), Level::Warning);
+        auto parent_log = LoggerType::create(root_log, from_utf8<Char>("parent"), Level::Info);
+        auto child_log = LoggerType::create(parent_log, from_utf8<Char>("child"), Level::Debug);
 
         // Add sinks to all loggers
         root_log->template add_sink<OStreamSink>(cap_root, pattern);
@@ -308,8 +308,8 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
 
         // Debug messages to parent should be filtered (parent's level is Info)
         parent_log->debug(message);
-        expect(cap_parent.read(), equal_to(String{})); // Filtered out by parent's level
-        expect(cap_root.read(), equal_to(String{})); // Not propagated since it was filtered
+        expect(cap_parent.read(), equal_to(StringView{})); // Filtered out by parent's level
+        expect(cap_root.read(), equal_to(StringView{})); // Not propagated since it was filtered
 
         // Info messages to parent should pass through
         parent_log->info(message);
@@ -319,11 +319,11 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
 
         // Debug messages to root should be filtered (root's level is Warning)
         root_log->debug(message);
-        expect(cap_root.read(), equal_to(String{})); // Filtered out by root's level
+        expect(cap_root.read(), equal_to(StringView{})); // Filtered out by root's level
 
         // Info messages to root should be filtered (root's level is Warning)
         root_log->info(message);
-        expect(cap_root.read(), equal_to(String{})); // Filtered out by root's level
+        expect(cap_root.read(), equal_to(StringView{})); // Filtered out by root's level
 
         // Warning messages to root should pass through
         root_log->warning(message);
@@ -334,9 +334,9 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
 
         // Debug messages should now be filtered at child level
         child_log->debug(message);
-        expect(cap_child.read(), equal_to(String{})); // Filtered by child's new level
-        expect(cap_parent.read(), equal_to(String{})); // Not propagated
-        expect(cap_root.read(), equal_to(String{})); // Not propagated
+        expect(cap_child.read(), equal_to(StringView{})); // Filtered by child's new level
+        expect(cap_parent.read(), equal_to(StringView{})); // Not propagated
+        expect(cap_root.read(), equal_to(StringView{})); // Not propagated
 
         // Error messages should still pass through
         child_log->error(message);
@@ -356,9 +356,9 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Restructuring test");
 
         // Create multiple loggers
-        auto root1 = Logger<Char>::create(from_utf8<Char>("root1"));
-        auto root2 = Logger<Char>::create(from_utf8<Char>("root2"));
-        auto child = Logger<Char>::create(from_utf8<Char>("child"));
+        auto root1 = LoggerType::create(from_utf8<Char>("root1"));
+        auto root2 = LoggerType::create(from_utf8<Char>("root2"));
+        auto child = LoggerType::create(from_utf8<Char>("child"));
 
         // Add sinks to roots
         auto sink1 = root1->template add_sink<OStreamSink>(cap1);
@@ -367,8 +367,8 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
 
         // Initially child has no parent
         child->info(message);
-        expect(cap1.read(), equal_to(String{}));
-        expect(cap2.read(), equal_to(String{}));
+        expect(cap1.read(), equal_to(StringView{}));
+        expect(cap2.read(), equal_to(StringView{}));
         expect(cap3.read(), equal_to(message + Char{'\n'}));
 
         // Set root1 as parent
@@ -376,45 +376,45 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(child->parent(), equal_to(root1));
         child->info(message);
         expect(cap1.read(), equal_to(message + Char{'\n'}));
-        expect(cap2.read(), equal_to(String{}));
+        expect(cap2.read(), equal_to(StringView{}));
         expect(cap3.read(), equal_to(message + Char{'\n'}));
 
         // Remove sink from root1
         root1->remove_sink(sink1);
         child->info(message);
-        expect(cap1.read(), equal_to(String{}));
-        expect(cap2.read(), equal_to(String{}));
+        expect(cap1.read(), equal_to(StringView{}));
+        expect(cap2.read(), equal_to(StringView{}));
         expect(cap3.read(), equal_to(message + Char{'\n'}));
 
         // Change parent to root2
         child->set_parent(root2);
         expect(child->parent(), equal_to(root2));
         child->info(message);
-        expect(cap1.read(), equal_to(String{}));
+        expect(cap1.read(), equal_to(StringView{}));
         expect(cap2.read(), equal_to(message + Char{'\n'}));
         expect(cap3.read(), equal_to(message + Char{'\n'}));
 
         // Add sink back to root1, shouldn't affect child anymore
         root1->template add_sink<OStreamSink>(cap1);
         child->info(message);
-        expect(cap1.read(), equal_to(String{}));
+        expect(cap1.read(), equal_to(StringView{}));
         expect(cap2.read(), equal_to(message + Char{'\n'}));
         expect(cap3.read(), equal_to(message + Char{'\n'}));
 
         // Disable child's sink
         child->set_sink_enabled(sink3, false);
         child->info(message);
-        expect(cap1.read(), equal_to(String{}));
+        expect(cap1.read(), equal_to(StringView{}));
         expect(cap2.read(), equal_to(message + Char{'\n'}));
-        expect(cap3.read(), equal_to(String{}));
+        expect(cap3.read(), equal_to(StringView{}));
 
         // Set child as orphan again and re-enable sink
         child->set_parent(nullptr);
         expect(child->parent(), equal_to(nullptr));
         child->set_sink_enabled(sink3, true);
         child->info(message);
-        expect(cap1.read(), equal_to(String{}));
-        expect(cap2.read(), equal_to(String{}));
+        expect(cap1.read(), equal_to(StringView{}));
+        expect(cap2.read(), equal_to(StringView{}));
         expect(cap3.read(), equal_to(message + Char{'\n'}));
     });
 
@@ -423,9 +423,9 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Circular reference test");
 
         // Create loggers
-        auto logger1 = Logger<Char>::create(from_utf8<Char>("logger1"));
-        auto logger2 = Logger<Char>::create(logger1, from_utf8<Char>("logger2"));
-        auto logger3 = Logger<Char>::create(logger2, from_utf8<Char>("logger3"));
+        auto logger1 = LoggerType::create(from_utf8<Char>("logger1"));
+        auto logger2 = LoggerType::create(logger1, from_utf8<Char>("logger2"));
+        auto logger3 = LoggerType::create(logger2, from_utf8<Char>("logger3"));
 
         StreamCapturer<Char> cap1;
         StreamCapturer<Char> cap2;
@@ -466,13 +466,13 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Multiple children test");
 
         // Create two parent loggers
-        auto parent1 = Logger<Char>::create(from_utf8<Char>("parent1"));
-        auto parent2 = Logger<Char>::create(from_utf8<Char>("parent2"));
+        auto parent1 = LoggerType::create(from_utf8<Char>("parent1"));
+        auto parent2 = LoggerType::create(from_utf8<Char>("parent2"));
 
         // Create three child loggers, all initially with parent1
-        auto child1 = Logger<Char>::create(parent1, from_utf8<Char>("child1"));
-        auto child2 = Logger<Char>::create(parent1, from_utf8<Char>("child2"));
-        auto child3 = Logger<Char>::create(parent1, from_utf8<Char>("child3"));
+        auto child1 = LoggerType::create(parent1, from_utf8<Char>("child1"));
+        auto child2 = LoggerType::create(parent1, from_utf8<Char>("child2"));
+        auto child3 = LoggerType::create(parent1, from_utf8<Char>("child3"));
 
         // Add sinks to all loggers
         parent1->template add_sink<OStreamSink>(cap_parent1);
@@ -488,7 +488,7 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(
             cap_parent1.read(),
             equal_to(message + Char{'\n'} + message + Char{'\n'} + message + Char{'\n'}));
-        expect(cap_parent2.read(), equal_to(String{}));
+        expect(cap_parent2.read(), equal_to(StringView{}));
 
         // Move child2 and child3 to parent2
         child2->set_parent(parent2);
@@ -518,7 +518,7 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(
             cap_parent1.read(),
             equal_to(message + Char{'\n'} + message + Char{'\n'} + message + Char{'\n'}));
-        expect(cap_parent2.read(), equal_to(String{}));
+        expect(cap_parent2.read(), equal_to(StringView{}));
     });
 
     // Test overriding parent sink in children
@@ -528,8 +528,8 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         const auto pattern = from_utf8<Char>("[{category}] {message}");
         const auto message = from_utf8<Char>("Sink disable propagation test");
 
-        auto parent = Logger<Char>::create(from_utf8<Char>("parent"));
-        auto child = Logger<Char>::create(parent, from_utf8<Char>("child"));
+        auto parent = LoggerType::create(from_utf8<Char>("parent"));
+        auto child = LoggerType::create(parent, from_utf8<Char>("child"));
 
         // Add same sink to both loggers
         auto sink = parent->template add_sink<OStreamSink>(cap, pattern);
@@ -548,7 +548,7 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         parent->info(message);
         expect(cap.read(), equal_to(from_utf8<Char>("[parent] ") + message + Char{'\n'}));
         child->info(message);
-        expect(cap.read(), equal_to(String{}));
+        expect(cap.read(), equal_to(StringView{}));
     });
 
     // Test deep sink propagation through multiple hierarchy levels
@@ -572,15 +572,15 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         //       grandchild1  grandchild2
         //       /         \
         // great_grandchild1  great_grandchild2
-        auto root = Logger<Char>::create(from_utf8<Char>("root"));
-        auto child1 = Logger<Char>::create(root, from_utf8<Char>("child1"));
-        auto child2 = Logger<Char>::create(root, from_utf8<Char>("child2"));
-        auto grandchild1 = Logger<Char>::create(child1, from_utf8<Char>("grandchild1"));
-        auto grandchild2 = Logger<Char>::create(child1, from_utf8<Char>("grandchild2"));
+        auto root = LoggerType::create(from_utf8<Char>("root"));
+        auto child1 = LoggerType::create(root, from_utf8<Char>("child1"));
+        auto child2 = LoggerType::create(root, from_utf8<Char>("child2"));
+        auto grandchild1 = LoggerType::create(child1, from_utf8<Char>("grandchild1"));
+        auto grandchild2 = LoggerType::create(child1, from_utf8<Char>("grandchild2"));
         auto great_grandchild1
-            = Logger<Char>::create(grandchild1, from_utf8<Char>("great_grandchild1"));
+            = LoggerType::create(grandchild1, from_utf8<Char>("great_grandchild1"));
         auto great_grandchild2
-            = Logger<Char>::create(grandchild1, from_utf8<Char>("great_grandchild2"));
+            = LoggerType::create(grandchild1, from_utf8<Char>("great_grandchild2"));
 
         // Add individual sinks for verification
         child1->template add_sink<OStreamSink>(cap_child1, pattern);
@@ -600,10 +600,10 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(
             cap_great_grandchild1.read(),
             equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
-        expect(cap_grandchild2.read(), equal_to(String{}));
-        expect(cap_great_grandchild2.read(), equal_to(String{}));
-        expect(cap_sink1.read(), equal_to(String{}));
-        expect(cap_sink2.read(), equal_to(String{}));
+        expect(cap_grandchild2.read(), equal_to(StringView{}));
+        expect(cap_great_grandchild2.read(), equal_to(StringView{}));
+        expect(cap_sink1.read(), equal_to(StringView{}));
+        expect(cap_sink2.read(), equal_to(StringView{}));
 
         // Also test grandchild2 propagates to child1
         grandchild2->info(message);
@@ -612,11 +612,11 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(
             cap_grandchild2.read(),
             equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
-        expect(cap_grandchild1.read(), equal_to(String{}));
-        expect(cap_great_grandchild1.read(), equal_to(String{}));
-        expect(cap_great_grandchild2.read(), equal_to(String{}));
-        expect(cap_sink1.read(), equal_to(String{}));
-        expect(cap_sink2.read(), equal_to(String{}));
+        expect(cap_grandchild1.read(), equal_to(StringView{}));
+        expect(cap_great_grandchild1.read(), equal_to(StringView{}));
+        expect(cap_great_grandchild2.read(), equal_to(StringView{}));
+        expect(cap_sink1.read(), equal_to(StringView{}));
+        expect(cap_sink2.read(), equal_to(StringView{}));
 
         // Add sink1 to child1 - should propagate to its descendants but not to child2
         auto sink1 = child1->template add_sink<OStreamSink>(cap_sink1, pattern);
@@ -635,7 +635,7 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(
             cap_sink1.read(),
             equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
-        expect(cap_sink2.read(), equal_to(String{}));
+        expect(cap_sink2.read(), equal_to(StringView{}));
 
         // Test that great_grandchild2 also propagates to sink1
         great_grandchild2->info(message);
@@ -651,7 +651,7 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(
             cap_sink1.read(),
             equal_to(from_utf8<Char>("[great_grandchild2] ") + message + Char{'\n'}));
-        expect(cap_sink2.read(), equal_to(String{}));
+        expect(cap_sink2.read(), equal_to(StringView{}));
 
         // Test that grandchild2 also propagates to sink1
         grandchild2->info(message);
@@ -662,7 +662,7 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
             equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
         expect(
             cap_sink1.read(), equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
-        expect(cap_sink2.read(), equal_to(String{}));
+        expect(cap_sink2.read(), equal_to(StringView{}));
 
         // Add sink2 to child2 - should NOT affect child1's descendants
         auto sink2 = child2->template add_sink<OStreamSink>(cap_sink2, pattern);
@@ -681,11 +681,11 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(
             cap_sink1.read(),
             equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
-        expect(cap_sink2.read(), equal_to(String{}));
+        expect(cap_sink2.read(), equal_to(StringView{}));
 
         // Test child2 itself would go to sink2 (if it logged)
         child2->info(message);
-        expect(cap_sink1.read(), equal_to(String{}));
+        expect(cap_sink1.read(), equal_to(StringView{}));
         expect(cap_sink2.read(), equal_to(from_utf8<Char>("[child2] ") + message + Char{'\n'}));
 
         // Disable sink1 in child1 - should stop propagation to it for all child1 descendants
@@ -700,8 +700,8 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(
             cap_great_grandchild1.read(),
             equal_to(from_utf8<Char>("[great_grandchild1] ") + message + Char{'\n'}));
-        expect(cap_sink1.read(), equal_to(String{}));
-        expect(cap_sink2.read(), equal_to(String{}));
+        expect(cap_sink1.read(), equal_to(StringView{}));
+        expect(cap_sink2.read(), equal_to(StringView{}));
 
         // Remove sink1 completely - should stop propagation to it
         child1->remove_sink(sink1);
@@ -711,8 +711,68 @@ const suite<SLIMLOG_CHAR_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
         expect(
             cap_grandchild2.read(),
             equal_to(from_utf8<Char>("[grandchild2] ") + message + Char{'\n'}));
-        expect(cap_sink1.read(), equal_to(String{}));
-        expect(cap_sink2.read(), equal_to(String{}));
+        expect(cap_sink1.read(), equal_to(StringView{}));
+        expect(cap_sink2.read(), equal_to(StringView{}));
+    });
+
+    // Test cleanup of dangling children (expired weak_ptr)
+    _.test("dangling_children_cleanup", []() {
+        StreamCapturer<Char> cap_parent;
+        const auto pattern = from_utf8<Char>("[{category}] {message}");
+        const auto message = from_utf8<Char>("Dangling test");
+
+        auto parent_log = LoggerType::create(from_utf8<Char>("parent"));
+        parent_log->template add_sink<OStreamSink>(cap_parent, pattern);
+
+        // Create and destroy some children leaving dangling weak_ptrs in parent
+        {
+            auto child1 = LoggerType::create(parent_log, from_utf8<Char>("child1"));
+            auto child2 = LoggerType::create(parent_log, from_utf8<Char>("child2"));
+            auto child3 = LoggerType::create(parent_log, from_utf8<Char>("child3"));
+
+            // Verify children are properly set up
+            expect(child1->parent(), equal_to(parent_log));
+            expect(child2->parent(), equal_to(parent_log));
+            expect(child3->parent(), equal_to(parent_log));
+
+            // Log from child to verify the hierarchy works
+            child1->info(message);
+            expect(
+                cap_parent.read(), equal_to(from_utf8<Char>("[child1] ") + message + Char{'\n'}));
+        }
+
+        // Trigger cleanup in update_propagated_sinks() by modifying sink configuration
+        StreamCapturer<Char> cap_parent2;
+        parent_log->template add_sink<OStreamSink>(cap_parent2, pattern);
+
+        // Create a new child after cleanup
+        auto child4 = LoggerType::create(parent_log, from_utf8<Char>("child4"));
+
+        // Verify the new child works correctly
+        child4->info(message);
+        expect(cap_parent.read(), equal_to(from_utf8<Char>("[child4] ") + message + Char{'\n'}));
+        expect(cap_parent2.read(), equal_to(from_utf8<Char>("[child4] ") + message + Char{'\n'}));
+
+        // Now test cleanup in remove_child by creating and destroying another child
+        std::shared_ptr<typename decltype(parent_log)::element_type> child5;
+        {
+            child5 = LoggerType::create(parent_log, from_utf8<Char>("child5"));
+            expect(child5->parent(), equal_to(parent_log));
+        }
+
+        // Create another child that will be destroyed leaving a dangling weak_ptr
+        {
+            auto temp_child = LoggerType::create(parent_log, from_utf8<Char>("temp"));
+        }
+
+        // Explicitly remove child5, which will trigger cleanup in set_parent()
+        child5->set_parent(nullptr);
+        expect(child5->parent(), equal_to(nullptr));
+
+        // Verify parent still works correctly after all the cleanup
+        parent_log->info(message);
+        expect(cap_parent.read(), equal_to(from_utf8<Char>("[parent] ") + message + Char{'\n'}));
+        expect(cap_parent2.read(), equal_to(from_utf8<Char>("[parent] ") + message + Char{'\n'}));
     });
 });
 
