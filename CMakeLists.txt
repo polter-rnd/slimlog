@@ -81,6 +81,9 @@ if(SLIMLOG_ANALYZERS)
     # Static analyzer configuration
     if(SLIMLOG_ANALYZE_CLANG_TIDY)
         set(CLANG_TIDY_EXTRA_ARGS "--header-filter=${CMAKE_SOURCE_DIR}/(include|src|test)/.*")
+        if(MSVC)
+            set(CLANG_TIDY_EXTRA_ARGS ${CLANG_TIDY_EXTRA_ARGS} --extra-arg=/EHsc)
+        endif()
     endif()
     if(SLIMLOG_ANALYZE_IWYU)
         set(IWYU_EXTRA_ARGS
