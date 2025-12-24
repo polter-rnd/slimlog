@@ -16,45 +16,18 @@
 namespace SlimLog {
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
-Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(StringViewType category, Level level)
-    : Logger(nullptr, category, level)
-{
-}
-
-template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
-Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(Level level)
-    : Logger(nullptr, StringViewType{DefaultCategory.data(), DefaultCategory.size()}, level)
-{
-}
-
-template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
-    const std::shared_ptr<Logger>& parent, StringViewType category, Level level)
+    Key /*key*/, StringViewType category, Level level)
     : m_category(category)
     , m_level(level)
     , m_propagate(true)
-    , m_parent(parent)
-{
-    // Note: add_child will be called from the static create method after construction
-}
-
-template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
-Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
-    const std::shared_ptr<Logger>& parent, StringViewType category)
-    : Logger(parent, category, parent->level())
+    , m_parent(nullptr)
 {
 }
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
-Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
-    const std::shared_ptr<Logger>& parent, Level level)
-    : Logger(parent, parent->category(), level)
-{
-}
-
-template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
-Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(const std::shared_ptr<Logger>& parent)
-    : Logger(parent, parent->category(), parent->level())
+Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(Key key, Level level)
+    : Logger(key, StringViewType{DefaultCategory.data(), DefaultCategory.size()}, level)
 {
 }
 
