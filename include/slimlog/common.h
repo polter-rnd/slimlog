@@ -13,6 +13,12 @@
 
 namespace SlimLog {
 
+/**
+ * @brief Default threading policy for logger sinks.
+ */
+using DefaultThreadingPolicy = SingleThreadedPolicy;
+
+// NOLINTNEXTLINE(cppcoreguidelines-use-enum-class)
 enum : std::uint16_t {
     /** @brief Default buffer size for raw log messages. */
     DefaultBufferSize = 192U,
@@ -20,11 +26,6 @@ enum : std::uint16_t {
     /** @brief Default per-sink buffer size for formatted log messages. */
     DefaultSinkBufferSize = 256U
 };
-
-/**
- * @brief Default threading policy for logger sinks.
- */
-using DefaultThreadingPolicy = SingleThreadedPolicy;
 
 /**
  * @brief Logging level enumeration.
