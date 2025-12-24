@@ -274,7 +274,7 @@ constexpr auto Pattern<Char>::StringFormatter::parse_nonnegative_int(
     unsigned value = 0;
     unsigned prev = 0;
     auto ptr = begin;
-    constexpr auto Base = 10ULL;
+    constexpr auto Base = 10U;
     while (ptr != end && '0' <= *ptr && *ptr <= '9') {
         prev = value;
         value = (value * Base) + static_cast<unsigned>(*ptr - '0');
