@@ -14,7 +14,7 @@ jobs:
     permissions:
       actions: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Install apt dependencies
       run: sudo apt-get install -y clang-format cmake-format
@@ -87,7 +87,7 @@ jobs:
             format_lib: std
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Set reusable strings
       # Turn repeated input strings (such as the build output directory) into step outputs. These step outputs can be used throughout the workflow file.
@@ -115,7 +115,7 @@ jobs:
                         "XcodeDefault.xctoolchain/usr/bin" >> "$GITHUB_PATH"
 
     - name: Export GitHub Actions environment variables
-      uses: actions/github-script@v7
+      uses: actions/github-script@v8
       env:
         VCPKG_CACHE_DIR: ${{ steps.strings.outputs.vcpkg-dir }}
       with:
@@ -143,7 +143,7 @@ jobs:
 
     - name: Cache vcpkg
       id: cache-vcpkg
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ steps.strings.outputs.vcpkg-dir }}
         key: ${{ matrix.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
@@ -155,7 +155,7 @@ jobs:
 
     - name: Cache include-what-you-use
       id: cache-iwyu
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ steps.strings.outputs.iwyu-dir }}
         key: ${{ matrix.os }}-iwyu-${{ env.IWYU_COMMIT }}
@@ -184,7 +184,7 @@ jobs:
 
     - name: Cache mettle
       id: cache-mettle
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ${{ steps.strings.outputs.mettle-dir }}
         key: ${{ matrix.os }}-${{ matrix.c_compiler }}-mettle-${{ env.METTLE_COMMIT }}
@@ -227,7 +227,7 @@ jobs:
 
     - name: Annotate with JUnit test results
       if: ${{ !cancelled() }}
-      uses: mikepenz/action-junit-report@v5
+      uses: mikepenz/action-junit-report@v6
       with:
         annotate_only: true
         job_summary: false
@@ -236,11 +236,12 @@ jobs:
 
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v5
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         flags: ${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.format_lib }}
         directory: ${{ steps.strings.outputs.build-output-dir }}/test
+        report_type: 'test_results'
         fail_ci_if_error: true
 
     - name: Code Coverage (Linux, MacOS)
@@ -255,10 +256,11 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         flags: ${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.format_lib }}
         directory: ${{ steps.strings.outputs.build-output-dir }}/coverage
+        report_type: 'coverage'
         fail_ci_if_error: true
 
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       if: ${{ !cancelled() }}
       with:
         name: slimlog-${{ matrix.os }}-${{ matrix.c_compiler }}-${{ matrix.format_lib }}
@@ -273,7 +275,7 @@ jobs:
 
     steps:
     - name: Download and Extract Artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       with:
         path: artifacts
 
@@ -297,7 +299,7 @@ jobs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Generate JUnit test summary
-      uses: mikepenz/action-junit-report@v5
+      uses: mikepenz/action-junit-report@v6
       with:
         annotate_only: true
         skip_annotations: true
