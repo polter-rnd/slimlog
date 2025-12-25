@@ -201,7 +201,7 @@ public:
                 count = (count < free_cap) ? count : free_cap;
             }
             if constexpr (std::is_same_v<T, U>) {
-                std::uninitialized_copy_n(begin, count, m_ptr + m_size);
+                std::copy_n(begin, count, m_ptr + m_size);
             } else {
                 T* out = m_ptr + m_size;
                 for (std::size_t i = 0; i < count; ++i) {
@@ -471,13 +471,7 @@ protected:
         T* old_data = self.data();
         T* new_data = self.m_allocator.allocate(new_capacity);
         // The following code doesn't throw, so the raw pointer above doesn't leak.
-        if (std::is_constant_evaluated()) {
-            // In constexpr context, use simple copy since objects are already constructed
-            std::copy_n(old_data, self.size(), new_data);
-        } else {
-            // In runtime context, use uninitialized_copy_n for proper construction
-            std::uninitialized_copy_n(old_data, self.size(), new_data);
-        }
+        std::copy_n(old_data, self.size(), new_data);
         self.set(new_data, new_capacity);
         // Deallocate must not throw according to the standard, but even if it does,
         // the buffer already uses the new storage and will deallocate it in destructor.
@@ -512,11 +506,7 @@ private:
         // NOLINTBEGIN(*-array-to-pointer-decay,*-no-array-decay)
         if (data == other.m_store) {
             this->set(m_store, capacity);
-            if (std::is_constant_evaluated()) {
-                std::copy_n(other.m_store, size, m_store);
-            } else {
-                std::uninitialized_copy_n(other.m_store, size, m_store);
-            }
+            std::copy_n(other.m_store, size, m_store);
         } else {
             this->set(data, capacity);
             // Set pointer to the inline array so that delete is not called

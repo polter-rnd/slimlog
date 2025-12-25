@@ -6,7 +6,10 @@
 #pragma once
 
 #include <cassert>
+#include <cstddef>
 #include <type_traits>
+#include <utility>
+#include <variant>
 
 namespace SlimLog::Util::Types {
 
@@ -96,6 +99,17 @@ constexpr auto to_unsigned(Int value) -> std::make_unsigned_t<Int>
 {
     assert(std::is_unsigned_v<Int> || value >= 0);
     return static_cast<std::make_unsigned_t<Int>>(value);
+}
+
+/**
+ * @brief Helper to iterate over all types in a variant.
+ */
+template<typename Variant, typename Func>
+static constexpr void variant_for_each_type(const Func& func)
+{
+    [&]<std::size_t... I>(std::index_sequence<I...>) {
+        (func.template operator()<std::variant_alternative_t<I, Variant>>(), ...);
+    }(std::make_index_sequence<std::variant_size_v<Variant>>{});
 }
 
 } // namespace SlimLog::Util::Types
