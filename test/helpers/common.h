@@ -10,8 +10,7 @@
 #include <fmt/core.h>
 #endif
 #include <fmt/args.h>
-#include <fmt/chrono.h> // IWYU pragma: keep
-#include <fmt/format.h> // IWYU pragma: keep
+#include <fmt/format.h>
 #include <fmt/xchar.h> // IWYU pragma: keep
 
 #include <chrono>

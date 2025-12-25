@@ -1,25 +1,12 @@
 [
-    # Mappings for libstdc++ which are missing from built-in mappings
-    { include: [ "<bits/types/mbstate_t.h>", "private", "<cwchar>", "public" ] },
-    { include: [ "<bits/types/mbstate_t.h>", "private", "<cuchar>", "public" ] },
-    # Mappings for libc++ which are missing from built-in mappings
-    { include: [ "@<__ostream/.*>", "private", "<ostream>", "public" ] },
-    { include: [ "@<__new/.*>", "private", "<new>", "public" ] },
-    { include: [ "<__locale>", "private", "<locale>", "public" ] },
-    # Bug on stdlibc++: std::nullptr_t is not from <version>
-    { symbol: [ "std::nullptr_t", "private", "<cstddef>", "public" ] },
     # Bug on stdlibc++: std::pair is not from <iterator>
     { symbol: [ "std::pair", "private", "<utility>", "public" ] },
-    # Bug on stdlibc++: std::pair is not from <algorithm>
-    { symbol: [ "std::move", "private", "<utility>", "public" ] },
-    # Bug on stdlibc++ with fmtlib: std::vector is not from <format>
-    { symbol: [ "std::vector", "private", "<vector>", "public" ] },
     # Bug on stdlibc++ with fmtlib: std::tm is not from <cwchar>
     { symbol: [ "std::tm", "private", "<ctime>", "public" ] },
-    # Bug on fmtlib: format_error::~format_error is not from "format.h"
-    { include: [ "\"format.h\"", "private", "\"slimlog/format.h\"", "public" ] },
-    # Bug on fmtlib: fmt::vformat is defined in <fmt/format.h>
-    { symbol: [ "fmt::vformat", "private", "<fmt/format.h>", "public" ] },
+    # Bug on stdlibc++/libc++: std::ignore is also defined in <utility>
+    { symbol: [ "std::ignore", "private", "<utility>", "public" ] },
+    # Bug on fmtlib: fmt::format is defined in <fmt/format.h>
+    { symbol: [ "fmt::format", "private", "<fmt/format.h>", "public" ] },
     # Fix mapping private headers for mettle.hpp
     { include: [ "@[\"<]mettle/.*[\">]", "private", "<mettle.hpp>", "public" ] },
 ]
