@@ -32,7 +32,6 @@
 #endif
 
 // IWYU pragma: no_include <utility>
-// IWYU pragma: no_include <fstream>
 // IWYU pragma: no_include <functional>
 // IWYU pragma: no_include <memory>
 // IWYU pragma: no_include <vector>

@@ -21,7 +21,6 @@
 #include <vector>
 
 // IWYU pragma: no_include <functional>
-// IWYU pragma: no_include <utility>
 // clazy:excludeall=non-pod-global-static
 
 namespace {
