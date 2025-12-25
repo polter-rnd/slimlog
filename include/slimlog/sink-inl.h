@@ -21,7 +21,7 @@ auto FormattableSink<Char, BufferSize, Allocator>::set_time_func(TimeFunctionTyp
 template<typename Char, std::size_t BufferSize, typename Allocator>
 auto FormattableSink<Char, BufferSize, Allocator>::set_pattern(StringViewType pattern) -> void
 {
-    m_pattern.set_pattern(std::move(pattern));
+    m_pattern.set_pattern(pattern);
 }
 
 template<typename Char, std::size_t BufferSize, typename Allocator>

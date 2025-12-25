@@ -44,24 +44,24 @@ auto Pattern<Char>::Levels::set(Level level, StringViewType name) -> void
 {
     switch (level) {
     case Level::Fatal:
-        m_fatal = std::move(name);
+        m_fatal = name;
         break;
     case Level::Error:
-        m_error = std::move(name);
+        m_error = name;
         break;
     case Level::Warning:
-        m_warning = std::move(name);
+        m_warning = name;
         break;
     case Level::Info:
-        m_info = std::move(name);
+        m_info = name;
         break;
     case Level::Debug:
-        m_debug = std::move(name);
+        m_debug = name;
         break;
     case Level::Trace:
         [[fallthrough]];
     default:
-        m_trace = std::move(name);
+        m_trace = name;
         break;
     }
 }

@@ -48,7 +48,7 @@ CachedFormatter<T, Char>::CachedFormatter(std::basic_string_view<Char> fmt)
     : m_empty(fmt.empty())
 #endif
 {
-    FormatParseContext<Char> parse_context(std::move(fmt));
+    FormatParseContext<Char> parse_context(fmt);
     // Suppress buggy GCC warning on fmtlib sources
 #if defined(__GNUC__) and not defined(__clang__)
 #pragma GCC diagnostic push

@@ -112,7 +112,7 @@ public:
                  || std::same_as<std::decay_t<T>, Char*>)
     // NOLINTNEXTLINE(*-explicit-conversions)
     consteval Format(T fmt, const Location& loc = Location::current())
-        : m_fmt(std::move(fmt))
+        : m_fmt(fmt)
         , m_loc(loc)
     {
     }
@@ -194,29 +194,27 @@ public:
     {
 #ifdef SLIMLOG_FMTLIB
         if constexpr (std::is_same_v<Char, char>) {
-            fmt::format_to(fmt::appender(*this), std::move(fmt), std::forward<Args>(args)...);
+            fmt::format_to(fmt::appender(*this), fmt, std::forward<Args>(args)...);
         } else {
 #if FMT_VERSION < 110000
             fmt::format_to(
                 std::back_inserter(*this),
-                static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                static_cast<fmt::basic_string_view<Char>>(fmt),
                 std::forward<Args>(args)...);
 #else
             if constexpr (std::is_same_v<Char, wchar_t>) {
                 fmt::format_to(
-                    fmt::basic_appender<wchar_t>(*this),
-                    std::move(fmt),
-                    std::forward<Args>(args)...);
+                    fmt::basic_appender<wchar_t>(*this), fmt, std::forward<Args>(args)...);
             } else {
                 fmt::format_to(
                     fmt::basic_appender<Char>(*this),
-                    static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                    static_cast<fmt::basic_string_view<Char>>(fmt),
                     std::forward<Args>(args)...);
             }
 #endif
         }
 #else
-        std::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);
+        std::format_to(std::back_inserter(*this), fmt, std::forward<Args>(args)...);
 #endif
     }
 
@@ -233,27 +231,26 @@ public:
     {
 #ifdef SLIMLOG_FMTLIB
         if constexpr (std::is_same_v<Char, char>) {
-            fmt::vformat_to(fmt::appender(*this), std::move(fmt), std::forward<Args>(args));
+            fmt::vformat_to(fmt::appender(*this), fmt, std::forward<Args>(args));
         } else {
 #if FMT_VERSION < 110000
             fmt::vformat_to(
                 std::back_inserter(*this),
-                static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                static_cast<fmt::basic_string_view<Char>>(fmt),
                 std::forward<Args>(args));
 #else
             if constexpr (std::is_same_v<Char, wchar_t>) {
-                fmt::vformat_to(
-                    fmt::basic_appender<wchar_t>(*this), std::move(fmt), std::forward<Args>(args));
+                fmt::vformat_to(fmt::basic_appender<wchar_t>(*this), fmt, std::forward<Args>(args));
             } else {
                 fmt::vformat_to(
                     fmt::basic_appender<Char>(*this),
-                    static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                    static_cast<fmt::basic_string_view<Char>>(fmt),
                     std::forward<Args>(args));
             }
 #endif
         }
 #else
-        std::vformat_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args));
+        std::vformat_to(std::back_inserter(*this), fmt, std::forward<Args>(args));
 #endif
     }
 
