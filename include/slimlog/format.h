@@ -412,10 +412,12 @@ private:
      * @return Reference to the cache map.
      */
     static inline auto get_cache() noexcept -> auto&;
+    static inline auto get_slots() noexcept -> auto&;
 
 #ifdef SLIMLOG_FMTLIB
     bool m_empty;
 #endif
+    std::size_t m_cache_index = static_cast<std::size_t>(-1);
 };
 
 } // namespace SlimLog

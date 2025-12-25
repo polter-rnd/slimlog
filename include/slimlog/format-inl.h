@@ -25,7 +25,7 @@
 #endif
 
 #include <tuple>
-#include <unordered_map>
+#include <vector>
 
 namespace SlimLog {
 
@@ -71,9 +71,10 @@ auto FormatValue<T, Char>::format(Context& context) const
 template<typename T, Formattable<T> Char>
 CachedFormatter<T, Char>::~CachedFormatter()
 {
-    // First check if TLS is still alive, otherwise we get use-after-free
-    if (Detail::is_tls_alive()) {
-        get_cache().erase(this);
+    if (Detail::is_tls_alive() && m_cache_index != static_cast<std::size_t>(-1)) {
+        auto& cache = get_cache();
+        cache[m_cache_index] = std::make_pair(T{}, FormatBuffer<Char, 32>{});
+        get_slots().push_back(m_cache_index);
     }
 }
 
@@ -94,10 +95,15 @@ CachedFormatter<T, Char>::CachedFormatter(std::basic_string_view<Char> fmt)
 #pragma GCC diagnostic pop
 #endif
 
-    get_cache().emplace(
-        std::piecewise_construct,
-        std::forward_as_tuple(this),
-        std::forward_as_tuple(T{}, FormatBuffer<Char, 32>{}));
+    auto& cache = get_cache();
+
+    if (auto& free_list = get_slots(); !free_list.empty()) {
+        m_cache_index = free_list.back();
+        free_list.pop_back();
+    } else {
+        cache.emplace_back(T{}, FormatBuffer<Char, 32>{});
+        m_cache_index = cache.size() - 1;
+    }
 }
 
 template<typename T, Formattable<T> Char>
@@ -106,17 +112,20 @@ CachedFormatter<T, Char>::CachedFormatter(CachedFormatter&& other) noexcept
 #ifdef SLIMLOG_FMTLIB
     , m_empty(other.m_empty)
 #endif
+    , m_cache_index(other.m_cache_index)
 {
-    auto& cache = get_cache();
-    cache[this] = std::move(cache[&other]);
-    cache.erase(&other);
+    other.m_cache_index = static_cast<std::size_t>(-1);
 }
 
 template<typename T, Formattable<T> Char>
 template<typename Out>
 void CachedFormatter<T, Char>::format(Out& out, T value) const
 {
-    auto& [cached_value, buffer] = get_cache()[this];
+    auto& cache = get_cache();
+    if (cache.size() <= m_cache_index) {
+        cache.resize(m_cache_index + 1);
+    }
+    auto& [cached_value, buffer] = cache[m_cache_index];
 
     // Check cache for this specific formatter instance
     if (buffer.size() != 0 && cached_value == value) {
@@ -166,9 +175,16 @@ void CachedFormatter<T, Char>::format(Out& out, T value) const
 }
 
 template<typename T, Formattable<T> Char>
+auto CachedFormatter<T, Char>::get_slots() noexcept -> auto&
+{
+    thread_local std::vector<std::size_t> slots;
+    return slots;
+}
+
+template<typename T, Formattable<T> Char>
 auto CachedFormatter<T, Char>::get_cache() noexcept -> auto&
 {
-    thread_local std::unordered_map<const void*, std::pair<T, FormatBuffer<Char, 32>>> cache;
+    thread_local std::vector<std::pair<T, FormatBuffer<Char, 32>>> cache;
     return cache;
 }
 
