@@ -6,11 +6,11 @@
 
 set(flag_candidates
     # Clang
-    "-g -fsanitize=undefined -fno-omit-frame-pointer \
+    "-fsanitize=undefined -fno-omit-frame-pointer \
      -fsanitize=array-bounds -fsanitize=implicit-conversion \
      -fsanitize=nullability -fsanitize=integer"
     # GNU
-    "-g -fsanitize=undefined -fno-omit-frame-pointer"
+    "-fsanitize=undefined -fno-omit-frame-pointer"
     # MSVC uses
     "/fsanitize=undefined"
 )

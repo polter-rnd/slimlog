@@ -7,7 +7,6 @@
 
 #include "slimlog/location.h"
 #include "slimlog/util/buffer.h"
-#include "slimlog/util/types.h"
 
 #include <slimlog_export.h>
 
@@ -21,8 +20,10 @@
 #include <fmt/format.h> // IWYU pragma: keep
 #include <fmt/xchar.h> // IWYU pragma: keep
 #else
+
+#include "slimlog/util/types.h"
+
 #include <format>
-#include <version> // IWYU pragma: keep
 #endif
 
 #if !defined(FMT_VERSION) or FMT_VERSION < 110000
@@ -33,7 +34,6 @@
 #include <concepts>
 #include <cstring>
 #include <memory>
-#include <optional>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -112,7 +112,7 @@ public:
                  || std::same_as<std::decay_t<T>, Char*>)
     // NOLINTNEXTLINE(*-explicit-conversions)
     consteval Format(T fmt, const Location& loc = Location::current())
-        : m_fmt(std::move(fmt))
+        : m_fmt(fmt)
         , m_loc(loc)
     {
     }
@@ -182,35 +182,6 @@ public:
     using Util::MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;
 
     /**
-     * @brief Appends data to the end of the buffer.
-     *
-     * @tparam ContiguousRange Type of the source object.
-     *
-     * @param range Source object containing data to be added to the buffer.
-     */
-    template<typename ContiguousRange>
-    void append(const ContiguousRange& range) // cppcheck-suppress duplInheritedMember
-    {
-        append(range.data(), range.data() + range.size());
-    }
-
-    /**
-     * @brief Appends data to the end of the buffer.
-     *
-     * @tparam U Input data type.
-     * @param begin Begin input iterator.
-     * @param end End input iterator.
-     */
-    template<typename U>
-    void append(const U* begin, const U* end) // cppcheck-suppress duplInheritedMember
-    {
-        const auto buf_size = this->size();
-        const auto count = Util::Types::to_unsigned(end - begin);
-        this->resize(buf_size + count);
-        std::uninitialized_copy_n(begin, count, this->begin() + buf_size);
-    }
-
-    /**
      * @brief Formats a log message with compile-time argument checks.
      *
      * @tparam Args Format argument types.
@@ -223,29 +194,27 @@ public:
     {
 #ifdef SLIMLOG_FMTLIB
         if constexpr (std::is_same_v<Char, char>) {
-            fmt::format_to(fmt::appender(*this), std::move(fmt), std::forward<Args>(args)...);
+            fmt::format_to(fmt::appender(*this), fmt, std::forward<Args>(args)...);
         } else {
 #if FMT_VERSION < 110000
             fmt::format_to(
                 std::back_inserter(*this),
-                static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                static_cast<fmt::basic_string_view<Char>>(fmt),
                 std::forward<Args>(args)...);
 #else
             if constexpr (std::is_same_v<Char, wchar_t>) {
                 fmt::format_to(
-                    fmt::basic_appender<wchar_t>(*this),
-                    std::move(fmt),
-                    std::forward<Args>(args)...);
+                    fmt::basic_appender<wchar_t>(*this), fmt, std::forward<Args>(args)...);
             } else {
                 fmt::format_to(
                     fmt::basic_appender<Char>(*this),
-                    static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                    static_cast<fmt::basic_string_view<Char>>(fmt),
                     std::forward<Args>(args)...);
             }
 #endif
         }
 #else
-        std::format_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args)...);
+        std::format_to(std::back_inserter(*this), fmt, std::forward<Args>(args)...);
 #endif
     }
 
@@ -262,27 +231,26 @@ public:
     {
 #ifdef SLIMLOG_FMTLIB
         if constexpr (std::is_same_v<Char, char>) {
-            fmt::vformat_to(fmt::appender(*this), std::move(fmt), std::forward<Args>(args));
+            fmt::vformat_to(fmt::appender(*this), fmt, std::forward<Args>(args));
         } else {
 #if FMT_VERSION < 110000
             fmt::vformat_to(
                 std::back_inserter(*this),
-                static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                static_cast<fmt::basic_string_view<Char>>(fmt),
                 std::forward<Args>(args));
 #else
             if constexpr (std::is_same_v<Char, wchar_t>) {
-                fmt::vformat_to(
-                    fmt::basic_appender<wchar_t>(*this), std::move(fmt), std::forward<Args>(args));
+                fmt::vformat_to(fmt::basic_appender<wchar_t>(*this), fmt, std::forward<Args>(args));
             } else {
                 fmt::vformat_to(
                     fmt::basic_appender<Char>(*this),
-                    static_cast<fmt::basic_string_view<Char>>(std::move(fmt)),
+                    static_cast<fmt::basic_string_view<Char>>(fmt),
                     std::forward<Args>(args));
             }
 #endif
         }
 #else
-        std::vformat_to(std::back_inserter(*this), std::move(fmt), std::forward<Args>(args));
+        std::vformat_to(std::back_inserter(*this), fmt, std::forward<Args>(args));
 #endif
     }
 
@@ -370,7 +338,7 @@ private:
  * @tparam Char Output character type.
  */
 template<typename T, Formattable<T> Char>
-class CachedFormatter final : Formatter<T, Char> {
+class CachedFormatter : Formatter<T, Char> {
 public:
     using Formatter<T, Char>::format;
 
@@ -395,8 +363,6 @@ private:
 #ifdef SLIMLOG_FMTLIB
     bool m_empty;
 #endif
-    mutable std::optional<T> m_value;
-    mutable FormatBuffer<Char, 32> m_buffer;
 };
 
 } // namespace SlimLog

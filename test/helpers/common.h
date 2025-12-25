@@ -30,20 +30,37 @@
  */
 #ifdef SLIMLOG_CHAR8_T
 #define TEST_CHAR8_T , char8_t
+#define TEST_LOGGER_CHAR8_T                                                                        \
+    , Logger<char8_t, SingleThreadedPolicy>, Logger<char8_t, MultiThreadedPolicy>
 #else
 #define TEST_CHAR8_T
+#define TEST_LOGGER_CHAR8_T
 #endif
 #ifdef SLIMLOG_CHAR16_T
 #define TEST_CHAR16_T , char16_t
+#define TEST_LOGGER_CHAR16_T                                                                       \
+    , Logger<char16_t, SingleThreadedPolicy>, Logger<char16_t, MultiThreadedPolicy>
 #else
 #define TEST_CHAR16_T
+#define TEST_LOGGER_CHAR16_T
 #endif
 #ifdef SLIMLOG_CHAR32_T
 #define TEST_CHAR32_T , char32_t
+#define TEST_LOGGER_CHAR32_T                                                                       \
+    , Logger<char32_t, SingleThreadedPolicy>, Logger<char32_t, MultiThreadedPolicy>
 #else
 #define TEST_CHAR32_T
+#define TEST_LOGGER_CHAR32_T
 #endif
-#define SLIMLOG_CHAR_TYPES char, wchar_t TEST_CHAR8_T TEST_CHAR16_T TEST_CHAR32_T
+
+// clang-format off
+#define SLIMLOG_CHAR_TYPES   char, wchar_t TEST_CHAR8_T TEST_CHAR16_T TEST_CHAR32_T
+#define SLIMLOG_LOGGER_TYPES Logger<char, SingleThreadedPolicy>, \
+                             Logger<char, MultiThreadedPolicy>,\
+                             Logger<wchar_t, SingleThreadedPolicy>, \
+                             Logger<wchar_t, MultiThreadedPolicy> \
+                             TEST_LOGGER_CHAR8_T TEST_LOGGER_CHAR16_T TEST_LOGGER_CHAR32_T
+// clang-format on
 
 /**
  * @brief Returns a log filename based on the test name and character type.

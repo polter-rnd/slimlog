@@ -5,14 +5,15 @@
 
 #pragma once
 
+#include "slimlog/common.h"
 #include "slimlog/format.h"
-#include "slimlog/record.h"
+#include "slimlog/util/os.h"
+#include "slimlog/util/string.h"
 
 #include <slimlog_export.h>
 
 #include <array>
 #include <chrono>
-#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <string>
@@ -52,6 +53,9 @@ public:
     /** @brief String view type for pattern strings. */
     using StringViewType = std::basic_string_view<Char>;
 
+    /** @brief Time function type for getting the current time. */
+    using TimeFunctionType = std::pair<std::chrono::sys_seconds, std::size_t> (*)();
+
     /**
      * @brief Structure for managing log level names.
      */
@@ -62,7 +66,7 @@ public:
          * @param level The log level.
          * @return A reference to the name of the specified log level.
          */
-        SLIMLOG_EXPORT auto get(Level level) -> RecordStringView<Char>&;
+        SLIMLOG_EXPORT auto get(Level level) const -> CachedStringView<Char>;
 
         /**
          * @brief Sets the name for the specified log level.
@@ -73,44 +77,23 @@ public:
         SLIMLOG_EXPORT auto set(Level level, StringViewType name) -> void;
 
     private:
-        std::basic_string<Char> m_trace = {'T', 'R', 'A', 'C', 'E'};
-        std::basic_string<Char> m_debug = {'D', 'E', 'B', 'U', 'G'};
-        std::basic_string<Char> m_info = {'I', 'N', 'F', 'O'};
-        std::basic_string<Char> m_warning = {'W', 'A', 'R', 'N'};
-        std::basic_string<Char> m_error = {'E', 'R', 'R', 'O', 'R'};
-        std::basic_string<Char> m_fatal = {'F', 'A', 'T', 'A', 'L'};
-
-        RecordStringView<Char> m_trace_sv = m_trace; ///< Trace level
-        RecordStringView<Char> m_debug_sv = m_debug; ///< Debug level
-        RecordStringView<Char> m_info_sv = m_info; ///< Info level
-        RecordStringView<Char> m_warning_sv = m_warning; ///< Warning level
-        RecordStringView<Char> m_error_sv = m_error; ///< Error level
-        RecordStringView<Char> m_fatal_sv = m_fatal; ///< Fatal level
+        CachedString<Char> m_trace = {'T', 'R', 'A', 'C', 'E'}; ///< Trace level
+        CachedString<Char> m_debug = {'D', 'E', 'B', 'U', 'G'}; ///< Debug level
+        CachedString<Char> m_info = {'I', 'N', 'F', 'O'}; ///< Info level
+        CachedString<Char> m_warning = {'W', 'A', 'R', 'N'}; ///< Warning level
+        CachedString<Char> m_error = {'E', 'R', 'R', 'O', 'R'}; ///< Error level
+        CachedString<Char> m_fatal = {'F', 'A', 'T', 'A', 'L'}; ///< Fatal level
     };
 
     /**
-     * @brief Placeholder for message pattern components.
+     * @brief Base formatter for string-based log record fields.
      *
-     * Specifies available fields and their formatting options.
+     * Provides formatting capabilities with alignment, width, and fill character support.
      */
-    struct Placeholder {
-        /** @brief Log pattern field types. */
-        enum class Type : std::uint8_t {
-            None,
-            Category,
-            Level,
-            File,
-            Line,
-            Message,
-            Function,
-            Time,
-            Msec,
-            Usec,
-            Nsec,
-            Thread
-        };
-
-        /** @brief Parameters for string fields. */
+    struct StringFormatter {
+        /**
+         * @brief Specifications for string formatting.
+         */
         struct StringSpecs {
             /** @brief Field alignment options. */
             enum class Align : std::uint8_t { None, Left, Right, Center };
@@ -123,47 +106,252 @@ public:
             static constexpr std::array<Char, 2> DefaultFill{' ', '\0'};
         };
 
-        Type type = Type::None; ///< Placeholder type.
-        std::variant<
-            StringViewType,
-            StringSpecs,
-            CachedFormatter<std::size_t, Char>,
-            CachedFormatter<std::chrono::sys_seconds, Char>>
-            value = StringViewType{}; ///< Placeholder value.
+        /**
+         * @brief Constructs a StringFormatter with optional format specification.
+         *
+         * @param value Format specification string.
+         */
+        explicit StringFormatter(StringViewType value = {});
+
+        /**
+         * @brief Formats string data into the output buffer.
+         * @tparam BufferType Type of the output buffer.
+         * @tparam T Character type of the data string.
+         * @param out Output buffer where formatted data will be written.
+         * @param data Source string to format.
+         */
+        template<typename BufferType, typename T>
+        constexpr void format(BufferType& out, const CachedStringView<T>& data) const
+        {
+            if (m_has_padding) [[unlikely]] {
+                write_string_padded(out, data);
+            } else {
+                write_string(out, data);
+            }
+        }
+
+    protected:
+        /**
+         * @brief Converts a string to a non-negative integer.
+         *
+         * This function parses a string and converts it to a non-negative integer.
+         * @param begin Reference to a pointer to the beginning of the string.
+         *              The pointer will be advanced by the number of characters processed.
+         * @param end Pointer to the past-the-end character of the string.
+         * @param error_value The default value to return in case of a conversion error.
+         * @return The parsed integer, or error_value if the conversion fails.
+         */
+        static constexpr auto parse_nonnegative_int(
+            const Char*& begin, const Char* end, int error_value) noexcept -> int;
+
+        /**
+         * @brief Parses alignment (^, <, >) and fill character from the formatting field.
+         *
+         * This function parses the alignment and fill character from the given string
+         * and updates the provided specs structure with the parsed values.
+         *
+         * @param begin Pointer to the beginning of the string.
+         * @param end Pointer to the past-the-end of the string.
+         * @param specs Reference to the output specs structure to be updated.
+         * @return Pointer to the past-the-end of the processed characters.
+         */
+        static constexpr auto parse_align(const Char* begin, const Char* end, StringSpecs& specs)
+            -> const Char*;
+
+        /**
+         * @brief Writes the source string to the destination buffer.
+         *
+         * @tparam T Character type of the source string view.
+         * @param dst Destination buffer where the string will be written.
+         * @param src Source string view to be written.
+         */
+        template<typename BufferType, typename T>
+        constexpr void write_string(BufferType& dst, const CachedStringView<T>& src) const;
+
+        /**
+         * @brief Writes the source string to the destination buffer with specific alignment.
+         *
+         * This function writes the source string to the destination buffer, applying the
+         * specified alignment and fill character.
+         *
+         * @tparam T Character type of the source string view.
+         * @param dst Destination buffer where the string will be written.
+         * @param src Source string view to be written.
+         * @param specs String specifications, including alignment and fill character.
+         */
+        template<typename BufferType, typename T>
+        constexpr void write_string_padded(BufferType& dst, const CachedStringView<T>& src) const;
+
+    private:
+        StringSpecs m_specs;
+        bool m_has_padding = false;
+    };
+
+    /** @brief Formatter for the log category field. */
+    struct CategoryFormatter : public StringFormatter {
+        using StringFormatter::StringFormatter;
+        static constexpr std::array<Char, 8> Name{'c', 'a', 't', 'e', 'g', 'o', 'r', 'y'};
+
+        /**
+         * @brief Formats the category field into the output buffer.
+         *
+         * @tparam BufferType Type of the output buffer.
+         * @param out Output buffer where the category will be written.
+         * @param record Log record containing the category.
+         */
+        template<typename BufferType>
+        auto format(BufferType& out, const Record<Char>& record) const -> void
+        {
+            StringFormatter::format(out, record.category);
+        }
+    };
+
+    /** @brief Formatter for the log level field. */
+    struct LevelFormatter : public StringFormatter {
+        using StringFormatter::StringFormatter;
+        static constexpr std::array<Char, 5> Name{'l', 'e', 'v', 'e', 'l'};
+    };
+
+    /** @brief Formatter for the source file field. */
+    struct FileFormatter : public StringFormatter {
+        using StringFormatter::StringFormatter;
+        static constexpr std::array<Char, 4> Name{'f', 'i', 'l', 'e'};
+
+        /**
+         * @brief Formats the filename field into the output buffer.
+         *
+         * @tparam BufferType Type of the output buffer.
+         * @param out Output buffer where the filename will be written.
+         * @param record Log record containing the filename.
+         */
+        template<typename BufferType>
+        auto format(BufferType& out, const Record<Char>& record) const -> void
+        {
+            StringFormatter::format(out, record.filename);
+        }
+    };
+
+    /** @brief Formatter for the function name field. */
+    struct FunctionFormatter : public StringFormatter {
+        using StringFormatter::StringFormatter;
+        static constexpr std::array<Char, 8> Name{'f', 'u', 'n', 'c', 't', 'i', 'o', 'n'};
+
+        /**
+         * @brief Formats the function name field into the output buffer.
+         *
+         * @tparam BufferType Type of the output buffer.
+         * @param out Output buffer where the function name will be written.
+         * @param record Log record containing the function name.
+         */
+        template<typename BufferType>
+        auto format(BufferType& out, const Record<Char>& record) const -> void
+        {
+            StringFormatter::format(out, record.function);
+        }
+    };
+
+    /** @brief Formatter for the log message field. */
+    struct MessageFormatter : public StringFormatter {
+        using StringFormatter::StringFormatter;
+        static constexpr std::array<Char, 7> Name{'m', 'e', 's', 's', 'a', 'g', 'e'};
+
+        /**
+         * @brief Formats the message field into the output buffer.
+         *
+         * @tparam BufferType Type of the output buffer.
+         * @param out Output buffer where the message will be written.
+         * @param record Log record containing the message.
+         */
+        template<typename BufferType>
+        auto format(BufferType& out, const Record<Char>& record) const -> void
+        {
+            StringFormatter::format(out, record.message);
+        }
+    };
+
+    /** @brief Formatter for the source line number field. */
+    struct LineFormatter : public CachedFormatter<std::size_t, Char> {
+        using CachedFormatter<std::size_t, Char>::CachedFormatter;
+        static constexpr std::array<Char, 4> Name{'l', 'i', 'n', 'e'};
+
+        /**
+         * @brief Formats the line number field into the output buffer.
+         *
+         * @tparam BufferType Type of the output buffer.
+         * @param out Output buffer where the line number will be written.
+         * @param record Log record containing the line number.
+         */
+        template<typename BufferType>
+        auto format(BufferType& out, const Record<Char>& record) const -> void
+        {
+            return CachedFormatter<std::size_t, Char>::format(out, record.line);
+        }
     };
 
     /**
-     * @brief Placeholder field names.
+     * @brief Formatter for the thread ID field.
+     *
+     * Formats the thread identifier where the log statement was invoked.
      */
-    struct Placeholders {
-    private:
-        static constexpr std::array<Char, 9> Category{'c', 'a', 't', 'e', 'g', 'o', 'r', 'y', '\0'};
-        static constexpr std::array<Char, 6> Level{'l', 'e', 'v', 'e', 'l', '\0'};
-        static constexpr std::array<Char, 5> File{'f', 'i', 'l', 'e', '\0'};
-        static constexpr std::array<Char, 5> Line{'l', 'i', 'n', 'e', '\0'};
-        static constexpr std::array<Char, 9> Function{'f', 'u', 'n', 'c', 't', 'i', 'o', 'n', '\0'};
-        static constexpr std::array<Char, 5> Time{'t', 'i', 'm', 'e', '\0'};
-        static constexpr std::array<Char, 5> Msec{'m', 's', 'e', 'c', '\0'};
-        static constexpr std::array<Char, 5> Usec{'u', 's', 'e', 'c', '\0'};
-        static constexpr std::array<Char, 5> Nsec{'n', 's', 'e', 'c', '\0'};
-        static constexpr std::array<Char, 7> Thread{'t', 'h', 'r', 'e', 'a', 'd', '\0'};
-        static constexpr std::array<Char, 8> Message{'m', 'e', 's', 's', 'a', 'g', 'e', '\0'};
-
-    public:
-        /** @brief List of placeholder names. */
-        static constexpr std::array<std::pair<typename Placeholder::Type, StringViewType>, 11> List{
-            {{Placeholder::Type::Category, Placeholders::Category.data()},
-             {Placeholder::Type::Level, Placeholders::Level.data()},
-             {Placeholder::Type::File, Placeholders::File.data()},
-             {Placeholder::Type::Line, Placeholders::Line.data()},
-             {Placeholder::Type::Function, Placeholders::Function.data()},
-             {Placeholder::Type::Time, Placeholders::Time.data()},
-             {Placeholder::Type::Msec, Placeholders::Msec.data()},
-             {Placeholder::Type::Usec, Placeholders::Usec.data()},
-             {Placeholder::Type::Nsec, Placeholders::Nsec.data()},
-             {Placeholder::Type::Thread, Placeholders::Thread.data()},
-             {Placeholder::Type::Message, Placeholders::Message.data()}}};
+    struct ThreadFormatter : public CachedFormatter<std::size_t, Char> {
+        using CachedFormatter<std::size_t, Char>::CachedFormatter;
+        static constexpr std::array<Char, 6> Name{'t', 'h', 'r', 'e', 'a', 'd'};
     };
+
+    /**
+     * @brief Formatter for the timestamp field.
+     *
+     * Formats the timestamp of the log record in seconds.
+     */
+    struct TimeFormatter : public CachedFormatter<std::chrono::sys_seconds, Char> {
+        using CachedFormatter<std::chrono::sys_seconds, Char>::CachedFormatter;
+        static constexpr std::array<Char, 4> Name{'t', 'i', 'm', 'e'};
+    };
+
+    /**
+     * @brief Formatter for milliseconds component of the timestamp.
+     *
+     * Formats the millisecond part of the log timestamp (0-999).
+     */
+    struct MsecFormatter : public CachedFormatter<std::size_t, Char> {
+        using CachedFormatter<std::size_t, Char>::CachedFormatter;
+        static constexpr std::array<Char, 4> Name{'m', 's', 'e', 'c'};
+    };
+
+    /**
+     * @brief Formatter for microseconds component of the timestamp.
+     *
+     * Formats the microsecond part of the log timestamp (0-999999).
+     */
+    struct UsecFormatter : public CachedFormatter<std::size_t, Char> {
+        using CachedFormatter<std::size_t, Char>::CachedFormatter;
+        static constexpr std::array<Char, 4> Name{'u', 's', 'e', 'c'};
+    };
+
+    /**
+     * @brief Formatter for nanoseconds component of the timestamp.
+     *
+     * Formats the nanosecond part of the log timestamp (0-999999999).
+     */
+    struct NsecFormatter : public CachedFormatter<std::size_t, Char> {
+        using CachedFormatter<std::size_t, Char>::CachedFormatter;
+        static constexpr std::array<Char, 4> Name{'n', 's', 'e', 'c'};
+    };
+
+    // Variant type holding all possible formatter types
+    using FormatterVariant = std::variant<
+        StringViewType,
+        CategoryFormatter,
+        LevelFormatter,
+        FileFormatter,
+        FunctionFormatter,
+        MessageFormatter,
+        LineFormatter,
+        ThreadFormatter,
+        TimeFormatter,
+        MsecFormatter,
+        UsecFormatter,
+        NsecFormatter>;
 
     /**
      * @brief Constructs a new Pattern object.
@@ -206,13 +394,19 @@ public:
      *
      * This function formats a log message based on the specified pattern.
      *
-     * @tparam StringType %Logger string type.
+     * @tparam BufferType Buffer type for the format output.
      * @param out Buffer storing the raw message to be overwritten with the result.
      * @param record Log record.
      */
-    template<std::size_t BufferSize>
-    SLIMLOG_EXPORT auto format(FormatBuffer<Char, BufferSize>& out, const Record<Char>& record)
-        -> void;
+    template<typename BufferType>
+    SLIMLOG_EXPORT auto format(BufferType& out, const Record<Char>& record) -> void;
+
+    /**
+     * @brief Sets the time function used for log timestamps.
+     *
+     * @param time_func Time function to be set for this pattern.
+     */
+    SLIMLOG_EXPORT auto set_time_func(TimeFunctionType time_func) -> void;
 
     /**
      * @brief Sets the message pattern.
@@ -234,9 +428,12 @@ public:
      *
      * Usage example:
      * ```cpp
-     * std::vector<std::pair<Level, std::string>> levels = {{Level::Info, "INFO"}};
+     * std::vector<std::pair<Level, std::string_view>> levels = {{Level::Info, "INFO"}};
      * pattern.set_levels(levels);
      * ```
+     *
+     * @tparam Container Type of container holding level-name pairs.
+     * @param container Container of level-name pairs.
      */
     template<typename Container>
         requires(!Detail::IsPair<std::remove_cvref_t<Container>>)
@@ -259,6 +456,7 @@ public:
      * );
      * ```
      *
+     * @tparam Pairs Types of level-name pairs.
      * @param pairs Variadic list of level-name pairs.
      */
     template<typename... Pairs>
@@ -284,117 +482,31 @@ protected:
      */
     SLIMLOG_EXPORT void compile(StringViewType pattern);
 
-    /**
-     * @brief Formats a string according to the specifications.
-     *
-     * This function formats the source string based on the provided specifications,
-     * including alignment and fill character, and appends the result to the given buffer.
-     *
-     * @tparam StringView Source string type (can be std::string_view or RecordStringView).
-     * @param out Buffer where the formatted string will be appended.
-     * @param item Variant holding either StringSpecs or RecordStringView.
-     * @param data Source string to be formatted.
-     */
-    template<typename StringView>
-        requires(
-            std::same_as<std::remove_cvref_t<StringView>, RecordStringView<Char>>
-            || std::same_as<std::remove_cvref_t<StringView>, RecordStringView<char>>)
-    static void format_string(auto& out, const auto& item, StringView&& data);
-
-    /**
-     * @brief Formats data according to the cached format context.
-     *
-     * This function formats the source data based on the format context from CachedFormatter,
-     * including alignment and fill character, and appends the out to the given buffer.
-     *
-     * @tparam T Data type.
-     * @param out Buffer where the formatted data will be appended.
-     * @param item Variant holding CachedFormatter<T, Char>, where T is the data type.
-     * @param data Source data to be formatted.
-     */
-    template<typename T>
-    static void format_generic(auto& out, const auto& item, T data);
-
 private:
-    /**
-     * @brief Converts a string to a non-negative integer.
-     *
-     * This function parses a string and converts it to a non-negative integer.
-     *
-     * @param begin Reference to a pointer to the beginning of the string.
-     *              The pointer will be advanced by the number of characters processed.
-     * @param end Pointer to the past-the-end character of the string.
-     * @param error_value The default value to return in case of a conversion error.
-     * @return The parsed integer, or error_value if the conversion fails.
-     */
-    static constexpr auto parse_nonnegative_int(
-        const Char*& begin, const Char* end, int error_value) noexcept -> int;
-
-    /**
-     * @brief Parses alignment (^, <, >) and fill character from the formatting field.
-     *
-     * This function parses the alignment and fill character from the given string
-     * and updates the provided specs structure with the parsed values.
-     *
-     * @param begin Pointer to the beginning of the string.
-     * @param end Pointer to the past-the-end of the string.
-     * @param specs Reference to the output specs structure to be updated.
-     * @return Pointer to the past-the-end of the processed characters.
-     */
-    static constexpr auto parse_align(
-        const Char* begin, const Char* end, Placeholder::StringSpecs& specs) -> const Char*;
-
     /**
      * @brief Append a pattern placeholder to the list of placeholders.
      *
-     * This function parses a placeholder from the end of the string and appends it to the list
-     * of placeholders.
+     * This function creates the appropriate wrapper formatter and appends it to the list.
      *
-     * @param type Placeholder type.
+     * @tparam PlaceholderType Type of the placeholder formatter.
      * @param count Placeholder length.
+     */
+    template<typename PlaceholderType>
+    void append_placeholder(std::size_t count);
+
+    /**
+     * @brief Append raw text placeholder.
+     *
+     * @param count Text length.
      * @param shift Margin from the end of the pattern string.
      */
-    void append_placeholder(Placeholder::Type type, std::size_t count, std::size_t shift = 0);
-
-    /**
-     * @brief Parses the string specifications from the formatting field.
-     *
-     * This function extracts the string specifications, such as width, alignment, and fill
-     * character, from the given placeholder field value.
-     *
-     * @param value The string value of the placeholder field.
-     * @return A Placeholder::StringSpecs object containing the parsed specifications.
-     */
-    static auto get_string_specs(StringViewType value) -> Placeholder::StringSpecs;
-
-    /**
-     * @brief Writes the source string to the destination buffer.
-     *
-     * @tparam StringView String view type, convertible to `std::basic_string_view`.
-     * @param dst Destination buffer where the string will be written.
-     * @param src Source string view to be written.
-     */
-    template<typename StringView>
-    constexpr static void write_string(auto& dst, StringView&& src);
-
-    /**
-     * @brief Writes the source string to the destination buffer with specific alignment.
-     *
-     * This function writes the source string to the destination buffer, applying the specified
-     * alignment and fill character.
-     *
-     * @tparam StringView String view type, convertible to `std::basic_string_view`.
-     * @param dst Destination buffer where the string will be written.
-     * @param src Source string view to be written.
-     * @param specs String specifications, including alignment and fill character.
-     */
-    template<typename StringView>
-    constexpr static void write_string_padded(
-        auto& dst, StringView&& src, const typename Placeholder::StringSpecs& specs);
+    void append_text(std::size_t count, std::size_t shift = 0);
 
     std::basic_string<Char> m_pattern;
-    std::vector<Placeholder> m_placeholders;
+    std::vector<FormatterVariant> m_placeholders;
     Levels m_levels;
+    TimeFunctionType m_time_func = Util::OS::local_time;
+    bool m_has_time = false;
 };
 
 } // namespace SlimLog

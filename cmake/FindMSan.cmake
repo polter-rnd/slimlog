@@ -6,7 +6,7 @@
 
 set(flag_candidates
     # GNU/Clang
-    "-g -fsanitize=memory"
+    "-fsanitize=memory"
     # MSVC uses
     "/fsanitize=memory"
 )

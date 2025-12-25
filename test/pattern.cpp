@@ -1,22 +1,26 @@
 // SlimLog
 #include "slimlog/pattern.h"
 
+#include "slimlog/common.h"
 #include "slimlog/format.h"
-#include "slimlog/record.h"
-#include "slimlog/sink.h"
 
 // Test helpers
 #include "helpers/common.h"
 
 #include <mettle.hpp>
 
+#include <atomic>
 #include <chrono>
 #include <initializer_list>
+#include <latch>
+#include <random>
 #include <source_location>
 #include <string>
 #include <string_view>
+#include <thread>
+#include <vector>
 
-// IWYU pragma: no_include <utility>
+// IWYU pragma: no_include <functional>
 // clazy:excludeall=non-pod-global-static
 
 namespace {
@@ -30,8 +34,6 @@ auto create_test_record(
     Level level = Level::Info,
     std::basic_string_view<Char> message = from_utf8<Char>("Test message"),
     std::basic_string_view<Char> category = from_utf8<Char>("test_category"),
-    std::size_t thread_id = 12345,
-    std::pair<std::chrono::sys_seconds, std::uint64_t> time = time_mock(),
     std::source_location location = std::source_location::current()) -> Record<Char>
 {
     static thread_local std::basic_string<Char> message_data;
@@ -40,15 +42,13 @@ auto create_test_record(
     message_data = message;
     category_data = category;
 
-    Record<Char> record;
-    record.level = level;
-    record.filename = RecordStringView<char>{location.file_name()};
-    record.function = RecordStringView<char>{location.function_name()};
-    record.line = location.line();
-    record.category = RecordStringView<Char>{category_data.data(), category_data.size()};
-    record.thread_id = thread_id;
-    record.time = time;
-    record.message = RecordStringView<Char>{message_data.data(), message_data.size()};
+    Record<Char> record
+        = {CachedStringView<Char>{message_data.data(), message_data.size()},
+           CachedStringView<Char>{category_data.data(), category_data.size()},
+           CachedStringView<char>{location.file_name()},
+           CachedStringView<char>{location.function_name()},
+           location.line(),
+           level};
     return record;
 }
 
@@ -57,7 +57,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
     using String = std::basic_string_view<Char>;
     using StringView = std::basic_string_view<Char>;
     using PatternType = Pattern<Char>;
-    using BufferType = FormatBuffer<Char, DefaultBufferSize>;
+    using BufferType = FormatBuffer<Char, DefaultSinkBufferSize>;
 
     // Test empty pattern
     _.test("empty_pattern", []() {
@@ -79,8 +79,8 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
 
         BufferType buffer;
         auto record = create_test_record<Char>(Level::Info, StringView{});
-        record.filename = RecordStringView<char>{""}; // Empty filename
-        record.function = RecordStringView<char>{""}; // Empty function
+        record.filename = CachedStringView<char>{""}; // Empty filename
+        record.function = CachedStringView<char>{""}; // Empty function
         pattern.format(buffer, record);
 
         // Empty message should result in empty output
@@ -107,6 +107,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         const auto pattern_str = from_utf8<Char>("{category}|{level}|{file}|{line}|{function}|{"
                                                  "thread}|{time}|{msec}|{usec}|{nsec}|{message}");
         PatternType pattern(pattern_str);
+        pattern.set_time_func(time_mock);
 
         BufferType buffer;
         auto record = create_test_record<Char>();
@@ -120,9 +121,9 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         fields.line = record.line;
         fields.function
             = from_utf8<Char>(std::string_view(record.function.data(), record.function.size()));
-        fields.thread_id = record.thread_id;
-        fields.time = record.time.first;
-        fields.nsec = record.time.second;
+        fields.thread_id = Util::OS::thread_id();
+        fields.time = time_mock().first;
+        fields.nsec = time_mock().second;
         fields.message = record.message;
 
         const auto expected = pattern_format<Char>(pattern_str, fields);
@@ -219,11 +220,12 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
 
         BufferType buffer;
         auto record = create_test_record<Char>();
+        pattern.set_time_func(time_mock);
         pattern.format(buffer, record);
 
         PatternFields<Char> fields;
-        fields.time = record.time.first;
-        fields.nsec = record.time.second;
+        fields.time = time_mock().first;
+        fields.nsec = time_mock().second;
         fields.message = record.message;
 
         const auto expected = pattern_format<Char>(pattern_str, fields);
@@ -237,11 +239,12 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
 
         BufferType buffer;
         auto record = create_test_record<Char>();
+        pattern.set_time_func(time_mock);
         pattern.format(buffer, record);
 
         PatternFields<Char> fields;
-        fields.time = record.time.first;
-        fields.nsec = record.time.second;
+        fields.time = time_mock().first;
+        fields.nsec = time_mock().second;
 
         const auto expected = pattern_format<Char>(pattern_str, fields);
         expect(StringView(buffer.data(), buffer.size()), equal_to(expected));
@@ -381,6 +384,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
             = from_utf8<Char>("[{time:%Y-%m-%d %H:%M:%S}.{msec:03}] [{level:>5}] {category} "
                               "({file:^100}:{line}) {function:>100}: {message}");
         PatternType pattern(pattern_str);
+        pattern.set_time_func(time_mock);
 
         BufferType buffer;
         auto record = create_test_record<Char>();
@@ -394,8 +398,8 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         fields.line = record.line;
         fields.function
             = from_utf8<Char>(std::string_view(record.function.data(), record.function.size()));
-        fields.time = record.time.first;
-        fields.nsec = record.time.second;
+        fields.time = time_mock().first;
+        fields.nsec = time_mock().second;
         fields.message = record.message;
 
         const auto expected = pattern_format<Char>(pattern_str, fields);
@@ -412,6 +416,77 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         pattern.format(buffer, record);
 
         expect(StringView(buffer.data(), buffer.size()), equal_to(pattern_str));
+    });
+
+    // Test concurrent formatting, ensure CachedFormatter thread-safety
+    _.test("pattern_thread_safety", []() {
+        constexpr int NumThreads = 8;
+        constexpr int IterationsPerThread = 500;
+
+        // Create a pattern with fields that are processed by CachedFormatter internally:
+        // thread_id, time components (msec, usec, nsec) - these use CachedFormatter for formatting
+        const auto pattern_str = from_utf8<Char>("Thread {thread}: {level}|{time:%Y-%m-%d "
+                                                 "%X}.{msec:_>#10x}:{nsec:_^#16o}:{usec:_<#24b}");
+        PatternType pattern(pattern_str);
+
+        std::vector<std::thread> threads;
+        std::latch start_latch(NumThreads + 1);
+        std::atomic<int> successful_formats{0};
+
+        threads.reserve(NumThreads);
+        for (int i = 0; i < NumThreads; ++i) {
+            threads.emplace_back([&, thread_id = i]() {
+                start_latch.arrive_and_wait();
+
+                BufferType local_buffer;
+                std::random_device rd;
+                std::mt19937 gen(rd() + thread_id);
+                std::uniform_int_distribution<std::uint64_t> nsec_dist(0, 999999999);
+
+                for (int j = 0; j < IterationsPerThread; ++j) {
+                    local_buffer.clear();
+
+                    // Create records with varying thread_ids and time components to trigger
+                    // CachedFormatter buffer switching and spinlock contention
+                    static thread_local std::chrono::sys_seconds base_time;
+                    static thread_local std::size_t nsec_value;
+                    base_time = std::chrono::sys_seconds{
+                        std::chrono::seconds(1609459200 + j)}; // 2021-01-01 + j seconds
+                    nsec_value = nsec_dist(gen); // Random nanoseconds
+                    auto record = create_test_record<Char>(Level::Info, {}, {});
+                    PatternFields<Char> fields;
+                    fields.level = from_utf8<Char>("INFO");
+                    fields.thread_id = Util::OS::thread_id();
+                    fields.time = base_time;
+                    fields.nsec = nsec_value;
+
+                    pattern.set_time_func([]() { return std::make_pair(base_time, nsec_value); });
+                    pattern.format(local_buffer, record);
+
+                    const auto actual = StringView{local_buffer.data(), local_buffer.size()};
+                    const auto expected = pattern_format<Char>(pattern_str, fields);
+                    expect(actual, equal_to(expected));
+
+                    successful_formats.fetch_add(1, std::memory_order_relaxed);
+
+                    // Add occasional yields to increase lock contention
+                    if (j % 25 == 0) {
+                        std::this_thread::yield();
+                    }
+                }
+            });
+        }
+
+        // Start all threads simultaneously to maximize contention
+        start_latch.arrive_and_wait();
+
+        // Wait for all threads to complete
+        for (auto& thread : threads) {
+            thread.join();
+        }
+
+        // Verify all formatting operations completed successfully
+        expect(successful_formats.load(), equal_to(NumThreads * IterationsPerThread));
     });
 });
 

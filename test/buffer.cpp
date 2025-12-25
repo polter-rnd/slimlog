@@ -19,12 +19,12 @@
 #else
 #include <fmt/core.h>
 #endif
+// IWYU pragma: no_include <fmt/format.h>
 #else
 // IWYU pragma: no_include <fmt/base.h>
 // IWYU pragma: no_include <fmt/core.h>
 #endif
 
-// IWYU pragma: no_include <vector>
 // clazy:excludeall=non-pod-global-static
 
 namespace {

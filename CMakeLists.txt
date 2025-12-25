@@ -75,12 +75,15 @@ if(SLIMLOG_ANALYZERS)
         CLANG_TIDY_OPTION SLIMLOG_ANALYZE_CLANG_TIDY
         CLANG_TIDY_MIN_VERSION 17.0
         IWYU_OPTION SLIMLOG_ANALYZE_IWYU
-        IWYU_MIN_VERSION 0.21
+        IWYU_MIN_VERSION 0.23
     )
 
     # Static analyzer configuration
     if(SLIMLOG_ANALYZE_CLANG_TIDY)
         set(CLANG_TIDY_EXTRA_ARGS "--header-filter=${CMAKE_SOURCE_DIR}/(include|src|test)/.*")
+        if(MSVC)
+            set(CLANG_TIDY_EXTRA_ARGS ${CLANG_TIDY_EXTRA_ARGS} --extra-arg=/EHsc)
+        endif()
     endif()
     if(SLIMLOG_ANALYZE_IWYU)
         set(IWYU_EXTRA_ARGS
@@ -118,26 +121,23 @@ if(SLIMLOG_SANITIZERS)
     )
 endif()
 
-# Enable coverage only for Debug builds on GCC and Clang compilers
-if((CMAKE_BUILD_TYPE STREQUAL "Coverage" OR CMAKE_BUILD_TYPE STREQUAL "Debug")
-   AND (CMAKE_CXX_COMPILER_ID MATCHES "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+# Option for enabling / disabling code coverage
+find_package_switchable(
+    Gcovr
+    OPTION SLIMLOG_COVERAGE
+    DEFAULT OFF
+    PURPOSE "Code coverage reports by gcovr"
 )
-    find_package_switchable(
-        Gcovr
-        OPTION SLIMLOG_COVERAGE
-        PURPOSE "Code coverage reports by gcovr"
-    )
-    add_feature_info("GcovrCodeCoverage" SLIMLOG_COVERAGE "code test coverage")
+add_feature_info("GcovrCodeCoverage" SLIMLOG_COVERAGE "code test coverage")
 
-    if(SLIMLOG_COVERAGE)
-        include(GcovrCodeCoverage)
-        add_gcovr_coverage_target(
-            GCOV COBERTURA HTML
-            COVERAGE_TARGET coverage
-            COVERAGE_INIT_TARGET coverage-clean
-            GCOVR_EXCLUDE ${CMAKE_SOURCE_DIR}/test
-        )
-    endif()
+if(SLIMLOG_COVERAGE)
+    include(GcovrCodeCoverage)
+    add_gcovr_coverage_target(
+        GCOV COBERTURA HTML
+        COVERAGE_TARGET coverage
+        COVERAGE_INIT_TARGET coverage-clean
+        GCOVR_EXCLUDE ${CMAKE_SOURCE_DIR}/test
+    )
 endif()
 
 # fmtlib is recommended for better formatting performance

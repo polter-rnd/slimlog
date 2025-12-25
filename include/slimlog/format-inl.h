@@ -48,7 +48,7 @@ CachedFormatter<T, Char>::CachedFormatter(std::basic_string_view<Char> fmt)
     : m_empty(fmt.empty())
 #endif
 {
-    FormatParseContext<Char> parse_context(std::move(fmt));
+    FormatParseContext<Char> parse_context(fmt);
     // Suppress buggy GCC warning on fmtlib sources
 #if defined(__GNUC__) and not defined(__clang__)
 #pragma GCC diagnostic push
@@ -64,41 +64,35 @@ template<typename T, Formattable<T> Char>
 template<typename Out>
 void CachedFormatter<T, Char>::format(Out& out, T value) const
 {
-    if (!m_value || value != *m_value) [[unlikely]] {
-        m_value = std::move(value);
-        m_buffer.clear();
 #ifdef SLIMLOG_FMTLIB
-        // Shortcut for numeric types without formatting
-        if constexpr (std::is_arithmetic_v<T> && std::is_integral_v<T>) {
-            if (m_empty) [[likely]] {
-                m_buffer.append(fmt::format_int(*m_value));
-                out.append(m_buffer);
-                return;
-            }
+    // Shortcut for numeric types without formatting
+    if constexpr (std::is_arithmetic_v<T> && std::is_integral_v<T>) {
+        if (m_empty) [[likely]] {
+            out.append(fmt::format_int(value));
+            return;
         }
-
-        // For libfmt it's possible to create a custom fmt::basic_format_context
-        // appending to the buffer directly, which is the most efficient way.
-        using Appender = std::conditional_t<
-            std::is_same_v<Char, char>,
-            fmt::appender,
-#if FMT_VERSION < 110000
-            std::back_insert_iterator<Out>
-#else
-            fmt::basic_appender<Char>
-#endif
-            >;
-        fmt::basic_format_context<Appender, Char> fmt_context(Appender(m_buffer), {});
-        Formatter<T, Char>::format(*m_value, fmt_context);
-#else
-        // For std::format there is no way to build a custom format context,
-        // so we have to use dummy format string (empty string will be omitted),
-        // and pass FormatValue with a reference to CachedFormatter as an argument.
-        static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
-        m_buffer.vformat(Fmt.data(), m_buffer.make_format_args(FormatValue(*this, *m_value)));
-#endif
     }
-    out.append(m_buffer);
+
+    // For libfmt it's possible to create a custom fmt::basic_format_context
+    // appending to the buffer directly, which is the most efficient way.
+    using Appender = std::conditional_t<
+        std::is_same_v<Char, char>,
+        fmt::appender,
+#if FMT_VERSION < 110000
+        std::back_insert_iterator<Out>
+#else
+        fmt::basic_appender<Char>
+#endif
+        >;
+    fmt::basic_format_context<Appender, Char> fmt_context(Appender(out), {});
+    Formatter<T, Char>::format(value, fmt_context);
+#else
+    // For std::format there is no way to build a custom format context,
+    // so we have to use dummy format string (empty string will be omitted),
+    // and pass FormatValue with a reference to CachedFormatter as an argument.
+    static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
+    out.vformat(Fmt.data(), out.make_format_args(FormatValue(*this, value)));
+#endif
 }
 
 } // namespace SlimLog

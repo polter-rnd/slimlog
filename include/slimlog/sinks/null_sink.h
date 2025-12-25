@@ -45,7 +45,7 @@ public:
      */
     auto message(const RecordType& record) -> void override
     {
-        (void)record;
+        std::ignore = record;
     }
 
     /**

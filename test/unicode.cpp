@@ -23,15 +23,39 @@ constexpr auto test_constexpr_code_point_length() -> bool
     static_assert(code_point_length(Ascii) == 1);
     static_assert(code_point_length(Ascii + 1) == 1);
 
+    // Test with UTF-8 multi-byte characters
+    constexpr char8_t Utf8Cyrillic[] = u8"\u041F\u0440"; // "Пр"
+    static_assert(code_point_length(Utf8Cyrillic) == 2); // 2-byte character
+    static_assert(code_point_length(Utf8Cyrillic + 2) == 2);
+
+    constexpr char8_t Utf8Chinese[] = u8"\u4F60\u597D"; // "你好"
+    static_assert(code_point_length(Utf8Chinese) == 3); // 3-byte character
+    static_assert(code_point_length(Utf8Chinese + 3) == 3);
+
+    constexpr char8_t Utf8Emoji[] = u8"\U0001F600"; // "😀"
+    static_assert(code_point_length(Utf8Emoji) == 4); // 4-byte character
+
     // Test with wide characters
     constexpr wchar_t Wide[] = L"Hello";
     static_assert(code_point_length(Wide) == 1);
 
+    // Test UTF-16 BMP characters
     constexpr char16_t Utf16[] = u"Hello";
     static_assert(code_point_length(Utf16) == 1);
 
-    constexpr char32_t Utf32[] = U"Hello";
-    static_assert(code_point_length(Utf32) == 1);
+    // Test UTF-16 with surrogate pairs
+    constexpr char16_t Utf16Emoji[] = u"\U0001F600\U0001F601"; // "😀😁"
+    static_assert(code_point_length(Utf16Emoji) == 2); // Surrogate pair
+    static_assert(code_point_length(Utf16Emoji + 2) == 2); // Next surrogate pair
+
+    // Test UTF-16 mixed BMP and surrogate pairs
+    constexpr char16_t Utf16Mixed[] = u"A\U0001F600"; // "A😀"
+    static_assert(code_point_length(Utf16Mixed) == 1); // 'A' is BMP
+    static_assert(code_point_length(Utf16Mixed + 1) == 2); // Emoji is surrogate pair
+
+    // Test UTF-32 character (should always return 1)
+    constexpr char32_t Utf32Emoji[] = U"\U0001F600"; // "😀"
+    static_assert(code_point_length(Utf32Emoji) == 1);
 
     return true;
 }
@@ -98,15 +122,27 @@ const suite<> Unicode("unicode", [](auto& _) {
         expect(code_point_length(emoji), equal_to(4)); // 😀
         expect(code_point_length(emoji + 4), equal_to(4)); // 😁
 
-        // Test with wide characters (should always return 1)
-        const wchar_t wide[] = L"Hello";
-        expect(code_point_length(wide), equal_to(1));
+        // Test UTF-16 with surrogate pairs (emojis and supplementary characters)
+        // U+1F600 (😀) in UTF-16 becomes surrogate pair: 0xD83D 0xDE00
+        const char16_t utf16_emoji[] = u"\U0001F600\U0001F601"; // "😀😁"
+        expect(code_point_length(utf16_emoji), equal_to(2)); // High surrogate indicates pair
+        expect(code_point_length(utf16_emoji + 2), equal_to(2)); // Next emoji also a pair
 
-        const char16_t utf16[] = u"Hello";
-        expect(code_point_length(utf16), equal_to(1));
+        // Test UTF-16 BMP character followed by surrogate pair
+        const char16_t utf16_mixed[] = u"A\U0001F600"; // "A😀"
+        expect(code_point_length(utf16_mixed), equal_to(1)); // 'A' is BMP, 1 code unit
+        expect(code_point_length(utf16_mixed + 1), equal_to(2)); // Emoji is surrogate pair
 
-        const char32_t utf32[] = U"Hello";
-        expect(code_point_length(utf32), equal_to(1));
+        // Test wide characters
+        if constexpr (sizeof(wchar_t) == 2) {
+            const wchar_t wchar_emoji[] = L"\U0001F600"; // "😀"
+            expect(code_point_length(wchar_emoji), equal_to(2)); // Surrogate pair
+        } else if constexpr (sizeof(wchar_t) == 4) {
+            expect(code_point_length(static_cast<wchar_t*>(nullptr)), equal_to(1)); // Always 1
+        }
+
+        // Test UTF-32 character (should always return 1)
+        expect(code_point_length(static_cast<char32_t*>(nullptr)), equal_to(1));
     });
 
     // Test utf8_decode function
@@ -348,6 +384,84 @@ const suite<> Unicode("unicode", [](auto& _) {
             expect(written, equal_to(2)); // Only 'A' and 'B' should be written
             expect(dest[0], equal_to(U'A'));
             expect(dest[1], equal_to(U'B'));
+        }
+    });
+
+    // Test from_utf8 overload with single string argument
+    _.test("from_utf8_string", []() {
+        // Test normal behavior with string literal
+        {
+            const auto result = from_utf8<char32_t>("Hello");
+            expect(result.size(), equal_to(5U));
+            expect(result, equal_to(U"Hello"));
+        }
+
+        // Test with std::string
+        {
+            const std::string source = "World";
+            auto result = from_utf8<char32_t>(source);
+            expect(result.size(), equal_to(5U));
+            expect(result, equal_to(U"World"));
+        }
+
+        // Test with std::u8string
+        {
+            const std::u8string source = u8"Test";
+            auto result = from_utf8<char32_t>(source);
+            expect(result.size(), equal_to(4U));
+            expect(result, equal_to(U"Test"));
+        }
+
+        // Test with multi-byte UTF-8 characters
+        {
+            auto result = from_utf8<char32_t>("A\u4F60\U0001F600"); // "A你😀"
+            expect(result.size(), equal_to(3U));
+            expect(result[0], equal_to(U'A'));
+            expect(result[1], equal_to(U'\u4F60'));
+            expect(result[2], equal_to(U'\U0001F600'));
+        }
+
+        // Test conversion to char16_t with surrogate pairs
+        {
+            auto result = from_utf8<char16_t>("A\U0001F600"); // "A😀"
+            expect(result.size(), equal_to(3U)); // 'A' + surrogate pair
+            expect(result[0], equal_to(u'A'));
+            expect(result[1], equal_to(char16_t{0xD83D})); // High surrogate
+            expect(result[2], equal_to(char16_t{0xDE00})); // Low surrogate
+        }
+
+        // Test conversion to char (direct copy)
+        {
+            auto result = from_utf8<char>("Hello");
+            expect(result, equal_to("Hello"));
+        }
+
+        // Test conversion from u8string to char
+        {
+            const std::u8string source = u8"Test";
+            auto result = from_utf8<char>(source);
+            expect(result, equal_to("Test"));
+        }
+
+        // Test empty input
+        {
+            auto result = from_utf8<char32_t>("");
+            expect(result.empty(), equal_to(true));
+        }
+
+        // Test empty std::string
+        {
+            const std::string empty_str;
+            auto result = from_utf8<char32_t>(empty_str);
+            expect(result.empty(), equal_to(true));
+        }
+
+        // Test empty output (calculated codepoints == 0)
+        // This happens with invalid UTF-8 at the very start
+        {
+            const std::string invalid = "\xFF";
+            auto result = from_utf8<char32_t>(invalid);
+            expect(result.empty(), equal_to(true));
         }
     });
 });

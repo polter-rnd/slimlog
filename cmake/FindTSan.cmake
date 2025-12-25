@@ -6,7 +6,7 @@
 
 set(flag_candidates
     # GNU/Clang
-    "-g -fsanitize=thread"
+    "-fsanitize=thread"
     # MSVC uses
     "/fsanitize=thread"
 )

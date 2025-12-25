@@ -5,8 +5,8 @@
 
 #pragma once
 
+#include "slimlog/common.h"
 #include "slimlog/location.h"
-#include "slimlog/record.h"
 #include "slimlog/sink.h"
 
 #include <slimlog_export.h>

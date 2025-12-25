@@ -12,7 +12,3 @@ Checks: '-cert-err58-cpp,
 '
 
 InheritParentConfig: true
-
-CheckOptions:
-  - key: readability-function-cognitive-complexity.Threshold
-    value: 50
