@@ -373,21 +373,6 @@ class CachedFormatter final : Formatter<T, Char> {
 public:
     using Formatter<T, Char>::format;
 
-    CachedFormatter() noexcept = delete;
-    SLIMLOG_EXPORT ~CachedFormatter();
-
-    // Delete copy constructor, copy assignment and move assignment
-    CachedFormatter(const CachedFormatter&) = delete;
-    auto operator=(const CachedFormatter&) -> CachedFormatter& = delete;
-    auto operator=(CachedFormatter&& other) -> CachedFormatter& = delete;
-
-    /**
-     * @brief Move constructor.
-     *
-     * @param other Other CachedFormatter to move from.
-     */
-    SLIMLOG_EXPORT CachedFormatter(CachedFormatter&& other) noexcept;
-
     /**
      * @brief Constructs a new CachedFormatter object from a format string.
      *
@@ -406,18 +391,9 @@ public:
     SLIMLOG_EXPORT void format(Out& out, T value) const;
 
 private:
-    /**
-     * @brief Gets the cache map for storing formatters.
-     *
-     * @return Reference to the cache map.
-     */
-    static inline auto get_cache() noexcept -> auto&;
-    static inline auto get_slots() noexcept -> auto&;
-
 #ifdef SLIMLOG_FMTLIB
     bool m_empty;
 #endif
-    std::size_t m_cache_index = static_cast<std::size_t>(-1);
 };
 
 } // namespace SlimLog
