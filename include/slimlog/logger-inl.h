@@ -32,8 +32,6 @@ Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
     const std::shared_ptr<Logger>& parent, StringViewType category, Level level)
     : m_category(category)
     , m_level(level)
-    , m_time_func(
-          parent ? static_cast<TimeFunctionType>(parent->m_time_func) : Util::OS::local_time)
     , m_propagate(true)
     , m_parent(parent)
 {
@@ -63,7 +61,7 @@ Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(const std::shared_p
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::category() const -> StringViewType
 {
-    return StringViewType{m_category};
+    return m_category;
 }
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
@@ -140,13 +138,6 @@ template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typena
 auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::set_level(Level level) -> void
 {
     m_level = level;
-}
-
-template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
-auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::set_time_func(TimeFunctionType time_func)
-    -> void
-{
-    m_time_func = time_func;
 }
 
 /**

@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "slimlog/common.h"
 #include "slimlog/sink.h"
 #include "slimlog/util/types.h"
 

@@ -5,15 +5,13 @@
 
 #pragma once
 
+#include "slimlog/common.h"
 #include "slimlog/format.h"
 #include "slimlog/pattern.h"
-#include "slimlog/record.h"
-#include "slimlog/threading.h"
 
 #include <slimlog_export.h>
 
 #include <cstddef>
-#include <cstdint>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -21,19 +19,6 @@
 // IWYU pragma: no_include <string>
 
 namespace SlimLog {
-
-enum : std::uint16_t {
-    /** @brief Default buffer size for raw log messages. */
-    DefaultBufferSize = 192U,
-
-    /** @brief Default per-sink buffer size for formatted log messages. */
-    DefaultSinkBufferSize = 256U
-};
-
-/**
- * @brief Default threading policy for logger sinks.
- */
-using DefaultThreadingPolicy = SingleThreadedPolicy;
 
 /**
  * @brief Base abstract sink class.
@@ -103,7 +88,8 @@ public:
     using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
     /** @brief Log record type. */
     using RecordType = Record<Char>;
-
+    /** @brief Time function type for getting the current time. */
+    using TimeFunctionType = Pattern<Char>::TimeFunctionType;
     /**
      * @brief Constructs a new Sink object.
      *
@@ -132,6 +118,12 @@ public:
         : m_pattern(std::forward<Args>(args)...)
     {
     }
+
+    /**
+     * @brief Sets the time function used for log timestamps.
+     * @param time_func Time function to be set for this logger.
+     */
+    SLIMLOG_EXPORT auto set_time_func(TimeFunctionType time_func) -> void;
 
     /**
      * @brief Sets the log message pattern.

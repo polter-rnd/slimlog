@@ -344,15 +344,15 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
     // Basic pattern test
     _.test("pattern", []() {
         FileCapturer<Char> cap_file(log_filename);
-        const auto pattern = from_utf8<Char>("({category}) [{level:>10}] "
+        const auto pattern = from_utf8<Char>("({category:>20}) [{level:>10}] "
                                              "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
                                              "#{thread} {function} {file}|{line}: {message}");
 
         auto log = Logger<Char>::create();
-        log->set_time_func(time_mock);
         auto file_sink = std::static_pointer_cast<FormattableSink<Char>>(
             log->template add_sink<FileSink>(cap_file.path().string()));
         file_sink->set_pattern(pattern);
+        file_sink->set_time_func(time_mock);
 
         PatternFields<Char> fields;
         fields.category = from_utf8<Char>("default");
@@ -380,8 +380,8 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         const auto message = from_utf8<Char>("Warning message");
 
         auto log = Logger<Char>::create();
-        log->set_time_func(time_mock);
-        log->template add_sink<OStreamSink>(cap_out, pattern);
+        auto sink = log->template add_sink<OStreamSink>(cap_out, pattern);
+        sink->set_time_func(time_mock);
 
         PatternFields<Char> fields;
         fields.level = from_utf8<Char>("WARN");
@@ -403,9 +403,10 @@ const suite<SLIMLOG_CHAR_TYPES> Basic("basic", type_only, [](auto& _) {
         const auto pattern = from_utf8<Char>("[{level}] {time} - {message}");
 
         auto log = Logger<Char>::create();
-        log->set_time_func(time_mock);
-        log->template add_sink<OStreamSink>(cap_out, pattern);
-        log->template add_sink<FileSink>(cap_file.path().string(), pattern);
+        auto sink_out = log->template add_sink<OStreamSink>(cap_out, pattern);
+        auto sink_file = log->template add_sink<FileSink>(cap_file.path().string(), pattern);
+        sink_out->set_time_func(time_mock);
+        sink_file->set_time_func(time_mock);
 
         PatternFields<Char> fields;
         fields.level = from_utf8<Char>("INFO");

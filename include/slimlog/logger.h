@@ -5,12 +5,12 @@
 
 #pragma once
 
+#include "slimlog/common.h" // IWYU pragma: export
 #include "slimlog/format.h"
 #include "slimlog/location.h" // IWYU pragma: export
-#include "slimlog/record.h" // IWYU pragma: export
 #include "slimlog/sink.h" // IWYU pragma: export
 #include "slimlog/threading.h" // IWYU pragma: export
-#include "slimlog/util/os.h"
+#include "slimlog/util/string.h"
 #include "slimlog/util/types.h"
 
 #include <slimlog_export.h>
@@ -20,13 +20,14 @@
 #include <concepts>
 #include <cstddef>
 #include <memory>
-#include <string>
 #include <string_view>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
+
+// IWYU pragma: no_include <string>
 
 namespace SlimLog {
 
@@ -228,7 +229,7 @@ public:
         typename SinkAllocator = Allocator,
         typename... Args>
         requires(IsFormattableSink<T<Char, SinkBufferSize, SinkAllocator>>)
-    auto add_sink(Args&&... args) -> std::shared_ptr<SinkType>
+    auto add_sink(Args&&... args) -> std::shared_ptr<FormattableSink<Char>>
     {
         auto sink
             = std::make_shared<T<Char, SinkBufferSize, SinkAllocator>>(std::forward<Args>(args)...);
@@ -245,7 +246,7 @@ public:
      */
     template<template<typename> class T, typename... Args>
         requires(!IsFormattableSink<T<Char>>)
-    auto add_sink(Args&&... args) -> std::shared_ptr<SinkType>
+    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Char>>
     {
         auto sink = std::make_shared<T<Char>>(std::forward<Args>(args)...);
         return add_sink(sink) ? sink : nullptr;
@@ -296,13 +297,6 @@ public:
     SLIMLOG_EXPORT auto set_level(Level level) -> void;
 
     /**
-     * @brief Sets the time function used for log timestamps.
-     *
-     * @param time_func Time function to be set for this logger.
-     */
-    SLIMLOG_EXPORT auto set_time_func(TimeFunctionType time_func) -> void;
-
-    /**
      * @brief Gets the logging level.
      *
      * @return Logging level for this logger.
@@ -339,9 +333,6 @@ public:
         const Location& location = Location::current(),
         Args&&... args) const -> void
     {
-        using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
-        using RecordType = Record<Char>;
-
         // Early exit if the level is not enabled
         if (static_cast<Level>(m_level) < level) [[unlikely]] {
             return;
@@ -353,24 +344,14 @@ public:
             return;
         }
 
-        FormatBufferType buffer; // NOLINT(misc-const-correctness)
-        RecordType record
-            = {static_cast<TimeFunctionType>(m_time_func)(),
-               {},
-               m_category,
-               location.file_name(),
-               location.function_name(),
-               static_cast<std::size_t>(location.line()),
-               Util::OS::thread_id(),
-               level};
+        FormatBuffer<Char, BufferSize, Allocator> buffer; // NOLINT(misc-const-correctness)
+        StringViewType message; // NOLINT(misc-const-correctness)
 
         // Determine how to get the message from the callback (value)
-        using BufferRefType = std::add_lvalue_reference_t<FormatBufferType>;
-        using RecordStringViewType = RecordStringView<Char>;
-        if constexpr (std::is_invocable_v<T, BufferRefType, Args...>) {
+        if constexpr (std::is_invocable_v<T, decltype(buffer)&, Args...>) {
             // Callable with buffer argument: message will be stored in buffer.
             callback(buffer, std::forward<Args>(args)...);
-            record.message = RecordStringViewType{buffer.data(), buffer.size()};
+            message = StringViewType{buffer.data(), buffer.size()};
         } else if constexpr (std::is_invocable_v<T, Args...>) {
             using RetType = typename std::invoke_result_t<T, Args...>;
             if constexpr (std::is_void_v<RetType>) {
@@ -379,24 +360,35 @@ public:
                 return;
             } else {
                 // Non-void callable without arguments: message is the return value
-                auto message = callback(std::forward<Args>(args)...);
-                if constexpr (std::is_convertible_v<RetType, RecordStringViewType>) {
-                    record.message = RecordStringViewType{std::move(message)};
+                if constexpr (std::is_assignable_v<StringViewType, RetType>) {
+                    message = callback(std::forward<Args>(args)...);
+                } else if constexpr (std::is_convertible_v<RetType, StringViewType>) {
+                    message = StringViewType{callback(std::forward<Args>(args)...)};
+                } else if constexpr (Detail::HasConvertString<RetType, Char>) {
+                    message = ConvertString<RetType, Char>{}(
+                        callback(std::forward<Args>(args)...), buffer);
                 } else {
-                    record.message = message;
+                    static_assert(
+                        Util::Types::AlwaysFalse<Char>{}, "Unsupported callback return type");
                 }
             }
-        } else if constexpr (std::is_convertible_v<T, RecordStringViewType>) {
-            record.message = RecordStringViewType{callback};
+        } else if constexpr (std::is_assignable_v<StringViewType, T>) {
+            message = callback;
         } else if constexpr (std::is_convertible_v<T, StringViewType>) {
-            record.message = RecordStringViewType{StringViewType{callback}};
+            message = StringViewType{callback};
         } else if constexpr (Detail::HasConvertString<T, Char>) {
-            record.message = RecordStringView<Char>{ConvertString<T, Char>{}(callback, buffer)};
-        } else if constexpr (std::is_assignable_v<RecordStringView<Char>, T>) {
-            record.message = callback;
+            message = StringViewType{ConvertString<T, Char>{}(callback, buffer)};
         } else {
-            static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
+            static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported string type");
         }
+
+        const Record<Char> record
+            = {message,
+               m_category,
+               location.file_name(),
+               location.function_name(),
+               static_cast<std::size_t>(location.line()),
+               level};
 
         // Propagate the message to all sinks
         for (const auto sink : m_propagated_sinks) {
@@ -433,9 +425,9 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    auto trace(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    auto trace(const Format<Char, std::type_identity_t<Args>...>& fmt, Args&&... args) const -> void
     {
-        this->message(Level::Trace, std::move(fmt), std::forward<Args>(args)...);
+        this->message(Level::Trace, fmt, std::forward<Args>(args)...);
     }
 
     /**
@@ -460,9 +452,9 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    auto debug(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    auto debug(const Format<Char, std::type_identity_t<Args>...>& fmt, Args&&... args) const -> void
     {
-        this->message(Level::Debug, std::move(fmt), std::forward<Args>(args)...);
+        this->message(Level::Debug, fmt, std::forward<Args>(args)...);
     }
 
     /**
@@ -480,19 +472,6 @@ public:
     }
 
     /**
-     * @brief Emits a warning message.
-     *
-     * @tparam Args Format argument types. Deduced from arguments.
-     * @param fmt Format string. See `fmt::format` documentation for details.
-     * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
-     */
-    template<typename... Args>
-    auto warning(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
-    {
-        this->message(Level::Warning, std::move(fmt), std::forward<Args>(args)...);
-    }
-
-    /**
      * @brief Emits an informational message.
      *
      * @tparam Args Format argument types. Deduced from arguments.
@@ -500,9 +479,9 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    auto info(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    auto info(const Format<Char, std::type_identity_t<Args>...>& fmt, Args&&... args) const -> void
     {
-        this->message(Level::Info, std::move(fmt), std::forward<Args>(args)...);
+        this->message(Level::Info, fmt, std::forward<Args>(args)...);
     }
 
     /**
@@ -520,6 +499,20 @@ public:
     auto info(T&& message, const Location& location = Location::current()) const -> void
     {
         this->message(Level::Info, std::forward<T>(message), location);
+    }
+
+    /**
+     * @brief Emits a warning message.
+     *
+     * @tparam Args Format argument types. Deduced from arguments.
+     * @param fmt Format string. See `fmt::format` documentation for details.
+     * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
+     */
+    template<typename... Args>
+    auto warning(const Format<Char, std::type_identity_t<Args>...>& fmt, Args&&... args) const
+        -> void
+    {
+        this->message(Level::Warning, fmt, std::forward<Args>(args)...);
     }
 
     /**
@@ -544,9 +537,9 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    auto error(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    auto error(const Format<Char, std::type_identity_t<Args>...>& fmt, Args&&... args) const -> void
     {
-        this->message(Level::Error, std::move(fmt), std::forward<Args>(args)...);
+        this->message(Level::Error, fmt, std::forward<Args>(args)...);
     }
 
     /**
@@ -571,9 +564,9 @@ public:
      * @param args Format arguments. Use variadic args for `fmt::format`-based formatting.
      */
     template<typename... Args>
-    auto fatal(Format<Char, std::type_identity_t<Args>...> fmt, Args&&... args) const -> void
+    auto fatal(const Format<Char, std::type_identity_t<Args>...>& fmt, Args&&... args) const -> void
     {
-        this->message(Level::Fatal, std::move(fmt), std::forward<Args>(args)...);
+        this->message(Level::Fatal, fmt, std::forward<Args>(args)...);
     }
 
     /**
@@ -677,9 +670,8 @@ private:
      */
     SLIMLOG_EXPORT auto update_propagated_sinks(std::unordered_set<Logger*> visited = {}) -> void;
 
-    std::basic_string<Char> m_category;
+    CachedString<Char> m_category;
     AtomicWrapper<Level, ThreadingPolicy> m_level;
-    AtomicWrapper<TimeFunctionType, ThreadingPolicy> m_time_func;
     AtomicWrapper<bool, ThreadingPolicy> m_propagate;
     std::shared_ptr<Logger> m_parent;
     std::vector<std::weak_ptr<Logger>> m_children;
