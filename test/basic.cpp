@@ -13,6 +13,12 @@
 #include "helpers/stream_capturer.h"
 
 #include <mettle.hpp>
+#if __has_include(<fmt/base.h>)
+#include <fmt/base.h>
+#else
+#include <fmt/core.h>
+#endif
+#include <fmt/xchar.h> // IWYU pragma: keep
 
 #include <algorithm>
 #include <array>
@@ -23,13 +29,6 @@
 #include <string_view>
 #include <system_error>
 #include <type_traits>
-
-#ifdef SLIMLOG_FMTLIB
-#include <fmt/format.h>
-#include <fmt/xchar.h> // IWYU pragma: keep
-#else
-#include <format>
-#endif
 
 // IWYU pragma: no_include <utility>
 // IWYU pragma: no_include <functional>
@@ -445,12 +444,9 @@ const suite<SLIMLOG_LOGGER_TYPES> Basic("basic", type_only, [](auto& _) {
                 message,
                 int_num,
                 dbl_num);
-            fields.message =
-#ifdef SLIMLOG_FMTLIB
-                fmt::format(FmtMessage.data(), date, message, int_num, dbl_num);
-#else
-                std::format(FmtMessage.data(), date, message, int_num, dbl_num);
-#endif
+
+            fields.message = fmt::format(FmtMessage.data(), date, message, int_num, dbl_num);
+
             // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
             expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
         }
