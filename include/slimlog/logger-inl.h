@@ -32,6 +32,75 @@ Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(Key key, Level leve
 }
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::create(
+    StringViewType category, Level level) -> std::shared_ptr<Logger>
+{
+    return std::make_shared<Logger>(Key{}, category, level);
+}
+
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::create(Level level)
+    -> std::shared_ptr<Logger>
+{
+    return std::make_shared<Logger>(Key{}, level);
+}
+
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::create(
+    const std::shared_ptr<Logger>& parent, // For clang-format < 19
+    StringViewType category,
+    Level level) -> std::shared_ptr<Logger>
+{
+    auto logger = std::make_shared<Logger>(Key{}, category, level);
+    if (parent) {
+        logger->set_parent(parent);
+    }
+    return logger;
+}
+
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::create(
+    const std::shared_ptr<Logger>& parent, StringViewType category) -> std::shared_ptr<Logger>
+{
+    std::shared_ptr<Logger> logger;
+    if (parent) {
+        logger = std::make_shared<Logger>(Key{}, category, parent->level());
+        logger->set_parent(parent);
+    } else {
+        logger = create(category);
+    }
+    return logger;
+}
+
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::create(
+    const std::shared_ptr<Logger>& parent, Level level) -> std::shared_ptr<Logger>
+{
+    std::shared_ptr<Logger> logger;
+    if (parent) {
+        logger = std::make_shared<Logger>(Key{}, parent->category(), level);
+        logger->set_parent(parent);
+    } else {
+        logger = create(level);
+    }
+    return logger;
+}
+
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::create(
+    const std::shared_ptr<Logger>& parent) -> std::shared_ptr<Logger>
+{
+    std::shared_ptr<Logger> logger;
+    if (parent) {
+        logger = std::make_shared<Logger>(Key{}, parent->category(), parent->level());
+        logger->set_parent(parent);
+    } else {
+        logger = create();
+    }
+    return logger;
+}
+
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::category() const -> StringViewType
 {
     return m_category;

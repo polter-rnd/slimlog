@@ -132,12 +132,9 @@ public:
      * @param level Logging level.
      * @return Shared pointer to the created logger.
      */
-    static auto create(
+    [[nodiscard]] SLIMLOG_EXPORT static auto create(
         StringViewType category = StringViewType{DefaultCategory.data(), DefaultCategory.size()},
-        Level level = Level::Info) -> std::shared_ptr<Logger>
-    {
-        return std::make_shared<Logger>(Key{}, category, level);
-    }
+        Level level = Level::Info) -> std::shared_ptr<Logger>;
 
     /**
      * @brief Creates a new Logger object with default category.
@@ -145,10 +142,7 @@ public:
      * @param level Logging level.
      * @return Shared pointer to the created logger.
      */
-    static auto create(Level level) -> std::shared_ptr<Logger>
-    {
-        return std::make_shared<Logger>(Key{}, level);
-    }
+    [[nodiscard]] SLIMLOG_EXPORT static auto create(Level level) -> std::shared_ptr<Logger>;
 
     /**
      * @brief Creates a new child Logger object.
@@ -158,15 +152,10 @@ public:
      * @param level Logging level.
      * @return Shared pointer to the created logger.
      */
-    static auto create(const std::shared_ptr<Logger>& parent, StringViewType category, Level level)
-        -> std::shared_ptr<Logger>
-    {
-        auto logger = std::make_shared<Logger>(Key{}, category, level);
-        if (parent) {
-            logger->set_parent(parent);
-        }
-        return logger;
-    }
+    [[nodiscard]] SLIMLOG_EXPORT static auto create(
+        const std::shared_ptr<Logger>& parent, // For clang-format < 19
+        StringViewType category,
+        Level level) -> std::shared_ptr<Logger>;
 
     /**
      * @brief Creates a new child Logger object with level inherited from parent.
@@ -175,18 +164,8 @@ public:
      * @param category Logger category name. Can be used in logger messages.
      * @return Shared pointer to the created logger.
      */
-    static auto create(const std::shared_ptr<Logger>& parent, StringViewType category)
-        -> std::shared_ptr<Logger>
-    {
-        std::shared_ptr<Logger> logger;
-        if (parent) {
-            logger = std::make_shared<Logger>(Key{}, category, parent->level());
-            logger->set_parent(parent);
-        } else {
-            logger = create(category);
-        }
-        return logger;
-    }
+    [[nodiscard]] SLIMLOG_EXPORT static auto create(
+        const std::shared_ptr<Logger>& parent, StringViewType category) -> std::shared_ptr<Logger>;
 
     /**
      * @brief Creates a new child Logger object with category inherited from parent.
@@ -195,18 +174,8 @@ public:
      * @param level Logging level.
      * @return Shared pointer to the created logger.
      */
-    static auto create(const std::shared_ptr<Logger>& parent, Level level)
-        -> std::shared_ptr<Logger>
-    {
-        std::shared_ptr<Logger> logger;
-        if (parent) {
-            logger = std::make_shared<Logger>(Key{}, parent->category(), level);
-            logger->set_parent(parent);
-        } else {
-            logger = create(level);
-        }
-        return logger;
-    }
+    [[nodiscard]] SLIMLOG_EXPORT static auto create(
+        const std::shared_ptr<Logger>& parent, Level level) -> std::shared_ptr<Logger>;
 
     /**
      * @brief Creates a new child Logger object with category and level inherited from parent.
@@ -214,17 +183,8 @@ public:
      * @param parent Parent logger to inherit sinks.
      * @return Shared pointer to the created logger.
      */
-    static auto create(const std::shared_ptr<Logger>& parent) -> std::shared_ptr<Logger>
-    {
-        std::shared_ptr<Logger> logger;
-        if (parent) {
-            logger = std::make_shared<Logger>(Key{}, parent->category(), parent->level());
-            logger->set_parent(parent);
-        } else {
-            logger = create();
-        }
-        return logger;
-    }
+    [[nodiscard]] SLIMLOG_EXPORT static auto create(const std::shared_ptr<Logger>& parent)
+        -> std::shared_ptr<Logger>;
 
     /**
      * @brief Gets the logger category.
