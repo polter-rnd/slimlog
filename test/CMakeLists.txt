@@ -9,6 +9,7 @@ fetchcontent_declare(
 )
 fetchcontent_makeavailable(mettle)
 
+set(FMT_SYSTEM_HEADERS TRUE)
 fetchcontent_declare(
     fmt
     GIT_REPOSITORY https://github.com/fmtlib/fmt.git

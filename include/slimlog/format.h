@@ -16,11 +16,12 @@
 #else
 #include <fmt/core.h>
 #endif
-#include <fmt/chrono.h> // IWYU pragma: keep
-#include <fmt/format.h> // IWYU pragma: keep
+#include <fmt/format.h>
 #include <fmt/xchar.h> // IWYU pragma: keep
+#if FMT_VERSION < 110100
+#include <fmt/chrono.h> // IWYU pragma: keep
+#endif
 #else
-
 #include "slimlog/util/types.h"
 
 #include <format>
