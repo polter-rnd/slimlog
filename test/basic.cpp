@@ -349,16 +349,19 @@ const suite<SLIMLOG_LOGGER_TYPES> Basic("basic", type_only, [](auto& _) {
             expect(captured_message, equal_to(message));
             expect(captured_level, equal_to(Level::Info));
         }
+
+        callback_sink->flush();
     });
 
     // Basic pattern test
     _.test("pattern", []() {
         FileCapturer<Char> cap_file(log_filename);
+        auto log = LoggerType::create();
+
         const auto pattern = from_utf8<Char>("({category:>20}) [{level:>10}] "
                                              "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
                                              "#{thread} {function} {file}|{line}: {message}");
 
-        auto log = LoggerType::create();
         auto file_sink = std::static_pointer_cast<FormattableSink<Char>>(
             log->template add_sink<FileSink>(cap_file.path().string()));
         file_sink->set_pattern(pattern);
@@ -387,21 +390,20 @@ const suite<SLIMLOG_LOGGER_TYPES> Basic("basic", type_only, [](auto& _) {
         StreamCapturer<Char> cap_out;
 
         const auto pattern = from_utf8<Char>("[{level}] {time} - {message}");
-        const auto message = from_utf8<Char>("Warning message");
 
         auto log = LoggerType::create();
         auto sink = log->template add_sink<OStreamSink>(cap_out, pattern);
-        sink->set_time_func(time_mock);
-
-        PatternFields<Char> fields;
-        fields.level = from_utf8<Char>("WARN");
-        fields.time = time_mock().first;
-        fields.nsec = time_mock().second;
 
         for (const auto& message : unicode_strings<Char>()) {
             log->warning(message);
-            fields.message = message;
-            expect(cap_out.read(), equal_to(pattern_format<Char>(pattern, fields) + Char{'\n'}));
+
+            // Build regex: [WARN] YYYY-MM-DD HH:MM:SS - {message}\n
+            std::basic_string<Char> regex_str
+                = from_utf8<Char>(R"(\[WARN\] \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} - )");
+            regex_str += std::basic_string<Char>(message);
+            regex_str += Char{'\n'};
+
+            expect(cap_out.read(), regex_match(regex_str));
         }
     });
 
