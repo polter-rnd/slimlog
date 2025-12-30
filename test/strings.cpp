@@ -1,5 +1,6 @@
 // SlimLog
 #include "slimlog/util/string.h"
+#include "slimlog/util/unicode.h"
 
 #include <mettle.hpp>
 
@@ -40,7 +41,7 @@ constexpr auto test_constexpr_constructors() -> bool
     return true;
 }
 
-const suite<SLIMLOG_CHAR_TYPES> Strings("strings", type_only, [](auto& _) {
+const suite<SLIMLOG_CHAR_TYPES> StringViews("string_views", type_only, [](auto& _) {
     using Char = mettle::fixture_type_t<decltype(_)>;
     using String = std::basic_string_view<Char>;
 
@@ -156,6 +157,184 @@ const suite<SLIMLOG_CHAR_TYPES> Strings("strings", type_only, [](auto& _) {
         const auto mixed = from_utf8<Char>("Hello привет 你好 😀");
         const CachedStringView<Char> view(mixed);
         expect(view.codepoints(), equal_to(17U));
+    });
+});
+
+const suite<SLIMLOG_CHAR_TYPES> CachedStrings("strings", type_only, [](auto& _) {
+    using Char = mettle::fixture_type_t<decltype(_)>;
+
+    // Test CachedString constructors
+    _.test("constructors", []() {
+        // Default constructor
+        const CachedString<Char> str1;
+        expect(str1.empty(), equal_to(true));
+        expect(str1.size(), equal_to(0U));
+        expect(str1.codepoints(), equal_to(0U));
+
+        auto str_data = from_utf8<Char>("Hello 😀 World");
+        auto str2_data = str_data;
+        const auto str_codepoints
+            = Util::Unicode::count_codepoints(str_data.data(), str_data.size());
+
+        // Constructor from std::basic_string
+        const CachedString<Char> str2(str_data);
+        expect(str2.codepoints(), equal_to(str_codepoints));
+        expect(str2, equal_to(std::basic_string_view<Char>(str_data)));
+
+        // Copy constructor - preserves cached codepoints
+        CachedString<Char> str3(str2);
+        expect(str3.codepoints(), equal_to(str_codepoints));
+        expect(str3, equal_to(std::basic_string_view<Char>(str2)));
+
+        // Move constructor - preserves cached codepoints
+        const CachedString<Char> str4(std::move(str3));
+        expect(str4.codepoints(), equal_to(str_codepoints));
+        expect(str4, equal_to(std::basic_string_view<Char>(str2)));
+
+        // Move constructor from std::basic_string
+        CachedString<Char> str5(std::move(str2_data));
+        expect(str5.codepoints(), equal_to(str_codepoints));
+        expect(str5, equal_to(std::basic_string_view<Char>(str_data)));
+
+        // Reset to empty
+        str5 = CachedString<Char>();
+        expect(str5.codepoints(), equal_to(0U));
+        expect(str5.empty(), equal_to(true));
+    });
+
+    // Test CachedString assignment operators
+    _.test("assignment", []() {
+        auto str_data = from_utf8<Char>("Hello 😀 World");
+        auto str2_data = str_data;
+        const auto str_codepoints
+            = Util::Unicode::count_codepoints(str_data.data(), str_data.size());
+
+        // Copy assignment - preserves cached codepoints
+        CachedString<Char> str1(str_data);
+        CachedString<Char> str2;
+        str2 = str1;
+        expect(str2.codepoints(), equal_to(str_codepoints));
+        expect(str2, equal_to(std::basic_string_view<Char>(str1)));
+
+        // Move assignment - preserves cached codepoints
+        CachedString<Char> str3(str_data);
+        CachedString<Char> str4;
+        str4 = std::move(str3);
+        expect(str4.codepoints(), equal_to(str_codepoints));
+        expect(str4, equal_to(std::basic_string_view<Char>(str_data)));
+
+        // Assignment from std::basic_string  - invalidates cache
+        CachedString<Char> str5;
+        str5 = str_data;
+        expect(str5.codepoints(), equal_to(str_codepoints));
+        expect(str5, equal_to(std::basic_string_view<Char>(str_data)));
+
+        // Move assignment from std::basic_string - invalidates cache
+        str5 = std::move(str2_data);
+        expect(str5.codepoints(), equal_to(str_codepoints));
+        expect(str5, equal_to(std::basic_string_view<Char>(str_data)));
+
+        // Self assignment
+        str1 = str1; // NOLINT(misc-redundant-expression)
+        expect(str1.codepoints(), equal_to(str_codepoints));
+        expect(str1, equal_to(std::basic_string_view<Char>(str_data)));
+
+        // Self move-assignment
+        str1 = std::move(str1); // NOLINT(misc-redundant-expression)
+        expect(str1.codepoints(), equal_to(str_codepoints));
+        expect(str1, equal_to(std::basic_string_view<Char>(str_data)));
+    });
+
+    // Test CachedString codepoint counting and caching
+    _.test("codepoints", []() {
+        // ASCII string
+        const auto ascii = from_utf8<Char>("Hello");
+        const CachedString<Char> ascii_str(ascii);
+        expect(ascii_str.codepoints(), equal_to(5U));
+        // Second call should use cached value
+        expect(ascii_str.codepoints(), equal_to(5U));
+
+        // Unicode string (Cyrillic)
+        const auto cyrillic = from_utf8<Char>("Привет");
+        const CachedString<Char> cyrillic_str(cyrillic);
+        expect(cyrillic_str.codepoints(), equal_to(6U));
+
+        // Emoji
+        const auto emoji = from_utf8<Char>("Hello 😀 World");
+        const CachedString<Char> emoji_str(emoji);
+        expect(emoji_str.codepoints(), equal_to(13U));
+
+        // Empty string
+        const CachedString<Char> empty_str;
+        expect(empty_str.codepoints(), equal_to(0U));
+
+        // Test cache preservation after copy
+        CachedString<Char> cyrillic_str2 = cyrillic_str;
+        expect(cyrillic_str2.codepoints(), equal_to(6U));
+
+        // Reset cache by assigning empty string
+        cyrillic_str2 = CachedString<Char>();
+        expect(cyrillic_str2.codepoints(), equal_to(0U));
+
+        // Test cache preservation after move
+        CachedString<Char> cyrillic_str3(cyrillic);
+        std::ignore = cyrillic_str3.codepoints(); // Calculate cache
+        const CachedString<Char> cyrillic_str4(std::move(cyrillic_str3));
+        expect(cyrillic_str4.codepoints(), equal_to(6U));
+    });
+
+    // Test CachedString modification invalidates cache
+    _.test("cache_invalidation", []() {
+        const auto initial = from_utf8<Char>("Hello");
+        CachedString<Char> str(initial);
+
+        // Calculate and cache codepoints
+        expect(str.codepoints(), equal_to(5U));
+
+        // Assignment from std::basic_string invalidates cache
+        const std::basic_string<Char> std_str(from_utf8<Char>("Привет"));
+        str = std_str;
+        expect(str.codepoints(), equal_to(6U));
+
+        // Move assignment from std::basic_string also invalidates cache
+        std::basic_string<Char> std_str2(from_utf8<Char>("你好"));
+        str = std::move(std_str2);
+        expect(str.codepoints(), equal_to(2U));
+    });
+
+    // Test CachedString with mixed Unicode
+    _.test("mixed_unicode", []() {
+        // Mix of ASCII, Cyrillic, Chinese and Emoji
+        const auto mixed = from_utf8<Char>("Hello привет 你好 😀");
+        const CachedString<Char> str(mixed);
+        expect(str.codepoints(), equal_to(17U));
+
+        // Copy should preserve cache
+        CachedString<Char> str2 = str;
+        expect(str2.codepoints(), equal_to(17U));
+
+        // Reset to empty
+        str2 = CachedString<Char>();
+        expect(str2.codepoints(), equal_to(0U));
+        expect(str2.empty(), equal_to(true));
+    });
+
+    // Test implicit conversion to CachedStringView
+    _.test("to_string_view_conversion", []() {
+        const auto data = from_utf8<Char>("Test String");
+        const CachedString<Char> str(data);
+
+        // Calculate codepoints for the string
+        const auto str_codepoints = str.codepoints();
+
+        // Convert to CachedStringView implicitly
+        const CachedStringView<Char> view = str;
+        expect(view.size(), equal_to(str.size()));
+        expect(view.codepoints(), equal_to(str_codepoints));
+
+        // Verify view shares cached codepoint data
+        const CachedStringView<Char> view2(str);
+        expect(view2.codepoints(), equal_to(str_codepoints));
     });
 });
 

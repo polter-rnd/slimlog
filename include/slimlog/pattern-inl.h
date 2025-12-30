@@ -44,24 +44,24 @@ auto Pattern<Char>::Levels::set(Level level, StringViewType name) -> void
 {
     switch (level) {
     case Level::Fatal:
-        m_fatal = name;
+        m_fatal = CachedString<Char>(name);
         break;
     case Level::Error:
-        m_error = name;
+        m_error = CachedString<Char>(name);
         break;
     case Level::Warning:
-        m_warning = name;
+        m_warning = CachedString<Char>(name);
         break;
     case Level::Info:
-        m_info = name;
+        m_info = CachedString<Char>(name);
         break;
     case Level::Debug:
-        m_debug = name;
+        m_debug = CachedString<Char>(name);
         break;
     case Level::Trace:
         [[fallthrough]];
     default:
-        m_trace = name;
+        m_trace = CachedString<Char>(name);
         break;
     }
 }

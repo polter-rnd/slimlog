@@ -29,15 +29,12 @@ class CachedStringView : public std::basic_string_view<T> {
 public:
     using std::basic_string_view<T>::basic_string_view;
 
+    /** @brief Default destructor. */
     ~CachedStringView() = default;
-
-    /**
-     * @brief Default constructor.
-     */
-    constexpr CachedStringView() noexcept
-        : std::basic_string_view<T>()
-    {
-    }
+    /** @brief Move constructor.*/
+    constexpr CachedStringView(CachedStringView&&) noexcept = default;
+    /** Move assignment operator. */
+    auto operator=(CachedStringView&&) noexcept -> CachedStringView& = default;
 
     /**
      * @brief Copy constructor.
@@ -52,25 +49,13 @@ public:
     }
 
     /**
-     * @brief Move constructor.
-     *
-     * @param str_view The CachedStringView to move from.
-     */
-    constexpr CachedStringView(CachedStringView&& str_view) noexcept
-        : std::basic_string_view<T>(std::move(static_cast<std::basic_string_view<T>&&>(str_view)))
-        , m_codepoints_local(str_view.m_codepoints_local)
-        , m_codepoints_external(str_view.m_codepoints_external)
-    {
-    }
-
-    /**
      * @brief Constructor from `std::basic_string_view`.
      *
      * @param str_view The std::basic_string_view to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
     constexpr CachedStringView(std::basic_string_view<T> str_view) noexcept
-        : std::basic_string_view<T>(std::move(str_view))
+        : std::basic_string_view<T>(str_view)
     {
     }
 
@@ -86,7 +71,7 @@ public:
     }
 
     /**
-     * @brief Assignment operator.
+     * @brief Copy assignment operator.
      *
      * @param str_view The CachedStringView to assign from.
      * @return Reference to this CachedStringView.
@@ -98,25 +83,6 @@ public:
         }
 
         std::basic_string_view<T>::operator=(str_view);
-        m_codepoints_local = str_view.m_codepoints_local;
-        m_codepoints_external = str_view.m_codepoints_external;
-        return *this;
-    }
-
-    /**
-     * @brief Move assignment operator.
-     *
-     * @param str_view The CachedStringView to move from.
-     * @return Reference to this CachedStringView.
-     */
-    auto operator=(CachedStringView&& str_view) noexcept -> CachedStringView&
-    {
-        if (this == &str_view) {
-            return *this;
-        }
-
-        std::basic_string_view<T>::operator=(
-            std::move(static_cast<std::basic_string_view<T>&&>(str_view)));
         m_codepoints_local = str_view.m_codepoints_local;
         m_codepoints_external = str_view.m_codepoints_external;
         return *this;
@@ -183,9 +149,7 @@ class CachedString : public std::basic_string<T> {
 public:
     using std::basic_string<T>::basic_string;
 
-    /**
-     * @brief Default destructor.
-     */
+    /** @brief Default destructor. */
     ~CachedString() = default;
 
     /**
@@ -205,8 +169,8 @@ public:
      * @param other The CachedString to move from.
      */
     CachedString(CachedString&& other) noexcept
-        : std::basic_string<T>(std::move(other))
-        , m_codepoints(other.m_codepoints)
+        : std::basic_string<T>(static_cast<std::basic_string<T>&&>(other))
+        , m_codepoints(std::exchange(other.m_codepoints, std::string_view::npos))
     {
     }
 
@@ -256,8 +220,8 @@ public:
     auto operator=(CachedString&& other) noexcept -> CachedString&
     {
         if (this != &other) {
+            m_codepoints = std::exchange(other.m_codepoints, std::string_view::npos);
             std::basic_string<T>::operator=(std::move(other));
-            m_codepoints = other.m_codepoints;
         }
         return *this;
     }
@@ -289,32 +253,6 @@ public:
     }
 
     /**
-     * @brief Assignment from CachedStringView - preserves cached codepoints.
-     *
-     * @param view The CachedStringView to assign from.
-     * @return Reference to this CachedString.
-     */
-    auto operator=(const CachedStringView<T>& view) -> CachedString&
-    {
-        std::basic_string<T>::operator=(static_cast<std::basic_string_view<T>>(view));
-        m_codepoints = *view.m_codepoints;
-        return *this;
-    }
-
-    /**
-     * @brief Assignment from std::basic_string_view - invalidates codepoints cache.
-     *
-     * @param view The std::basic_string_view to assign from.
-     * @return Reference to this CachedString.
-     */
-    auto operator=(std::basic_string_view<T> view) -> CachedString&
-    {
-        std::basic_string<T>::operator=(view);
-        m_codepoints = std::string_view::npos;
-        return *this;
-    }
-
-    /**
      * @brief Implicit conversion to CachedStringView.
      *
      * The returned view shares the codepoints cache with this CachedString,
@@ -339,7 +277,7 @@ public:
     auto codepoints() const noexcept -> std::size_t
     {
         if (m_codepoints == std::string_view::npos) {
-            CachedStringView<T> view(*this);
+            const CachedStringView<T> view(*this);
             m_codepoints = view.codepoints();
         }
         return m_codepoints;
