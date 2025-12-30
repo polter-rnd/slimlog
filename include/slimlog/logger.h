@@ -609,14 +609,14 @@ private:
      */
     SLIMLOG_EXPORT auto update_propagated_sinks(std::unordered_set<Logger*> visited = {}) -> void;
 
+    std::unordered_map<std::shared_ptr<SinkType>, bool> m_sinks;
     CachedString<Char> m_category;
-    AtomicWrapper<Level, ThreadingPolicy> m_level;
-    AtomicWrapper<bool, ThreadingPolicy> m_propagate;
-    std::shared_ptr<Logger> m_parent;
     std::vector<std::weak_ptr<Logger>> m_children;
     std::vector<SinkType*> m_propagated_sinks;
-    std::unordered_map<std::shared_ptr<SinkType>, bool> m_sinks;
+    std::shared_ptr<Logger> m_parent;
     mutable ThreadingPolicy::Mutex m_mutex;
+    AtomicWrapper<Level, ThreadingPolicy> m_level;
+    AtomicWrapper<bool, ThreadingPolicy> m_propagate;
     static constexpr std::array<Char, 7> DefaultCategory{'d', 'e', 'f', 'a', 'u', 'l', 't'};
 };
 

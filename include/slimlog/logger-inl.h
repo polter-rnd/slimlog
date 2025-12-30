@@ -19,9 +19,9 @@ template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typena
 Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
     Key /*key*/, StringViewType category, Level level)
     : m_category(category)
+    , m_parent(nullptr)
     , m_level(level)
     , m_propagate(true)
-    , m_parent(nullptr)
 {
 }
 

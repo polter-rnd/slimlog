@@ -98,9 +98,9 @@ public:
             /** @brief Field alignment options. */
             enum class Align : std::uint8_t { None, Left, Right, Center };
 
+            StringViewType fill = StringSpecs::DefaultFill.data(); ///< Fill character.
             std::size_t width = 0; ///< Field width.
             Align align = Align::None; ///< Field alignment.
-            StringViewType fill = StringSpecs::DefaultFill.data(); ///< Fill character.
 
         private:
             static constexpr std::array<Char, 2> DefaultFill{' ', '\0'};
@@ -182,8 +182,8 @@ public:
         constexpr void write_string_padded(BufferType& dst, const CachedStringView<T>& src) const;
 
     private:
-        StringSpecs m_specs;
         bool m_has_padding = false;
+        StringSpecs m_specs;
     };
 
     /** @brief %Formatter for the log category field. */
