@@ -1,5 +1,5 @@
 /**
- * @file ostream_sink.h
+ * @file qt_sink.h
  * @brief Contains declaration of QMessageLoggerSink class.
  */
 

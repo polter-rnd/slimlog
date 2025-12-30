@@ -60,6 +60,13 @@ CachedFormatter<T, Char>::CachedFormatter(std::basic_string_view<Char> fmt)
 #endif
 }
 
+/**
+ * @brief Formats the value and writes to the output buffer.
+ *
+ * @tparam Out Output buffer type (see MemoryBuffer).
+ * @param out Reference to output buffer.
+ * @param value Value to be formatted.
+ */
 template<typename T, Formattable<T> Char>
 template<typename Out>
 void CachedFormatter<T, Char>::format(Out& out, T value) const

@@ -1,3 +1,8 @@
+/**
+ * @file qt.h
+ * @brief Contains declaration of Qt integration utilities.
+ */
+
 #pragma once
 
 #include <slimlog/logger.h>
@@ -14,7 +19,7 @@
 
 namespace SlimLog::Detail {
 
-// Custom QIODevice that writes directly to format context output iterator
+/** @cond */
 template<typename OutputIt, typename Char>
 class DirectOutputDevice : public QIODevice {
 public:
@@ -132,6 +137,7 @@ auto format_qt_type(const T& value, auto out_it)
     }
 }
 } // namespace SlimLog::Detail
+/** @endcond */
 
 // Namespace selection for formatter specializations
 #ifdef SLIMLOG_FMTLIB
@@ -215,6 +221,8 @@ auto format_qt_type(const T& value, auto out_it)
 
 // Object system - use inheritance-aware formatter for QObject hierarchy
 SLIMLOG_CONVERT_STRING(QObject, true)
+
+/** @cond */
 template<typename T, typename Char>
     requires std::derived_from<T, QObject>
 struct SLIMLOG_FORMATTER_NAMESPACE::formatter<T, Char>
@@ -225,6 +233,7 @@ struct SLIMLOG_FORMATTER_NAMESPACE::formatter<T, Char>
         return SlimLog::Detail::format_qt_type<T, Char, true>(value, ctx.out());
     }
 };
+/** @endcond */
 
 // String data types
 SLIMLOG_QT_FORMATTER(QString)

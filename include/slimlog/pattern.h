@@ -177,7 +177,6 @@ public:
          * @tparam T Character type of the source string view.
          * @param dst Destination buffer where the string will be written.
          * @param src Source string view to be written.
-         * @param specs String specifications, including alignment and fill character.
          */
         template<typename BufferType, typename T>
         constexpr void write_string_padded(BufferType& dst, const CachedStringView<T>& src) const;
@@ -187,9 +186,11 @@ public:
         bool m_has_padding = false;
     };
 
-    /** @brief Formatter for the log category field. */
+    /** @brief %Formatter for the log category field. */
     struct CategoryFormatter : public StringFormatter {
         using StringFormatter::StringFormatter;
+
+        /** @brief Placeholder name for the category formatter. */
         static constexpr std::array<Char, 8> Name{'c', 'a', 't', 'e', 'g', 'o', 'r', 'y'};
 
         /**
@@ -206,15 +207,19 @@ public:
         }
     };
 
-    /** @brief Formatter for the log level field. */
+    /** @brief %Formatter for the log level field. */
     struct LevelFormatter : public StringFormatter {
         using StringFormatter::StringFormatter;
+
+        /** @brief Placeholder name for the log level formatter. */
         static constexpr std::array<Char, 5> Name{'l', 'e', 'v', 'e', 'l'};
     };
 
-    /** @brief Formatter for the source file field. */
+    /** @brief %Formatter for the source file field. */
     struct FileFormatter : public StringFormatter {
         using StringFormatter::StringFormatter;
+
+        /** @brief Placeholder name for the file name formatter. */
         static constexpr std::array<Char, 4> Name{'f', 'i', 'l', 'e'};
 
         /**
@@ -231,9 +236,11 @@ public:
         }
     };
 
-    /** @brief Formatter for the function name field. */
+    /** @brief %Formatter for the function name field. */
     struct FunctionFormatter : public StringFormatter {
         using StringFormatter::StringFormatter;
+
+        /** @brief Placeholder name for the function name formatter. */
         static constexpr std::array<Char, 8> Name{'f', 'u', 'n', 'c', 't', 'i', 'o', 'n'};
 
         /**
@@ -250,9 +257,11 @@ public:
         }
     };
 
-    /** @brief Formatter for the log message field. */
+    /** @brief %Formatter for the log message field. */
     struct MessageFormatter : public StringFormatter {
         using StringFormatter::StringFormatter;
+
+        /** @brief Placeholder name for the message formatter. */
         static constexpr std::array<Char, 7> Name{'m', 'e', 's', 's', 'a', 'g', 'e'};
 
         /**
@@ -269,9 +278,11 @@ public:
         }
     };
 
-    /** @brief Formatter for the source line number field. */
+    /** @brief %Formatter for the source line number field. */
     struct LineFormatter : public CachedFormatter<std::size_t, Char> {
         using CachedFormatter<std::size_t, Char>::CachedFormatter;
+
+        /** @brief Placeholder name for the line number formatter. */
         static constexpr std::array<Char, 4> Name{'l', 'i', 'n', 'e'};
 
         /**
@@ -289,56 +300,66 @@ public:
     };
 
     /**
-     * @brief Formatter for the thread ID field.
+     * @brief %Formatter for the thread ID field.
      *
      * Formats the thread identifier where the log statement was invoked.
      */
     struct ThreadFormatter : public CachedFormatter<std::size_t, Char> {
         using CachedFormatter<std::size_t, Char>::CachedFormatter;
+
+        /** @brief Placeholder name for the thread ID formatter. */
         static constexpr std::array<Char, 6> Name{'t', 'h', 'r', 'e', 'a', 'd'};
     };
 
     /**
-     * @brief Formatter for the timestamp field.
+     * @brief %Formatter for the timestamp field.
      *
      * Formats the timestamp of the log record in seconds.
      */
     struct TimeFormatter : public CachedFormatter<std::chrono::sys_seconds, Char> {
         using CachedFormatter<std::chrono::sys_seconds, Char>::CachedFormatter;
+
+        /** @brief Placeholder name for the time formatter. */
         static constexpr std::array<Char, 4> Name{'t', 'i', 'm', 'e'};
     };
 
     /**
-     * @brief Formatter for milliseconds component of the timestamp.
+     * @brief %Formatter for milliseconds component of the timestamp.
      *
      * Formats the millisecond part of the log timestamp (0-999).
      */
     struct MsecFormatter : public CachedFormatter<std::size_t, Char> {
         using CachedFormatter<std::size_t, Char>::CachedFormatter;
+
+        /** @brief Placeholder name for the millisecond formatter. */
         static constexpr std::array<Char, 4> Name{'m', 's', 'e', 'c'};
     };
 
     /**
-     * @brief Formatter for microseconds component of the timestamp.
+     * @brief %Formatter for microseconds component of the timestamp.
      *
      * Formats the microsecond part of the log timestamp (0-999999).
      */
     struct UsecFormatter : public CachedFormatter<std::size_t, Char> {
         using CachedFormatter<std::size_t, Char>::CachedFormatter;
+
+        /** @brief Placeholder name for the microsecond formatter. */
         static constexpr std::array<Char, 4> Name{'u', 's', 'e', 'c'};
     };
 
     /**
-     * @brief Formatter for nanoseconds component of the timestamp.
+     * @brief %Formatter for nanoseconds component of the timestamp.
      *
      * Formats the nanosecond part of the log timestamp (0-999999999).
      */
     struct NsecFormatter : public CachedFormatter<std::size_t, Char> {
         using CachedFormatter<std::size_t, Char>::CachedFormatter;
+
+        /** @brief Placeholder name for the nanosecond formatter. */
         static constexpr std::array<Char, 4> Name{'n', 's', 'e', 'c'};
     };
 
-    // Variant type holding all possible formatter types
+    /** @brief Variant type holding all possible formatter types */
     using FormatterVariant = std::variant<
         StringViewType,
         CategoryFormatter,

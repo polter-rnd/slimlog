@@ -1,5 +1,5 @@
 /**
- * @file sink-inl.h
+ * @file logger-inl.h
  * @brief Contains the definition of Logger class.
  */
 
