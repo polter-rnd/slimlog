@@ -186,20 +186,25 @@ const suite<SLIMLOG_CHAR_TYPES> CachedStrings("strings", type_only, [](auto& _) 
         expect(str3.codepoints(), equal_to(str_codepoints));
         expect(str3, equal_to(std::basic_string_view<Char>(str2)));
 
-        // Move constructor - preserves cached codepoints
-        const CachedString<Char> str4(std::move(str3));
+        // Copy constructor - with allocator
+        CachedString<Char> str4(str3, std::allocator<Char>());
         expect(str4.codepoints(), equal_to(str_codepoints));
         expect(str4, equal_to(std::basic_string_view<Char>(str2)));
 
-        // Move constructor from std::basic_string
-        CachedString<Char> str5(std::move(str2_data));
+        // Move constructor - preserves cached codepoints
+        const CachedString<Char> str5(std::move(str3));
         expect(str5.codepoints(), equal_to(str_codepoints));
-        expect(str5, equal_to(std::basic_string_view<Char>(str_data)));
+        expect(str5, equal_to(std::basic_string_view<Char>(str2)));
 
-        // Reset to empty
-        str5 = CachedString<Char>();
-        expect(str5.codepoints(), equal_to(0U));
-        expect(str5.empty(), equal_to(true));
+        // Move constructor - with allocator
+        const CachedString<Char> str6(std::move(str4), std::allocator<Char>());
+        expect(str6.codepoints(), equal_to(str_codepoints));
+        expect(str6, equal_to(std::basic_string_view<Char>(str2)));
+
+        // Move constructor from std::basic_string
+        const CachedString<Char> str7(std::move(str2_data), std::allocator<Char>());
+        expect(str7.codepoints(), equal_to(str_codepoints));
+        expect(str7, equal_to(std::basic_string_view<Char>(str_data)));
     });
 
     // Test CachedString assignment operators
