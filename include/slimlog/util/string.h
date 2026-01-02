@@ -9,6 +9,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -23,11 +24,12 @@ namespace SlimLog {
  * convertible from `std::basic_string_view<T>` and `std::basic_string<T>`.
  *
  * @tparam T Character type.
+ * @tparam Traits Character traits.
  */
-template<typename T>
-class CachedStringView : public std::basic_string_view<T> {
+template<typename T, typename Traits = std::char_traits<T>>
+class CachedStringView : public std::basic_string_view<T, Traits> {
 public:
-    using std::basic_string_view<T>::basic_string_view;
+    using std::basic_string_view<T, Traits>::basic_string_view;
 
     /** @brief Default destructor. */
     ~CachedStringView() = default;
@@ -42,7 +44,7 @@ public:
      * @param str_view The CachedStringView to copy from.
      */
     constexpr CachedStringView(const CachedStringView& str_view) noexcept
-        : std::basic_string_view<T>(str_view)
+        : std::basic_string_view<T, Traits>(str_view)
         , m_codepoints_local(str_view.m_codepoints_local)
         , m_codepoints_external(str_view.m_codepoints_external)
     {
@@ -54,8 +56,8 @@ public:
      * @param str_view The std::basic_string_view to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
-    constexpr CachedStringView(std::basic_string_view<T> str_view) noexcept
-        : std::basic_string_view<T>(str_view)
+    constexpr CachedStringView(std::basic_string_view<T, Traits> str_view) noexcept
+        : std::basic_string_view<T, Traits>(str_view)
     {
     }
 
@@ -64,9 +66,10 @@ public:
      *
      * @param str The std::basic_string to construct from.
      */
+    template<typename Allocator>
     // NOLINTNEXTLINE(*-explicit-conversions)
-    constexpr CachedStringView(const std::basic_string<T>& str) noexcept
-        : std::basic_string_view<T>(str)
+    constexpr CachedStringView(const std::basic_string<T, Traits, Allocator>& str) noexcept
+        : std::basic_string_view<T, Traits>(str)
     {
     }
 
@@ -82,7 +85,7 @@ public:
             return *this;
         }
 
-        std::basic_string_view<T>::operator=(str_view);
+        std::basic_string_view<T, Traits>::operator=(str_view);
         m_codepoints_local = str_view.m_codepoints_local;
         m_codepoints_external = str_view.m_codepoints_external;
         return *this;
@@ -94,9 +97,9 @@ public:
      * @param str_view The std::basic_string_view to assign from.
      * @return Reference to this CachedStringView.
      */
-    auto operator=(const std::basic_string_view<T>& str_view) noexcept -> CachedStringView&
+    auto operator=(const std::basic_string_view<T, Traits>& str_view) noexcept -> CachedStringView&
     {
-        std::basic_string_view<T>::operator=(str_view);
+        std::basic_string_view<T, Traits>::operator=(str_view);
         m_codepoints_local = std::string_view::npos;
         m_codepoints_external = nullptr;
         return *this;
@@ -128,7 +131,7 @@ public:
     }
 
 private:
-    template<typename U>
+    template<typename U, typename UTraits, typename UAllocator>
     friend class CachedString;
 
     mutable std::size_t m_codepoints_local = std::string_view::npos;
@@ -143,11 +146,13 @@ private:
  * across copy/move operations and transferred to CachedStringView on conversion.
  *
  * @tparam T Character type.
+ * @tparam Traits Character traits.
+ * @tparam Allocator Allocator type.
  */
-template<typename T>
-class CachedString : public std::basic_string<T> {
+template<typename T, typename Traits = std::char_traits<T>, typename Allocator = std::allocator<T>>
+class CachedString : public std::basic_string<T, Traits, Allocator> {
 public:
-    using std::basic_string<T>::basic_string;
+    using std::basic_string<T, Traits, Allocator>::basic_string;
 
     /** @brief Default destructor. */
     ~CachedString() = default;
@@ -158,7 +163,7 @@ public:
      * @param other The CachedString to copy from.
      */
     CachedString(const CachedString& other)
-        : std::basic_string<T>(other)
+        : std::basic_string<T, Traits, Allocator>(other)
         , m_codepoints(other.m_codepoints)
     {
     }
@@ -169,7 +174,8 @@ public:
      * @param other The CachedString to move from.
      */
     CachedString(CachedString&& other) noexcept
-        : std::basic_string<T>(static_cast<std::basic_string<T>&&>(other))
+        : std::basic_string<T, Traits, Allocator>(
+              static_cast<std::basic_string<T, Traits, Allocator>&&>(other))
         , m_codepoints(std::exchange(other.m_codepoints, std::string_view::npos))
     {
     }
@@ -180,8 +186,8 @@ public:
      * @param str The std::basic_string to construct from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
-    CachedString(const std::basic_string<T>& str)
-        : std::basic_string<T>(str)
+    CachedString(const std::basic_string<T, Traits, Allocator>& str)
+        : std::basic_string<T, Traits, Allocator>(str)
     {
     }
 
@@ -191,8 +197,8 @@ public:
      * @param str The std::basic_string to move from.
      */
     // NOLINTNEXTLINE(*-explicit-conversions)
-    CachedString(std::basic_string<T>&& str) noexcept
-        : std::basic_string<T>(std::move(str))
+    CachedString(std::basic_string<T, Traits, Allocator>&& str) noexcept
+        : std::basic_string<T, Traits, Allocator>(std::move(str))
     {
     }
 
@@ -205,7 +211,7 @@ public:
     auto operator=(const CachedString& other) -> CachedString&
     {
         if (this != &other) {
-            std::basic_string<T>::operator=(other);
+            std::basic_string<T, Traits, Allocator>::operator=(other);
             m_codepoints = other.m_codepoints;
         }
         return *this;
@@ -217,11 +223,14 @@ public:
      * @param other The CachedString to move from.
      * @return Reference to this CachedString.
      */
-    auto operator=(CachedString&& other) noexcept -> CachedString&
+    auto operator=(CachedString&& other) noexcept(
+        std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+        || std::allocator_traits<Allocator>::is_always_equal::value) -> CachedString&
     {
         if (this != &other) {
             m_codepoints = std::exchange(other.m_codepoints, std::string_view::npos);
-            std::basic_string<T>::operator=(std::move(other));
+            std::basic_string<T, Traits, Allocator>::operator=(
+                static_cast<std::basic_string<T, Traits, Allocator>&&>(other));
         }
         return *this;
     }
@@ -232,9 +241,9 @@ public:
      * @param str The std::basic_string to assign from.
      * @return Reference to this CachedString.
      */
-    auto operator=(const std::basic_string<T>& str) -> CachedString&
+    auto operator=(const std::basic_string<T, Traits, Allocator>& str) -> CachedString&
     {
-        std::basic_string<T>::operator=(str);
+        std::basic_string<T, Traits, Allocator>::operator=(str);
         m_codepoints = std::string_view::npos;
         return *this;
     }
@@ -245,9 +254,11 @@ public:
      * @param str The std::basic_string to move from.
      * @return Reference to this CachedString.
      */
-    auto operator=(std::basic_string<T>&& str) noexcept -> CachedString&
+    auto operator=(std::basic_string<T, Traits, Allocator>&& str) noexcept(
+        std::allocator_traits<Allocator>::propagate_on_container_move_assignment::value
+        || std::allocator_traits<Allocator>::is_always_equal::value) -> CachedString&
     {
-        std::basic_string<T>::operator=(std::move(str));
+        std::basic_string<T, Traits, Allocator>::operator=(std::move(str));
         m_codepoints = std::string_view::npos;
         return *this;
     }
@@ -260,9 +271,10 @@ public:
      *
      * @return A CachedStringView that references this CachedString.
      */
-    operator CachedStringView<T>() const noexcept // NOLINT(hicpp-explicit-conversions)
+    operator CachedStringView<T, Traits>() const noexcept // NOLINT(hicpp-explicit-conversions)
     {
-        CachedStringView<T> view(static_cast<const std::basic_string<T>&>(*this));
+        CachedStringView<T, Traits> view(
+            static_cast<const std::basic_string<T, Traits, Allocator>&>(*this));
         view.m_codepoints_external = &m_codepoints;
         return view;
     }
@@ -277,7 +289,7 @@ public:
     auto codepoints() const noexcept -> std::size_t
     {
         if (m_codepoints == std::string_view::npos) {
-            const CachedStringView<T> view(*this);
+            const CachedStringView<T, Traits> view(*this);
             m_codepoints = view.codepoints();
         }
         return m_codepoints;
