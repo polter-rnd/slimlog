@@ -23,19 +23,19 @@ auto Pattern<Char>::Levels::get(Level level) const -> CachedStringView<Char>
 {
     switch (level) {
     case Level::Fatal:
-        return m_fatal;
+        return CachedStringView<Char>(m_fatal);
     case Level::Error:
-        return m_error;
+        return CachedStringView<Char>(m_error);
     case Level::Warning:
-        return m_warning;
+        return CachedStringView<Char>(m_warning);
     case Level::Info:
-        return m_info;
+        return CachedStringView<Char>(m_info);
     case Level::Debug:
-        return m_debug;
+        return CachedStringView<Char>(m_debug);
     case Level::Trace:
         [[fallthrough]];
     default:
-        return m_trace;
+        return CachedStringView<Char>(m_trace);
     }
 }
 

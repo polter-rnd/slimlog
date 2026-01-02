@@ -103,7 +103,7 @@ auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::create(
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::category() const -> StringViewType
 {
-    return m_category;
+    return StringViewType{m_category};
 }
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>

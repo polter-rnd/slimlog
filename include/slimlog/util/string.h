@@ -21,7 +21,7 @@ namespace SlimLog {
  * @brief Non-owning string view type with cached codepoints.
  *
  * This class extends `std::basic_string_view<T>` and includes a `codepoints()` method
- * to calculate and cache the number of Unicode code points in a string. It is implicitly
+ * to calculate and cache the number of Unicode code points in a string. It is explicitly
  * convertible from `std::basic_string_view<T>` and `std::basic_string<T>`.
  *
  * @tparam T Character type.
@@ -59,8 +59,7 @@ public:
      *
      * @param str_view The std::basic_string_view to construct from.
      */
-    // NOLINTNEXTLINE(*-explicit-conversions)
-    constexpr CachedStringView(BaseType str_view) noexcept
+    explicit constexpr CachedStringView(BaseType str_view) noexcept
         : BaseType(str_view)
     {
     }
@@ -158,7 +157,7 @@ CachedStringView(InputIt, InputIt)
 /**
  * @brief Owning string type with cached codepoints.
  *
- * This class wraps `std::basic_string<T>` and is implicitly convertible to
+ * This class wraps `std::basic_string<T>` and is explicitly convertible to
  * `CachedStringView<T>`. It maintains a cached codepoints count that is preserved
  * across copy/move operations and transferred to CachedStringView on conversion.
  *
@@ -275,8 +274,7 @@ public:
      *
      * @param str The std::basic_string to construct from.
      */
-    // NOLINTNEXTLINE(*-explicit-conversions)
-    CachedString(const BaseType& str)
+    explicit CachedString(const BaseType& str)
         : BaseType(str)
     {
     }
@@ -286,8 +284,7 @@ public:
      *
      * @param str The std::basic_string to move from.
      */
-    // NOLINTNEXTLINE(*-explicit-conversions)
-    CachedString(BaseType&& str) noexcept
+    explicit CachedString(BaseType&& str) noexcept
         : BaseType(std::move(str))
     {
     }
@@ -354,15 +351,14 @@ public:
     }
 
     /**
-     * @brief Implicit conversion to CachedStringView.
+     * @brief Explicit conversion to CachedStringView.
      *
      * The returned view shares the codepoints cache with this CachedString,
      * so calculating codepoints in either object updates both.
      *
      * @return A CachedStringView that references this CachedString.
      */
-    // NOLINTNEXTLINE(hicpp-explicit-conversions)
-    operator CachedStringView<T, Traits>() const noexcept
+    explicit operator CachedStringView<T, Traits>() const noexcept
     {
         CachedStringView<T, Traits> view(static_cast<const BaseType&>(*this));
         view.m_codepoints_external = &m_codepoints;
@@ -370,12 +366,11 @@ public:
     }
 
     /**
-     * @brief Implicit conversion to std::basic_string_view.
+     * @brief Explicit conversion to std::basic_string_view.
      *
      * @return A string_view that references this CachedString.
      */
-    // NOLINTNEXTLINE(hicpp-explicit-conversions)
-    operator std::basic_string_view<T, Traits>() const noexcept
+    explicit operator std::basic_string_view<T, Traits>() const noexcept
     {
         return std::basic_string_view<T, Traits>(static_cast<const BaseType&>(*this));
     }

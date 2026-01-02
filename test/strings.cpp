@@ -179,32 +179,32 @@ const suite<SLIMLOG_CHAR_TYPES> CachedStrings("strings", type_only, [](auto& _) 
         // Constructor from std::basic_string
         const CachedString<Char> str2(str_data);
         expect(str2.codepoints(), equal_to(str_codepoints));
-        expect(str2, equal_to(std::basic_string_view<Char>(str_data)));
+        expect(std::basic_string_view<Char>(str2), equal_to(str_data));
 
         // Copy constructor - preserves cached codepoints
         CachedString<Char> str3(str2);
         expect(str3.codepoints(), equal_to(str_codepoints));
-        expect(str3, equal_to(std::basic_string_view<Char>(str2)));
+        expect(std::basic_string_view<Char>(str3), equal_to(str_data));
 
         // Copy constructor - with allocator
         CachedString<Char> str4(str3, std::allocator<Char>());
         expect(str4.codepoints(), equal_to(str_codepoints));
-        expect(str4, equal_to(std::basic_string_view<Char>(str2)));
+        expect(std::basic_string_view<Char>(str4), equal_to(str_data));
 
         // Move constructor - preserves cached codepoints
         const CachedString<Char> str5(std::move(str3));
         expect(str5.codepoints(), equal_to(str_codepoints));
-        expect(str5, equal_to(std::basic_string_view<Char>(str2)));
+        expect(std::basic_string_view<Char>(str5), equal_to(str_data));
 
         // Move constructor - with allocator
         const CachedString<Char> str6(std::move(str4), std::allocator<Char>());
         expect(str6.codepoints(), equal_to(str_codepoints));
-        expect(str6, equal_to(std::basic_string_view<Char>(str2)));
+        expect(std::basic_string_view<Char>(str6), equal_to(str_data));
 
         // Move constructor from std::basic_string
         const CachedString<Char> str7(std::move(str2_data), std::allocator<Char>());
         expect(str7.codepoints(), equal_to(str_codepoints));
-        expect(str7, equal_to(std::basic_string_view<Char>(str_data)));
+        expect(std::basic_string_view<Char>(str7), equal_to(str_data));
     });
 
     // Test CachedString assignment operators
@@ -219,35 +219,35 @@ const suite<SLIMLOG_CHAR_TYPES> CachedStrings("strings", type_only, [](auto& _) 
         CachedString<Char> str2;
         str2 = str1;
         expect(str2.codepoints(), equal_to(str_codepoints));
-        expect(str2, equal_to(std::basic_string_view<Char>(str1)));
+        expect(std::basic_string_view<Char>(str2), equal_to(str_data));
 
         // Move assignment - preserves cached codepoints
         CachedString<Char> str3(str_data);
         CachedString<Char> str4;
         str4 = std::move(str3);
         expect(str4.codepoints(), equal_to(str_codepoints));
-        expect(str4, equal_to(std::basic_string_view<Char>(str_data)));
+        expect(std::basic_string_view<Char>(str4), equal_to(str_data));
 
         // Assignment from std::basic_string  - invalidates cache
         CachedString<Char> str5;
         str5 = str_data;
         expect(str5.codepoints(), equal_to(str_codepoints));
-        expect(str5, equal_to(std::basic_string_view<Char>(str_data)));
+        expect(std::basic_string_view<Char>(str5), equal_to(str_data));
 
         // Move assignment from std::basic_string - invalidates cache
         str5 = std::move(str2_data);
         expect(str5.codepoints(), equal_to(str_codepoints));
-        expect(str5, equal_to(std::basic_string_view<Char>(str_data)));
+        expect(std::basic_string_view<Char>(str5), equal_to(str_data));
 
         // Self assignment
         str1 = str1; // NOLINT(misc-redundant-expression)
         expect(str1.codepoints(), equal_to(str_codepoints));
-        expect(str1, equal_to(std::basic_string_view<Char>(str_data)));
+        expect(std::basic_string_view<Char>(str1), equal_to(str_data));
 
         // Self move-assignment
         str1 = std::move(str1); // NOLINT(misc-redundant-expression)
         expect(str1.codepoints(), equal_to(str_codepoints));
-        expect(str1, equal_to(std::basic_string_view<Char>(str_data)));
+        expect(std::basic_string_view<Char>(str1), equal_to(str_data));
     });
 
     // Test CachedString codepoint counting and caching
@@ -324,22 +324,35 @@ const suite<SLIMLOG_CHAR_TYPES> CachedStrings("strings", type_only, [](auto& _) 
         expect(str2.empty(), equal_to(true));
     });
 
-    // Test implicit conversion to CachedStringView
-    _.test("to_string_view_conversion", []() {
-        const auto data = from_utf8<Char>("Test String");
-        const CachedString<Char> str(data);
+    // Test explicit conversion to CachedStringView and std::basic_string_view
+    _.test("to_string_view", []() {
+        const auto str1_data = from_utf8<Char>("Test String");
+        const auto str1_codepoints
+            = Util::Unicode::count_codepoints(str1_data.data(), str1_data.size());
 
-        // Calculate codepoints for the string
-        const auto str_codepoints = str.codepoints();
+        const auto str2_data = from_utf8<Char>("Test String 2");
+        const auto str2_codepoints
+            = Util::Unicode::count_codepoints(str2_data.data(), str2_data.size());
 
-        // Convert to CachedStringView implicitly
-        const CachedStringView<Char> view = str;
-        expect(view.size(), equal_to(str.size()));
-        expect(view.codepoints(), equal_to(str_codepoints));
+        const CachedString<Char> str1(str1_data);
+        expect(str1.size(), equal_to(str1_data.size()));
+        expect(str1.codepoints(), equal_to(str1_codepoints));
 
-        // Verify view shares cached codepoint data
-        const CachedStringView<Char> view2(str);
-        expect(view2.codepoints(), equal_to(str_codepoints));
+        // Convert to CachedStringView
+        CachedStringView<Char> view;
+        view = CachedStringView<Char>(str1);
+        expect(view.size(), equal_to(str1_data.size()));
+        expect(view.codepoints(), equal_to(str1_codepoints));
+
+        // Convert from basic_string_view explicitly
+        view = std::basic_string_view<Char>(str2_data);
+        expect(view.size(), equal_to(str2_data.size()));
+        expect(view.codepoints(), equal_to(str2_codepoints));
+
+        // Convert from basic_string implicitly
+        view = str1_data;
+        expect(view.size(), equal_to(str1_data.size()));
+        expect(view.codepoints(), equal_to(str1_codepoints));
     });
 });
 

@@ -373,8 +373,8 @@ public:
         }
 
         const Record<Char> record{
-            message,
-            m_category,
+            CachedStringView<Char>(message),
+            CachedStringView<Char>(m_category),
             location.file_name(),
             location.function_name(),
             static_cast<std::size_t>(location.line()),
