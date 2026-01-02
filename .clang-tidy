@@ -91,6 +91,6 @@ CheckOptions:
   - key: readability-identifier-naming.TypeTemplateParameterIgnoredRegexp
     value: expr-type
   - key: modernize-use-trailing-return-type.TransformLambdas
-    value: all_except_auto
+    value: none
   - key: readability-function-cognitive-complexity.Threshold
     value: 35
