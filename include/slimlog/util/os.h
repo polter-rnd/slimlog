@@ -12,7 +12,13 @@
 
 #include <chrono>
 #include <ctime>
+#include <type_traits>
 #include <utility>
+
+#if !defined(__GNUC__) && !defined(__clang__) && !defined(_MSC_VER)
+// As a fallback, use <atomic> for std::atomic_ref
+#include <atomic>
+#endif
 
 // Used by <chrono> in C++20
 // IWYU pragma: no_include <ratio>
@@ -112,6 +118,82 @@ namespace SlimLog::Util::OS {
     }
 
     return cached_tid;
+}
+
+/**
+ * @brief Atomically loads a value with relaxed memory ordering.
+ *
+ * Uses platform-specific atomic operations for lock-free atomic load.
+ *
+ * @tparam T Type of the value to load (must be trivially copyable).
+ * @param ptr Pointer to the value to load.
+ * @return The loaded value.
+ */
+template<typename T>
+[[nodiscard]] inline auto atomic_load_relaxed(const T* ptr) noexcept -> T
+{
+    static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable");
+
+#if defined(__GNUC__) || defined(__clang__)
+    // GCC/Clang builtins
+    return __atomic_load_n(ptr, __ATOMIC_RELAXED); // NOLINT(*-vararg)
+#elif defined(_MSC_VER)
+    // MSVC intrinsics - select based on size
+    if constexpr (sizeof(T) == 1) {
+        return static_cast<T>(__iso_volatile_load8(reinterpret_cast<const volatile __int8*>(ptr)));
+    } else if constexpr (sizeof(T) == 2) {
+        return static_cast<T>(
+            __iso_volatile_load16(reinterpret_cast<const volatile __int16*>(ptr)));
+    } else if constexpr (sizeof(T) == 4) {
+        return static_cast<T>(
+            __iso_volatile_load32(reinterpret_cast<const volatile __int32*>(ptr)));
+    } else if constexpr (sizeof(T) == 8) {
+        return static_cast<T>(
+            __iso_volatile_load64(reinterpret_cast<const volatile __int64*>(ptr)));
+    } else {
+        static_assert(sizeof(T) <= 8, "MSVC atomic operations only support types up to 8 bytes");
+    }
+#else // Default to standard C++20
+    return std::atomic_ref{*ptr}.load(std::memory_order_relaxed);
+#endif
+}
+
+/**
+ * @brief Atomically stores a value with relaxed memory ordering.
+ *
+ * Uses platform-specific atomic operations for lock-free atomic store.
+ *
+ * @tparam T Type of the value to store (must be trivially copyable).
+ * @param ptr Pointer to the location to store the value.
+ * @param value The value to store.
+ */
+template<typename T>
+inline void atomic_store_relaxed(T* ptr, T value) noexcept
+{
+    static_assert(std::is_trivially_copyable_v<T>, "T must be trivially copyable");
+
+#if defined(__GNUC__) || defined(__clang__)
+    // GCC/Clang builtins
+    __atomic_store_n(ptr, value, __ATOMIC_RELAXED); // NOLINT(*-vararg)
+#elif defined(_MSC_VER)
+    // MSVC intrinsics - select based on size
+    if constexpr (sizeof(T) == 1) {
+        __iso_volatile_store8(reinterpret_cast<volatile __int8*>(ptr), static_cast<__int8>(value));
+    } else if constexpr (sizeof(T) == 2) {
+        __iso_volatile_store16(
+            reinterpret_cast<volatile __int16*>(ptr), static_cast<__int16>(value));
+    } else if constexpr (sizeof(T) == 4) {
+        __iso_volatile_store32(
+            reinterpret_cast<volatile __int32*>(ptr), static_cast<__int32>(value));
+    } else if constexpr (sizeof(T) == 8) {
+        __iso_volatile_store64(
+            reinterpret_cast<volatile __int64*>(ptr), static_cast<__int64>(value));
+    } else {
+        static_assert(sizeof(T) <= 8, "MSVC atomic operations only support types up to 8 bytes");
+    }
+#else // Default to standard C++20
+    std::atomic_ref{*ptr}.store(value, std::memory_order_relaxed);
+#endif
 }
 
 /**

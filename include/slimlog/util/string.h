@@ -6,9 +6,9 @@
 #pragma once
 
 #include "slimlog/threading.h"
+#include "slimlog/util/os.h"
 #include "slimlog/util/unicode.h"
 
-#include <atomic>
 #include <cstddef>
 #include <iterator>
 #include <memory>
@@ -112,16 +112,10 @@ public:
 
         if constexpr (std::is_same_v<ThreadingPolicy, MultiThreadedPolicy>) {
             // Multi-threaded: use atomic operations for thread-safe access
-#ifdef __cpp_lib_atomic_ref
-            const std::atomic_ref atomic_codepoints{*codepoints_ptr};
-#else
-            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-            auto& atomic_codepoints = *reinterpret_cast<std::atomic<std::size_t>*>(codepoints_ptr);
-#endif
-            auto current = atomic_codepoints.load(std::memory_order_relaxed);
+            auto current = Util::OS::atomic_load_relaxed(codepoints_ptr);
             if (current == BaseType::npos) {
                 const auto calculated = Util::Unicode::count_codepoints(this->data(), this->size());
-                atomic_codepoints.store(calculated, std::memory_order_relaxed);
+                Util::OS::atomic_store_relaxed(codepoints_ptr, calculated);
                 current = calculated;
             }
             return current;
@@ -399,11 +393,22 @@ public:
     template<typename ThreadingPolicy = SingleThreadedPolicy>
     auto codepoints() const noexcept -> std::size_t
     {
-        if (m_codepoints == BaseType::npos) {
-            const CachedStringView<T, Traits> view(*this);
-            m_codepoints = view.template codepoints<ThreadingPolicy>();
+        if constexpr (std::is_same_v<ThreadingPolicy, MultiThreadedPolicy>) {
+            // Multi-threaded: use atomic operations for thread-safe access
+            auto current = Util::OS::atomic_load_relaxed(&m_codepoints);
+            if (current == BaseType::npos) {
+                const auto calculated = Util::Unicode::count_codepoints(this->data(), this->size());
+                Util::OS::atomic_store_relaxed(&m_codepoints, calculated);
+                current = calculated;
+            }
+            return current;
+        } else {
+            // Single-threaded: use simple non-atomic access
+            if (m_codepoints == BaseType::npos) {
+                m_codepoints = Util::Unicode::count_codepoints(this->data(), this->size());
+            }
+            return m_codepoints;
         }
-        return m_codepoints;
     }
 
 private:
