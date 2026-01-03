@@ -666,7 +666,8 @@ template<
 auto create_logger(const Char (&category)[N], Level level = Level::Info) // NOLINT(*-avoid-c-arrays)
     -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
 {
-    return create_logger<Char>(category, level);
+    using LoggerType = Logger<Char, ThreadingPolicy, BufferSize, Allocator>;
+    return LoggerType::create(category, level);
 }
 
 /**
@@ -737,7 +738,8 @@ auto create_logger(
     const Char (&category)[N], // NOLINT(*-avoid-c-arrays)
     Level level) -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
 {
-    return create_logger<Char>(parent, category, level);
+    using LoggerType = Logger<Char, ThreadingPolicy, BufferSize, Allocator>;
+    return LoggerType::create(parent, category, level);
 }
 
 /**
@@ -784,7 +786,8 @@ auto create_logger(
     const Char (&category)[N]) // NOLINT(*-avoid-c-arrays)
     -> std::shared_ptr<Logger<Char, ThreadingPolicy, BufferSize, Allocator>>
 {
-    return create_logger<Char>(parent, category);
+    using LoggerType = Logger<Char, ThreadingPolicy, BufferSize, Allocator>;
+    return LoggerType::create(parent, category);
 }
 
 /**
