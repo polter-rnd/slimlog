@@ -92,9 +92,9 @@ template class CallbackSink<char8_t>;
 template class NullSink<char8_t>;
 template class Pattern<char8_t>;
 template SLIMLOG_EXPORT void Pattern<char8_t>::format<SingleThreadedPolicy>(
-    FormatBuffer<char8_t, DefaultBufferSize>&, const Record<char8_t>&);
+    FormatBuffer<char8_t, DefaultSinkBufferSize>&, const Record<char8_t>&);
 template SLIMLOG_EXPORT void Pattern<char8_t>::format<MultiThreadedPolicy>(
-    FormatBuffer<char8_t, DefaultBufferSize>&, const Record<char8_t>&);
+    FormatBuffer<char8_t, DefaultSinkBufferSize>&, const Record<char8_t>&);
 template class CachedFormatter<std::size_t, char8_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char8_t>;
 #endif
@@ -113,9 +113,9 @@ template class CallbackSink<char16_t>;
 template class NullSink<char16_t>;
 template class Pattern<char16_t>;
 template SLIMLOG_EXPORT void Pattern<char16_t>::format<SingleThreadedPolicy>(
-    FormatBuffer<char16_t, DefaultBufferSize>&, const Record<char16_t>&);
+    FormatBuffer<char16_t, DefaultSinkBufferSize>&, const Record<char16_t>&);
 template SLIMLOG_EXPORT void Pattern<char16_t>::format<MultiThreadedPolicy>(
-    FormatBuffer<char16_t, DefaultBufferSize>&, const Record<char16_t>&);
+    FormatBuffer<char16_t, DefaultSinkBufferSize>&, const Record<char16_t>&);
 template class CachedFormatter<std::size_t, char16_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char16_t>;
 #endif
@@ -134,9 +134,9 @@ template class CallbackSink<char32_t>;
 template class NullSink<char32_t>;
 template class Pattern<char32_t>;
 template SLIMLOG_EXPORT void Pattern<char32_t>::format<SingleThreadedPolicy>(
-    FormatBuffer<char32_t, DefaultBufferSize>&, const Record<char32_t>&);
+    FormatBuffer<char32_t, DefaultSinkBufferSize>&, const Record<char32_t>&);
 template SLIMLOG_EXPORT void Pattern<char32_t>::format<MultiThreadedPolicy>(
-    FormatBuffer<char32_t, DefaultBufferSize>&, const Record<char32_t>&);
+    FormatBuffer<char32_t, DefaultSinkBufferSize>&, const Record<char32_t>&);
 template class CachedFormatter<std::size_t, char32_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char32_t>;
 #endif
