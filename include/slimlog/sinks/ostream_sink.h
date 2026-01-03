@@ -23,17 +23,19 @@ namespace SlimLog {
  * This sink writes formatted log messages to an output stream.
  *
  * @tparam Char Character type for the string.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
  * @tparam BufferSize Size of the internal pre-allocated buffer.
  * @tparam Allocator Allocator type for the internal buffer.
  */
 template<
     typename Char,
+    typename ThreadingPolicy = DefaultThreadingPolicy,
     std::size_t BufferSize = DefaultSinkBufferSize,
     typename Allocator = std::allocator<Char>>
-class OStreamSink : public FormattableSink<Char, BufferSize, Allocator> {
+class OStreamSink : public FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator> {
 public:
-    using typename FormattableSink<Char, BufferSize, Allocator>::RecordType;
-    using typename FormattableSink<Char, BufferSize, Allocator>::FormatBufferType;
+    using typename FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::RecordType;
+    using typename FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::FormatBufferType;
 
     // Disable copy and move semantics because of the reference member.
     OStreamSink(const OStreamSink&) = delete;
@@ -51,7 +53,7 @@ public:
      */
     template<typename... Args>
     explicit OStreamSink(std::basic_ostream<Char>& ostream, Args&&... args)
-        : FormattableSink<Char, BufferSize, Allocator>(std::forward<Args>(args)...)
+        : FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>(std::forward<Args>(args)...)
         , m_ostream(ostream)
     {
     }
@@ -65,7 +67,7 @@ public:
      */
     template<typename... Args>
     explicit OStreamSink(std::basic_streambuf<Char>* streambuf, Args&&... args)
-        : FormattableSink<Char, BufferSize, Allocator>(std::forward<Args>(args)...)
+        : FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>(std::forward<Args>(args)...)
         , m_ostream(streambuf)
     {
     }

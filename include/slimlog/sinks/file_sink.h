@@ -23,17 +23,19 @@ namespace SlimLog {
  * This sink writes formatted log messages directly to a file.
  *
  * @tparam Char Character type for the string.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
  * @tparam BufferSize Size of the internal pre-allocated buffer.
  * @tparam Allocator Allocator type for the internal buffer.
  */
 template<
     typename Char,
+    typename ThreadingPolicy = DefaultThreadingPolicy,
     std::size_t BufferSize = DefaultSinkBufferSize,
     typename Allocator = std::allocator<Char>>
-class FileSink : public FormattableSink<Char, BufferSize, Allocator> {
+class FileSink : public FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator> {
 public:
-    using typename FormattableSink<Char, BufferSize, Allocator>::RecordType;
-    using typename FormattableSink<Char, BufferSize, Allocator>::FormatBufferType;
+    using typename FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::RecordType;
+    using typename FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::FormatBufferType;
 
     /**
      * @brief Constructs a new FileSink object.
@@ -44,7 +46,7 @@ public:
      */
     template<typename... Args>
     explicit FileSink(std::string_view filename, Args&&... args)
-        : FormattableSink<Char, BufferSize, Allocator>(std::forward<Args>(args)...)
+        : FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>(std::forward<Args>(args)...)
     {
         open(filename);
     }

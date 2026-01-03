@@ -12,22 +12,27 @@
 
 namespace SlimLog {
 
-template<typename Char, std::size_t BufferSize, typename Allocator>
-auto FormattableSink<Char, BufferSize, Allocator>::set_time_func(TimeFunctionType time_func) -> void
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::set_time_func(
+    TimeFunctionType time_func) -> void
 {
+    const typename ThreadingPolicy::WriteLock lock(m_mutex);
     m_pattern.set_time_func(time_func);
 }
 
-template<typename Char, std::size_t BufferSize, typename Allocator>
-auto FormattableSink<Char, BufferSize, Allocator>::set_pattern(StringViewType pattern) -> void
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::set_pattern(
+    StringViewType pattern) -> void
 {
+    const typename ThreadingPolicy::WriteLock lock(m_mutex);
     m_pattern.set_pattern(pattern);
 }
 
-template<typename Char, std::size_t BufferSize, typename Allocator>
-auto FormattableSink<Char, BufferSize, Allocator>::format(
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::format(
     FormatBufferType& result, const RecordType& record) -> void
 {
+    const typename ThreadingPolicy::ReadLock lock(m_mutex);
     m_pattern.format(result, record);
 }
 

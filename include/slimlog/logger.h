@@ -211,16 +211,18 @@ public:
      * @return Shared pointer to the created sink.
      */
     template<
-        template<typename, std::size_t, typename> // For clang-format < 19
+        template<typename, typename, std::size_t, typename> // For clang-format < 19
         typename T,
+        typename SinkThreadingPolicy = ThreadingPolicy,
         std::size_t SinkBufferSize = DefaultSinkBufferSize,
         typename SinkAllocator = Allocator,
         typename... Args>
-        requires(IsFormattableSink<T<Char, SinkBufferSize, SinkAllocator>>)
-    auto add_sink(Args&&... args) -> std::shared_ptr<FormattableSink<Char>>
+        requires(IsFormattableSink<T<Char, SinkThreadingPolicy, SinkBufferSize, SinkAllocator>>)
+    auto add_sink(Args&&... args) -> // For clang-format < 19
+        std::shared_ptr<FormattableSink<Char, SinkThreadingPolicy, SinkBufferSize, SinkAllocator>>
     {
-        auto sink
-            = std::make_shared<T<Char, SinkBufferSize, SinkAllocator>>(std::forward<Args>(args)...);
+        auto sink = std::make_shared<T<Char, SinkThreadingPolicy, SinkBufferSize, SinkAllocator>>(
+            std::forward<Args>(args)...);
         std::ignore = add_sink(sink);
         return sink;
     }

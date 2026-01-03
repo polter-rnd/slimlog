@@ -32,6 +32,8 @@ class Sink {
 public:
     /** @brief Log record type. */
     using RecordType = Record<Char>;
+    /** @brief Raw string view type. */
+    using StringViewType = std::basic_string_view<Char>;
 
     /** @brief Default constructor. */
     Sink() = default;
@@ -71,23 +73,23 @@ public:
  * A sink that supports custom message formatting.
  * Allocates another buffer for message formatting.
  *
- * @tparam String String type for log messages.
  * @tparam Char Character type for the string.
+ * @tparam ThreadingPolicy Threading policy for sink synchronization.
  * @tparam BufferSize Size of the internal pre-allocated buffer.
  * @tparam Allocator Allocator type for the internal buffer.
  */
 template<
     typename Char,
+    typename ThreadingPolicy = DefaultThreadingPolicy,
     std::size_t BufferSize = DefaultSinkBufferSize,
     typename Allocator = std::allocator<Char>>
 class FormattableSink : public Sink<Char> {
 public:
-    /** @brief Raw string view type. */
-    using StringViewType = std::basic_string_view<Char>;
+    using typename Sink<Char>::RecordType;
+    using typename Sink<Char>::StringViewType;
+
     /** @brief Buffer type used for log message formatting. */
     using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
-    /** @brief Log record type. */
-    using RecordType = Record<Char>;
     /** @brief Time function type for getting the current time. */
     using TimeFunctionType = Pattern<Char>::TimeFunctionType;
     /**
@@ -160,6 +162,7 @@ public:
     template<typename... Pairs>
     auto set_levels(Pairs&&... pairs) -> void
     {
+        const typename ThreadingPolicy::WriteLock lock(m_mutex);
         m_pattern.set_levels(std::forward<Pairs>(pairs)...);
     }
 
@@ -174,6 +177,7 @@ protected:
 
 private:
     Pattern<Char> m_pattern;
+    mutable ThreadingPolicy::Mutex m_mutex;
 };
 
 /**
@@ -183,8 +187,8 @@ private:
  */
 template<class T>
 concept IsFormattableSink = requires(const T& arg) {
-    []<typename Char, std::size_t BufferSize, typename Allocator>(
-        const FormattableSink<Char, BufferSize, Allocator>&) {}(arg);
+    []<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>(
+        const FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>&) {}(arg);
 };
 
 } // namespace SlimLog

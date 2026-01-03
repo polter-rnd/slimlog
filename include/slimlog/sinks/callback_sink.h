@@ -11,9 +11,7 @@
 
 #include <slimlog_export.h>
 
-#include <cstddef>
 #include <functional>
-#include <memory>
 #include <utility>
 
 namespace SlimLog {
@@ -24,18 +22,12 @@ namespace SlimLog {
  * This sink calls a callback function to handle log messages.
  *
  * @tparam Char Character type for the string.
- * @tparam BufferSize Size of the internal pre-allocated buffer.
- * @tparam Allocator Allocator type for the internal buffer.
  */
-template<
-    typename Char,
-    std::size_t BufferSize = DefaultSinkBufferSize,
-    typename Allocator = std::allocator<Char>>
-class CallbackSink : public FormattableSink<Char, BufferSize, Allocator> {
+template<typename Char>
+class CallbackSink : public Sink<Char> {
 public:
-    using typename FormattableSink<Char, BufferSize, Allocator>::RecordType;
-    using typename FormattableSink<Char, BufferSize, Allocator>::StringViewType;
-    using typename FormattableSink<Char, BufferSize, Allocator>::FormatBufferType;
+    using typename Sink<Char>::RecordType;
+    using typename Sink<Char>::StringViewType;
 
     /**
      * @brief Log callback type.
@@ -63,7 +55,7 @@ public:
      */
     template<typename... Args>
     explicit CallbackSink(LogCallback callback, Args&&... args)
-        : FormattableSink<Char, BufferSize, Allocator>(std::forward<Args>(args)...)
+        : Sink<Char>(std::forward<Args>(args)...)
         , m_callback(std::move(callback))
     {
     }

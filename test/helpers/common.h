@@ -21,6 +21,17 @@
 #include <utility>
 #include <vector>
 
+/**
+ * @brief Type holder for character type and threading policy combinations.
+ * @tparam TChar The character type (char, wchar_t, char8_t, etc.)
+ * @tparam TThreadingPolicy The threading policy (SingleThreadedPolicy or MultiThreadedPolicy)
+ */
+template<typename TChar, typename TThreadingPolicy>
+struct CharThreading {
+    using Char = TChar;
+    using ThreadingPolicy = TThreadingPolicy;
+};
+
 /*
  * Macro to define the character types used for testing.
  * This is used to create a list of character types for template specialization.
@@ -29,36 +40,38 @@
  */
 #ifdef SLIMLOG_CHAR8_T
 #define TEST_CHAR8_T , char8_t
-#define TEST_LOGGER_CHAR8_T                                                                        \
-    , Logger<char8_t, SingleThreadedPolicy>, Logger<char8_t, MultiThreadedPolicy>
+#define TEST_CHAR8_T_THREADING                                                                     \
+    , CharThreading<char8_t, SingleThreadedPolicy>, CharThreading<char8_t, MultiThreadedPolicy>
 #else
 #define TEST_CHAR8_T
-#define TEST_LOGGER_CHAR8_T
+#define TEST_CHAR8_T_THREADING
 #endif
 #ifdef SLIMLOG_CHAR16_T
 #define TEST_CHAR16_T , char16_t
-#define TEST_LOGGER_CHAR16_T                                                                       \
-    , Logger<char16_t, SingleThreadedPolicy>, Logger<char16_t, MultiThreadedPolicy>
+#define TEST_CHAR16_T_THREADING                                                                    \
+    , CharThreading<char16_t, SingleThreadedPolicy>, CharThreading<char16_t, MultiThreadedPolicy>
 #else
 #define TEST_CHAR16_T
-#define TEST_LOGGER_CHAR16_T
+#define TEST_CHAR16_T_THREADING
 #endif
 #ifdef SLIMLOG_CHAR32_T
 #define TEST_CHAR32_T , char32_t
-#define TEST_LOGGER_CHAR32_T                                                                       \
-    , Logger<char32_t, SingleThreadedPolicy>, Logger<char32_t, MultiThreadedPolicy>
+#define TEST_CHAR32_T_THREADING                                                                    \
+    , CharThreading<char32_t, SingleThreadedPolicy>, CharThreading<char32_t, MultiThreadedPolicy>
 #else
 #define TEST_CHAR32_T
-#define TEST_LOGGER_CHAR32_T
+#define TEST_CHAR32_T_THREADING
 #endif
 
 // clang-format off
-#define SLIMLOG_CHAR_TYPES   char, wchar_t TEST_CHAR8_T TEST_CHAR16_T TEST_CHAR32_T
-#define SLIMLOG_LOGGER_TYPES Logger<char, SingleThreadedPolicy>, \
-                             Logger<char, MultiThreadedPolicy>,\
-                             Logger<wchar_t, SingleThreadedPolicy>, \
-                             Logger<wchar_t, MultiThreadedPolicy> \
-                             TEST_LOGGER_CHAR8_T TEST_LOGGER_CHAR16_T TEST_LOGGER_CHAR32_T
+#define SLIMLOG_CHAR_TYPES char, wchar_t TEST_CHAR8_T TEST_CHAR16_T TEST_CHAR32_T
+#define SLIMLOG_CHAR_THREADING_TYPES CharThreading<char, SingleThreadedPolicy>, \
+                                     CharThreading<char, MultiThreadedPolicy>, \
+                                     CharThreading<wchar_t, SingleThreadedPolicy>, \
+                                     CharThreading<wchar_t, MultiThreadedPolicy> \
+                                     TEST_CHAR8_T_THREADING \
+                                     TEST_CHAR16_T_THREADING \
+                                     TEST_CHAR32_T_THREADING
 // clang-format on
 
 /**

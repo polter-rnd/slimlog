@@ -9,6 +9,7 @@
 #include <mettle.hpp>
 
 #include <string>
+#include <string_view>
 
 // IWYU pragma: no_include <memory>
 // IWYU pragma: no_include <sstream>
@@ -20,10 +21,11 @@ namespace {
 using namespace mettle;
 using namespace SlimLog;
 
-const suite<SLIMLOG_LOGGER_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
-    using LoggerType = mettle::fixture_type_t<decltype(_)>;
-    using StringView = LoggerType::StringViewType;
-    using Char = StringView::value_type;
+const suite<SLIMLOG_CHAR_THREADING_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
+    using Char = typename mettle::fixture_type_t<decltype(_)>::Char;
+    using ThreadingPolicy = typename mettle::fixture_type_t<decltype(_)>::ThreadingPolicy;
+    using LoggerType = Logger<Char, ThreadingPolicy>;
+    using StringView = std::basic_string_view<Char>;
 
     // Test dynamic parent changes
     _.test("parent_changes", []() {

@@ -12,8 +12,9 @@
 
 namespace SlimLog {
 
-template<typename Char, std::size_t BufferSize, typename Allocator>
-auto OStreamSink<Char, BufferSize, Allocator>::message(const RecordType& record) -> void
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto OStreamSink<Char, ThreadingPolicy, BufferSize, Allocator>::message(const RecordType& record)
+    -> void
 {
     FormatBufferType buffer;
     this->format(buffer, record);
@@ -21,8 +22,8 @@ auto OStreamSink<Char, BufferSize, Allocator>::message(const RecordType& record)
     m_ostream.write(buffer.begin(), buffer.size());
 }
 
-template<typename Char, std::size_t BufferSize, typename Allocator>
-auto OStreamSink<Char, BufferSize, Allocator>::flush() -> void
+template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
+auto OStreamSink<Char, ThreadingPolicy, BufferSize, Allocator>::flush() -> void
 {
     m_ostream.flush();
 }

@@ -42,10 +42,11 @@ namespace {
 using namespace mettle;
 using namespace SlimLog;
 
-const suite<SLIMLOG_LOGGER_TYPES> Basic("basic", type_only, [](auto& _) {
-    using LoggerType = mettle::fixture_type_t<decltype(_)>;
-    using StringView = LoggerType::StringViewType;
-    using Char = StringView::value_type;
+const suite<SLIMLOG_CHAR_THREADING_TYPES> Basic("basic", type_only, [](auto& _) {
+    using Char = typename mettle::fixture_type_t<decltype(_)>::Char;
+    using ThreadingPolicy = typename mettle::fixture_type_t<decltype(_)>::ThreadingPolicy;
+    using LoggerType = Logger<Char, ThreadingPolicy>;
+    using StringView = std::basic_string_view<Char>;
 
     static auto log_filename = get_log_filename<Char>("basic");
     std::filesystem::remove(log_filename);
@@ -361,7 +362,7 @@ const suite<SLIMLOG_LOGGER_TYPES> Basic("basic", type_only, [](auto& _) {
                                              "<{time:%Y/%d/%m %T} {msec}ms={usec}us={nsec}ns> "
                                              "#{thread} {function} {file}|{line}: {message}");
 
-        auto file_sink = std::static_pointer_cast<FormattableSink<Char>>(
+        auto file_sink = std::static_pointer_cast<FormattableSink<Char, ThreadingPolicy>>(
             log->template add_sink<FileSink>(cap_file.path().string()));
         file_sink->set_pattern(pattern);
         file_sink->set_time_func(time_mock);
