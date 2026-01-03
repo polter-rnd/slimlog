@@ -580,7 +580,7 @@ public:
      *
      * @return Pointer to the parent sink.
      */
-    auto SLIMLOG_EXPORT parent() -> std::shared_ptr<Logger>;
+    [[nodiscard]] auto SLIMLOG_EXPORT parent() -> std::shared_ptr<Logger>;
 
     /**
      * @brief Sets the parent sink object.

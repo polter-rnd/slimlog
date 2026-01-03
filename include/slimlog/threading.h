@@ -87,7 +87,7 @@ public:
      *
      * @return The stored value.
      */
-    explicit operator T() const noexcept
+    [[nodiscard]] explicit operator T() const noexcept
     {
         return m_value;
     }
@@ -133,7 +133,7 @@ public:
      *
      * @return The stored value.
      */
-    explicit operator T() const noexcept
+    [[nodiscard]] explicit operator T() const noexcept
     {
         return m_value.load(std::memory_order_relaxed);
     }
