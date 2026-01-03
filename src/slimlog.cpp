@@ -44,7 +44,9 @@ template class SLIMLOG_EXPORT_CLASS OStreamSink<char, MultiThreadedPolicy>;
 template class CallbackSink<char>;
 template class NullSink<char>;
 template class Pattern<char>;
-template SLIMLOG_EXPORT void Pattern<char>::format(
+template SLIMLOG_EXPORT void Pattern<char>::format<SingleThreadedPolicy>(
+    FormatBuffer<char, DefaultSinkBufferSize>&, const Record<char>&);
+template SLIMLOG_EXPORT void Pattern<char>::format<MultiThreadedPolicy>(
     FormatBuffer<char, DefaultSinkBufferSize>&, const Record<char>&);
 template class CachedFormatter<std::size_t, char>;
 template class CachedFormatter<std::chrono::sys_seconds, char>;
@@ -65,7 +67,9 @@ template class SLIMLOG_EXPORT_CLASS OStreamSink<wchar_t, MultiThreadedPolicy>;
 template class CallbackSink<wchar_t>;
 template class NullSink<wchar_t>;
 template class Pattern<wchar_t>;
-template SLIMLOG_EXPORT void Pattern<wchar_t>::format(
+template SLIMLOG_EXPORT void Pattern<wchar_t>::format<SingleThreadedPolicy>(
+    FormatBuffer<wchar_t, DefaultSinkBufferSize>&, const Record<wchar_t>&);
+template SLIMLOG_EXPORT void Pattern<wchar_t>::format<MultiThreadedPolicy>(
     FormatBuffer<wchar_t, DefaultSinkBufferSize>&, const Record<wchar_t>&);
 template class CachedFormatter<std::size_t, wchar_t>;
 template class CachedFormatter<std::chrono::sys_seconds, wchar_t>;
@@ -87,7 +91,9 @@ template class SLIMLOG_EXPORT_CLASS OStreamSink<char8_t, MultiThreadedPolicy>;
 template class CallbackSink<char8_t>;
 template class NullSink<char8_t>;
 template class Pattern<char8_t>;
-template SLIMLOG_EXPORT void Pattern<char8_t>::format(
+template SLIMLOG_EXPORT void Pattern<char8_t>::format<SingleThreadedPolicy>(
+    FormatBuffer<char8_t, DefaultBufferSize>&, const Record<char8_t>&);
+template SLIMLOG_EXPORT void Pattern<char8_t>::format<MultiThreadedPolicy>(
     FormatBuffer<char8_t, DefaultBufferSize>&, const Record<char8_t>&);
 template class CachedFormatter<std::size_t, char8_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char8_t>;
@@ -106,7 +112,9 @@ template class SLIMLOG_EXPORT_CLASS OStreamSink<char16_t, MultiThreadedPolicy>;
 template class CallbackSink<char16_t>;
 template class NullSink<char16_t>;
 template class Pattern<char16_t>;
-template SLIMLOG_EXPORT void Pattern<char16_t>::format(
+template SLIMLOG_EXPORT void Pattern<char16_t>::format<SingleThreadedPolicy>(
+    FormatBuffer<char16_t, DefaultBufferSize>&, const Record<char16_t>&);
+template SLIMLOG_EXPORT void Pattern<char16_t>::format<MultiThreadedPolicy>(
     FormatBuffer<char16_t, DefaultBufferSize>&, const Record<char16_t>&);
 template class CachedFormatter<std::size_t, char16_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char16_t>;
@@ -125,7 +133,9 @@ template class SLIMLOG_EXPORT_CLASS OStreamSink<char32_t, MultiThreadedPolicy>;
 template class CallbackSink<char32_t>;
 template class NullSink<char32_t>;
 template class Pattern<char32_t>;
-template SLIMLOG_EXPORT void Pattern<char32_t>::format(
+template SLIMLOG_EXPORT void Pattern<char32_t>::format<SingleThreadedPolicy>(
+    FormatBuffer<char32_t, DefaultBufferSize>&, const Record<char32_t>&);
+template SLIMLOG_EXPORT void Pattern<char32_t>::format<MultiThreadedPolicy>(
     FormatBuffer<char32_t, DefaultBufferSize>&, const Record<char32_t>&);
 template class CachedFormatter<std::size_t, char32_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char32_t>;

@@ -33,7 +33,7 @@ auto FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::format(
     FormatBufferType& result, const RecordType& record) -> void
 {
     const typename ThreadingPolicy::ReadLock lock(m_mutex);
-    m_pattern.format(result, record);
+    m_pattern.template format<ThreadingPolicy>(result, record);
 }
 
 } // namespace SlimLog

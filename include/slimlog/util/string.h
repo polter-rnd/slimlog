@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include "slimlog/threading.h"
 #include "slimlog/util/unicode.h"
 
 #include <atomic>
@@ -13,6 +14,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace SlimLog {
@@ -99,26 +101,37 @@ public:
     /**
      * @brief Calculate the number of Unicode code points.
      *
+     * @tparam ThreadingPolicy Threading policy for codepoint caching.
      * @return Number of code points.
      */
+    template<typename ThreadingPolicy = SingleThreadedPolicy>
     auto codepoints() const noexcept -> std::size_t
     {
         std::size_t* codepoints_ptr
             = m_codepoints_external != nullptr ? m_codepoints_external : &m_codepoints_local;
-        if (auto expected = BaseType::npos; *codepoints_ptr == expected) {
-            // Thread-safe lazy initialization using std::atomic_ref
-            // in case of possible concurrent access from multiple sinks
-            const auto calculated = Util::Unicode::count_codepoints(this->data(), this->size());
+
+        if constexpr (std::is_same_v<ThreadingPolicy, MultiThreadedPolicy>) {
+            // Multi-threaded: use atomic operations for thread-safe access
 #ifdef __cpp_lib_atomic_ref
             const std::atomic_ref atomic_codepoints{*codepoints_ptr};
 #else
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
             auto& atomic_codepoints = *reinterpret_cast<std::atomic<std::size_t>*>(codepoints_ptr);
 #endif
-            atomic_codepoints.compare_exchange_strong(
-                expected, calculated, std::memory_order_relaxed);
+            auto current = atomic_codepoints.load(std::memory_order_relaxed);
+            if (current == BaseType::npos) {
+                const auto calculated = Util::Unicode::count_codepoints(this->data(), this->size());
+                atomic_codepoints.store(calculated, std::memory_order_relaxed);
+                current = calculated;
+            }
+            return current;
+        } else {
+            // Single-threaded: use simple non-atomic access
+            if (*codepoints_ptr == BaseType::npos) {
+                *codepoints_ptr = Util::Unicode::count_codepoints(this->data(), this->size());
+            }
+            return *codepoints_ptr;
         }
-        return *codepoints_ptr;
     }
 
 private:
@@ -380,13 +393,15 @@ public:
      *
      * Uses the same thread-safe lazy initialization as CachedStringView.
      *
+     * @tparam ThreadingPolicy Threading policy for codepoint caching.
      * @return Number of code points.
      */
+    template<typename ThreadingPolicy = SingleThreadedPolicy>
     auto codepoints() const noexcept -> std::size_t
     {
         if (m_codepoints == BaseType::npos) {
             const CachedStringView<T, Traits> view(*this);
-            m_codepoints = view.codepoints();
+            m_codepoints = view.template codepoints<ThreadingPolicy>();
         }
         return m_codepoints;
     }

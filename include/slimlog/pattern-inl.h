@@ -73,7 +73,7 @@ template<typename Char>
 }
 
 template<typename Char>
-template<typename BufferType>
+template<typename ThreadingPolicy, typename BufferType>
 auto Pattern<Char>::format(BufferType& out, const Record<Char>& record) -> void
 {
     std::pair<std::chrono::sys_seconds, std::size_t> time_point;
@@ -86,7 +86,7 @@ auto Pattern<Char>::format(BufferType& out, const Record<Char>& record) -> void
             Util::Types::Overloaded{
                 [&out](const StringViewType& text) { out.append(text); },
                 [&out, &record, this](const LevelFormatter& formatter) {
-                    formatter.format(out, m_levels.get(record.level));
+                    formatter.template format<ThreadingPolicy>(out, m_levels.get(record.level));
                 },
                 [&out, &time_point](const TimeFormatter& formatter) {
                     formatter.format(out, time_point.first);
@@ -105,7 +105,14 @@ auto Pattern<Char>::format(BufferType& out, const Record<Char>& record) -> void
                 [&out](const ThreadFormatter& formatter) {
                     formatter.format(out, Util::OS::thread_id());
                 },
-                [&out, &record](const auto& formatter) { formatter.format(out, record); }},
+                [&out, &record](const auto& formatter) {
+                    using FormatterType = std::decay_t<decltype(formatter)>;
+                    if constexpr (std::is_base_of_v<StringFormatter, FormatterType>) {
+                        formatter.template format<ThreadingPolicy>(out, record);
+                    } else {
+                        formatter.format(out, record);
+                    }
+                }},
             item);
     }
 }
@@ -339,7 +346,7 @@ constexpr auto Pattern<Char>::StringFormatter::parse_align(
 }
 
 template<typename Char>
-template<typename BufferType, typename T>
+template<typename ThreadingPolicy, typename BufferType, typename T>
 constexpr void Pattern<Char>::StringFormatter::write_string(
     BufferType& dst, const CachedStringView<T>& src) const
 {
@@ -348,8 +355,9 @@ constexpr void Pattern<Char>::StringFormatter::write_string(
         // - UTF-8 (1 byte): same size as source (byte-for-byte copy)
         // - UTF-16 (2 bytes): double codepoints (potential surrogate pairs)
         // - UTF-32 (4 bytes): same as codepoints (one-to-one mapping)
-        const auto dest_size
-            = sizeof(Char) == 1 ? src.size() : src.codepoints() * (sizeof(Char) == 2 ? 2 : 1);
+        const auto dest_size = sizeof(Char) == 1
+            ? src.size()
+            : src.template codepoints<ThreadingPolicy>() * (sizeof(Char) == 2 ? 2 : 1);
         if (dest_size == 0) {
             return;
         }
@@ -363,12 +371,12 @@ constexpr void Pattern<Char>::StringFormatter::write_string(
 }
 
 template<typename Char>
-template<typename BufferType, typename T>
+template<typename ThreadingPolicy, typename BufferType, typename T>
 constexpr void Pattern<Char>::StringFormatter::write_string_padded(
     BufferType& dst, const CachedStringView<T>& src) const
 {
     const auto spec_width = Util::Types::to_unsigned(m_specs.width);
-    const auto codepoints = src.codepoints();
+    const auto codepoints = src.template codepoints<ThreadingPolicy>();
     const auto padding = spec_width > codepoints ? spec_width - codepoints : 0;
 
     // Shifts are encoded as string literals because
@@ -423,7 +431,7 @@ constexpr void Pattern<Char>::StringFormatter::write_string_padded(
     }
 
     // Fill data
-    write_string(dst, src);
+    write_string<ThreadingPolicy>(dst, src);
 
     // Fill right padding
     if (right_padding > 0) {

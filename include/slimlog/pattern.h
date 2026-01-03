@@ -7,6 +7,7 @@
 
 #include "slimlog/common.h"
 #include "slimlog/format.h"
+#include "slimlog/threading.h"
 #include "slimlog/util/os.h"
 #include "slimlog/util/string.h"
 
@@ -97,11 +98,12 @@ public:
      *
      * This function formats a log message based on the specified pattern.
      *
+     * @tparam ThreadingPolicy Threading policy for codepoint caching.
      * @tparam BufferType Buffer type for the format output.
      * @param out Buffer storing the raw message to be overwritten with the result.
      * @param record Log record.
      */
-    template<typename BufferType>
+    template<typename ThreadingPolicy = SingleThreadedPolicy, typename BufferType>
     SLIMLOG_EXPORT auto format(BufferType& out, const Record<Char>& record) -> void;
 
     /**
@@ -234,18 +236,19 @@ protected:
 
         /**
          * @brief Formats string data into the output buffer.
+         * @tparam ThreadingPolicy Threading policy for codepoint caching.
          * @tparam BufferType Type of the output buffer.
          * @tparam T Character type of the data string.
          * @param out Output buffer where formatted data will be written.
          * @param data Source string to format.
          */
-        template<typename BufferType, typename T>
+        template<typename ThreadingPolicy, typename BufferType, typename T>
         constexpr void format(BufferType& out, const CachedStringView<T>& data) const
         {
             if (m_has_padding) [[unlikely]] {
-                write_string_padded(out, data);
+                write_string_padded<ThreadingPolicy, BufferType>(out, data);
             } else {
-                write_string(out, data);
+                write_string<ThreadingPolicy, BufferType>(out, data);
             }
         }
 
@@ -280,11 +283,13 @@ protected:
         /**
          * @brief Writes the source string to the destination buffer.
          *
+         * @tparam ThreadingPolicy Threading policy for codepoint caching.
+         * @tparam BufferType Type of the destination buffer.
          * @tparam T Character type of the source string view.
          * @param dst Destination buffer where the string will be written.
          * @param src Source string view to be written.
          */
-        template<typename BufferType, typename T>
+        template<typename ThreadingPolicy, typename BufferType, typename T>
         constexpr void write_string(BufferType& dst, const CachedStringView<T>& src) const;
 
         /**
@@ -293,11 +298,13 @@ protected:
          * This function writes the source string to the destination buffer, applying the
          * specified alignment and fill character.
          *
+         * @tparam ThreadingPolicy Threading policy for codepoint caching.
+         * @tparam BufferType Type of the destination buffer.
          * @tparam T Character type of the source string view.
          * @param dst Destination buffer where the string will be written.
          * @param src Source string view to be written.
          */
-        template<typename BufferType, typename T>
+        template<typename ThreadingPolicy, typename BufferType, typename T>
         constexpr void write_string_padded(BufferType& dst, const CachedStringView<T>& src) const;
 
     private:
@@ -315,14 +322,15 @@ protected:
         /**
          * @brief Formats the category field into the output buffer.
          *
+         * @tparam ThreadingPolicy Threading policy for codepoint caching.
          * @tparam BufferType Type of the output buffer.
          * @param out Output buffer where the category will be written.
          * @param record Log record containing the category.
          */
-        template<typename BufferType>
+        template<typename ThreadingPolicy, typename BufferType>
         auto format(BufferType& out, const Record<Char>& record) const -> void
         {
-            StringFormatter::format(out, record.category);
+            StringFormatter::template format<ThreadingPolicy>(out, record.category);
         }
     };
 
@@ -344,14 +352,15 @@ protected:
         /**
          * @brief Formats the filename field into the output buffer.
          *
+         * @tparam ThreadingPolicy Threading policy for codepoint caching.
          * @tparam BufferType Type of the output buffer.
          * @param out Output buffer where the filename will be written.
          * @param record Log record containing the filename.
          */
-        template<typename BufferType>
+        template<typename ThreadingPolicy, typename BufferType>
         auto format(BufferType& out, const Record<Char>& record) const -> void
         {
-            StringFormatter::format(out, record.filename);
+            StringFormatter::template format<ThreadingPolicy>(out, record.filename);
         }
     };
 
@@ -365,14 +374,15 @@ protected:
         /**
          * @brief Formats the function name field into the output buffer.
          *
+         * @tparam ThreadingPolicy Threading policy for codepoint caching.
          * @tparam BufferType Type of the output buffer.
          * @param out Output buffer where the function name will be written.
          * @param record Log record containing the function name.
          */
-        template<typename BufferType>
+        template<typename ThreadingPolicy, typename BufferType>
         auto format(BufferType& out, const Record<Char>& record) const -> void
         {
-            StringFormatter::format(out, record.function);
+            StringFormatter::template format<ThreadingPolicy>(out, record.function);
         }
     };
 
@@ -386,14 +396,15 @@ protected:
         /**
          * @brief Formats the message field into the output buffer.
          *
+         * @tparam ThreadingPolicy Threading policy for codepoint caching.
          * @tparam BufferType Type of the output buffer.
          * @param out Output buffer where the message will be written.
          * @param record Log record containing the message.
          */
-        template<typename BufferType>
+        template<typename ThreadingPolicy, typename BufferType>
         auto format(BufferType& out, const Record<Char>& record) const -> void
         {
-            StringFormatter::format(out, record.message);
+            StringFormatter::template format<ThreadingPolicy>(out, record.message);
         }
     };
 
