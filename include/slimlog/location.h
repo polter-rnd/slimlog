@@ -8,8 +8,9 @@
 namespace SlimLog {
 
 /** @cond */
-// MSVC doesn't have __has_builtin, source_location supported from MSVC 16.6 (MSVC-PR-229114)
-#if (!defined(__has_builtin) and !defined(_MSC_VER)) or (defined(_MSC_VER) and _MSC_VER < 1926)
+// MSVC supports source_location starting from version 16.6 (MSVC-PR-229114)
+#if (!defined(__GNUC__) && !defined(__clang__) && !defined(_MSC_VER))                              \
+    or (defined(_MSC_VER) and _MSC_VER < 1926)
 #define SLIMLOG_SOURCE_FILE "unknown"
 #define SLIMLOG_SOURCE_FUNCTION "unknown"
 #define SLIMLOG_SOURCE_LINE 0
