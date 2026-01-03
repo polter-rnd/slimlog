@@ -74,7 +74,7 @@ public:
  * Allocates another buffer for message formatting.
  *
  * @tparam Char Character type for the string.
- * @tparam ThreadingPolicy Threading policy for sink synchronization.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
  * @tparam BufferSize Size of the internal pre-allocated buffer.
  * @tparam Allocator Allocator type for the internal buffer.
  */
@@ -152,8 +152,8 @@ public:
      *
      * // With variadic arguments:
      * sink->set_levels(
-     *     std::make_pair(Log::Level::Info, from_utf8<Char>("CUSTOM_INFO")),
-     *     std::make_pair(Log::Level::Debug, from_utf8<Char>("CUSTOM_DEBUG"))
+     *     std::make_pair(Log::Level::Info, "CUSTOM_INFO"),
+     *     std::make_pair(Log::Level::Debug, "CUSTOM_DEBUG")
      * );
      * ```
      *

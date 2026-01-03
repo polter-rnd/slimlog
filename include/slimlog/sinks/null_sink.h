@@ -16,7 +16,6 @@ namespace SlimLog {
  *
  * This sink performs no action and is intended for use in performance tests.
  *
- * @tparam String String type for log messages.
  * @tparam Char Character type for the string.
  */
 template<typename Char>

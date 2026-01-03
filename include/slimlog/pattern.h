@@ -156,8 +156,8 @@ public:
      * Usage example:
      * ```cpp
      * pattern.set_levels(
-     *     std::make_pair(Level::Info, from_utf8<Char>("CUSTOM_INFO")),
-     *     std::make_pair(Level::Debug, from_utf8<Char>("CUSTOM_DEBUG"))
+     *     std::make_pair(Level::Info, "CUSTOM_INFO"),
+     *     std::make_pair(Level::Debug, "CUSTOM_DEBUG")
      * );
      * ```
      *
