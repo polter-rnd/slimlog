@@ -57,6 +57,125 @@ public:
     using TimeFunctionType = std::pair<std::chrono::sys_seconds, std::size_t> (*)();
 
     /**
+     * @brief Constructs a new Pattern object.
+     *
+     * Initializes with a pattern string and optional log level pairs.
+     *
+     * Usage example:
+     * ```cpp
+     * Log::Pattern<char> pattern(
+     *       "({category}) [{level}] {file}|{line}: {message}",
+     *       std::make_pair(Log::Level::Trace, "Trace"),
+     *       std::make_pair(Log::Level::Debug, "Debug"),
+     *       std::make_pair(Log::Level::Info, "Info"),
+     *       std::make_pair(Log::Level::Warning, "Warn"),
+     *       std::make_pair(Log::Level::Error, "Error"),
+     *       std::make_pair(Log::Level::Fatal, "Fatal"));
+     * ```
+     *
+     * @tparam Args Argument types for log level pairs.
+     * @param pattern Pattern string.
+     * @param args Log level and name pairs.
+     */
+    template<typename... Args>
+    explicit Pattern(StringViewType pattern = {}, Args&&... args)
+    {
+        set_levels(std::forward<Args>(args)...);
+        compile(pattern);
+    }
+
+    /**
+     * @brief Checks if the pattern is empty.
+     *
+     * @return \b true if the pattern is an empty string.
+     * @return \b false if the pattern is not an empty string.
+     */
+    [[nodiscard]] SLIMLOG_EXPORT auto empty() const -> bool;
+
+    /**
+     * @brief Formats a message according to the pattern.
+     *
+     * This function formats a log message based on the specified pattern.
+     *
+     * @tparam BufferType Buffer type for the format output.
+     * @param out Buffer storing the raw message to be overwritten with the result.
+     * @param record Log record.
+     */
+    template<typename BufferType>
+    SLIMLOG_EXPORT auto format(BufferType& out, const Record<Char>& record) -> void;
+
+    /**
+     * @brief Sets the time function used for log timestamps.
+     *
+     * @param time_func Time function to be set for this pattern.
+     */
+    SLIMLOG_EXPORT auto set_time_func(TimeFunctionType time_func) -> void;
+
+    /**
+     * @brief Sets the message pattern.
+     *
+     * This function sets the pattern used for formatting log messages.
+     *
+     * Usage example:
+     * ```cpp
+     * Log::Logger log("test", Log::Level::Info);
+     * log.add_sink<Log::OStreamSink>(std::cerr)->set_pattern("(%t) [%l] %F|%L: %m");
+     * ```
+     *
+     * @param pattern Message pattern.
+     */
+    SLIMLOG_EXPORT auto set_pattern(StringViewType pattern) -> void;
+
+    /**
+     * @brief Sets the log level names with containers.
+     *
+     * Usage example:
+     * ```cpp
+     * std::vector<std::pair<Level, std::string_view>> levels = {{Level::Info, "INFO"}};
+     * pattern.set_levels(levels);
+     * ```
+     *
+     * @tparam Container Type of container holding level-name pairs.
+     * @param container Container of level-name pairs.
+     */
+    template<typename Container>
+        requires(!Detail::IsPair<std::remove_cvref_t<Container>>)
+    auto set_levels(Container&& container) -> void
+    {
+        for (const auto& pair : std::forward<Container>(container)) {
+            m_levels.set(pair.first, StringViewType{pair.second});
+        }
+    }
+
+    /**
+     * @brief Sets the log level names with variadic arguments.
+     * @overload
+     *
+     * Usage example:
+     * ```cpp
+     * pattern.set_levels(
+     *     std::make_pair(Level::Info, from_utf8<Char>("CUSTOM_INFO")),
+     *     std::make_pair(Level::Debug, from_utf8<Char>("CUSTOM_DEBUG"))
+     * );
+     * ```
+     *
+     * @tparam Pairs Types of level-name pairs.
+     * @param pairs Variadic list of level-name pairs.
+     */
+    template<typename... Pairs>
+        requires(Detail::IsPair<std::remove_cvref_t<Pairs>> && ...)
+    auto set_levels(Pairs&&... pairs) -> void
+    {
+        (
+            [&]() {
+                auto&& pair = std::forward<Pairs>(pairs);
+                m_levels.set(pair.first, StringViewType{pair.second});
+            }(),
+            ...);
+    }
+
+protected:
+    /**
      * @brief Structure for managing log level names.
      */
     struct Levels {
@@ -374,125 +493,6 @@ public:
         UsecFormatter,
         NsecFormatter>;
 
-    /**
-     * @brief Constructs a new Pattern object.
-     *
-     * Initializes with a pattern string and optional log level pairs.
-     *
-     * Usage example:
-     * ```cpp
-     * Log::Pattern<char> pattern(
-     *       "({category}) [{level}] {file}|{line}: {message}",
-     *       std::make_pair(Log::Level::Trace, "Trace"),
-     *       std::make_pair(Log::Level::Debug, "Debug"),
-     *       std::make_pair(Log::Level::Info, "Info"),
-     *       std::make_pair(Log::Level::Warning, "Warn"),
-     *       std::make_pair(Log::Level::Error, "Error"),
-     *       std::make_pair(Log::Level::Fatal, "Fatal"));
-     * ```
-     *
-     * @tparam Args Argument types for log level pairs.
-     * @param pattern Pattern string.
-     * @param args Log level and name pairs.
-     */
-    template<typename... Args>
-    explicit Pattern(StringViewType pattern = {}, Args&&... args)
-    {
-        set_levels(std::forward<Args>(args)...);
-        compile(pattern);
-    }
-
-    /**
-     * @brief Checks if the pattern is empty.
-     *
-     * @return \b true if the pattern is an empty string.
-     * @return \b false if the pattern is not an empty string.
-     */
-    [[nodiscard]] SLIMLOG_EXPORT auto empty() const -> bool;
-
-    /**
-     * @brief Formats a message according to the pattern.
-     *
-     * This function formats a log message based on the specified pattern.
-     *
-     * @tparam BufferType Buffer type for the format output.
-     * @param out Buffer storing the raw message to be overwritten with the result.
-     * @param record Log record.
-     */
-    template<typename BufferType>
-    SLIMLOG_EXPORT auto format(BufferType& out, const Record<Char>& record) -> void;
-
-    /**
-     * @brief Sets the time function used for log timestamps.
-     *
-     * @param time_func Time function to be set for this pattern.
-     */
-    SLIMLOG_EXPORT auto set_time_func(TimeFunctionType time_func) -> void;
-
-    /**
-     * @brief Sets the message pattern.
-     *
-     * This function sets the pattern used for formatting log messages.
-     *
-     * Usage example:
-     * ```cpp
-     * Log::Logger log("test", Log::Level::Info);
-     * log.add_sink<Log::OStreamSink>(std::cerr)->set_pattern("(%t) [%l] %F|%L: %m");
-     * ```
-     *
-     * @param pattern Message pattern.
-     */
-    SLIMLOG_EXPORT auto set_pattern(StringViewType pattern) -> void;
-
-    /**
-     * @brief Sets the log level names with containers.
-     *
-     * Usage example:
-     * ```cpp
-     * std::vector<std::pair<Level, std::string_view>> levels = {{Level::Info, "INFO"}};
-     * pattern.set_levels(levels);
-     * ```
-     *
-     * @tparam Container Type of container holding level-name pairs.
-     * @param container Container of level-name pairs.
-     */
-    template<typename Container>
-        requires(!Detail::IsPair<std::remove_cvref_t<Container>>)
-    auto set_levels(Container&& container) -> void
-    {
-        for (const auto& pair : std::forward<Container>(container)) {
-            m_levels.set(pair.first, StringViewType{pair.second});
-        }
-    }
-
-    /**
-     * @brief Sets the log level names with variadic arguments.
-     * @overload
-     *
-     * Usage example:
-     * ```cpp
-     * pattern.set_levels(
-     *     std::make_pair(Level::Info, from_utf8<Char>("CUSTOM_INFO")),
-     *     std::make_pair(Level::Debug, from_utf8<Char>("CUSTOM_DEBUG"))
-     * );
-     * ```
-     *
-     * @tparam Pairs Types of level-name pairs.
-     * @param pairs Variadic list of level-name pairs.
-     */
-    template<typename... Pairs>
-        requires(Detail::IsPair<std::remove_cvref_t<Pairs>> && ...)
-    auto set_levels(Pairs&&... pairs) -> void
-    {
-        (
-            [&]() {
-                auto&& pair = std::forward<Pairs>(pairs);
-                m_levels.set(pair.first, StringViewType{pair.second});
-            }(),
-            ...);
-    }
-
-protected:
     /**
      * @brief Compiles the pattern string into a fast-lookup representation.
      *
