@@ -107,14 +107,31 @@ public:
     template<typename ThreadingPolicy = SingleThreadedPolicy>
     auto codepoints() const noexcept -> std::size_t
     {
-        std::size_t* codepoints_ptr
-            = m_codepoints_external != nullptr ? m_codepoints_external : &m_codepoints_local;
+        return codepoints<ThreadingPolicy>(
+            m_codepoints_external != nullptr ? m_codepoints_external : &m_codepoints_local,
+            this->data(),
+            this->size());
+    }
 
+protected:
+    /**
+     * @brief Calculate and cache the number of Unicode code points with specified storage.
+     *
+     * @tparam ThreadingPolicy Threading policy for codepoint caching.
+     * @param codepoints_ptr Pointer to the cached codepoints storage.
+     * @param data Pointer to string data.
+     * @param size Size of string in characters.
+     * @return Number of code points.
+     */
+    template<typename ThreadingPolicy>
+    static auto codepoints(std::size_t* codepoints_ptr, const T* data, std::size_t size) noexcept
+        -> std::size_t
+    {
         if constexpr (std::is_same_v<ThreadingPolicy, MultiThreadedPolicy>) {
             // Multi-threaded: use atomic operations for thread-safe access
             auto current = Util::OS::atomic_load_relaxed(codepoints_ptr);
             if (current == BaseType::npos) {
-                const auto calculated = Util::Unicode::count_codepoints(this->data(), this->size());
+                const auto calculated = Util::Unicode::count_codepoints(data, size);
                 Util::OS::atomic_store_relaxed(codepoints_ptr, calculated);
                 current = calculated;
             }
@@ -122,7 +139,7 @@ public:
         } else {
             // Single-threaded: use simple non-atomic access
             if (*codepoints_ptr == BaseType::npos) {
-                *codepoints_ptr = Util::Unicode::count_codepoints(this->data(), this->size());
+                *codepoints_ptr = Util::Unicode::count_codepoints(data, size);
             }
             return *codepoints_ptr;
         }
@@ -393,22 +410,8 @@ public:
     template<typename ThreadingPolicy = SingleThreadedPolicy>
     auto codepoints() const noexcept -> std::size_t
     {
-        if constexpr (std::is_same_v<ThreadingPolicy, MultiThreadedPolicy>) {
-            // Multi-threaded: use atomic operations for thread-safe access
-            auto current = Util::OS::atomic_load_relaxed(&m_codepoints);
-            if (current == BaseType::npos) {
-                const auto calculated = Util::Unicode::count_codepoints(this->data(), this->size());
-                Util::OS::atomic_store_relaxed(&m_codepoints, calculated);
-                current = calculated;
-            }
-            return current;
-        } else {
-            // Single-threaded: use simple non-atomic access
-            if (m_codepoints == BaseType::npos) {
-                m_codepoints = Util::Unicode::count_codepoints(this->data(), this->size());
-            }
-            return m_codepoints;
-        }
+        return CachedStringView<T, Traits>::template codepoints<ThreadingPolicy>(
+            &m_codepoints, this->data(), this->size());
     }
 
 private:
