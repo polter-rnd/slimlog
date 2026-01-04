@@ -167,7 +167,7 @@ public:
     template<typename... Pairs>
     auto set_levels(Pairs&&... pairs) -> void
     {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        const typename ThreadingPolicy::UniqueLock lock(m_mutex);
         m_pattern.set_levels(std::forward<Pairs>(pairs)...);
     }
 
@@ -182,7 +182,7 @@ protected:
 
 private:
     Pattern<Char> m_pattern;
-    mutable ThreadingPolicy::Mutex m_mutex;
+    mutable ThreadingPolicy::SharedMutex m_mutex;
 };
 
 /**

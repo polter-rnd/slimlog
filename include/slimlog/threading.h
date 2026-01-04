@@ -20,22 +20,26 @@ namespace SlimLog {
  */
 struct SingleThreadedPolicy final {
     /** @brief Dummy mutex (expands to nothing). */
-    struct Mutex {
-        /** @brief Lock method that does nothing. */
-        static void lock()
-        {
-        }
+    struct Mutex {};
 
-        /** @brief Unlock method that does nothing. */
-        static void unlock()
+    /** @brief Dummy shared mutex. */
+    using SharedMutex = Mutex;
+
+    /** @brief Dummy write lock. */
+    template<typename MutexType>
+    struct UniqueLock {
+        explicit UniqueLock(MutexType& /*unused*/)
         {
         }
     };
 
     /** @brief Dummy read lock. */
-    using ReadLock = std::unique_lock<Mutex>;
-    /** @brief Dummy write lock. */
-    using WriteLock = std::unique_lock<Mutex>;
+    template<typename MutexType>
+    struct SharedLock {
+        explicit SharedLock(MutexType& /*unused*/)
+        {
+        }
+    };
 };
 
 /**
@@ -45,11 +49,28 @@ struct SingleThreadedPolicy final {
  */
 struct MultiThreadedPolicy final {
     /** @brief Mutex type for synchronization. */
-    using Mutex = std::shared_mutex;
-    /** @brief Read lock type for shared access. */
-    using ReadLock = std::shared_lock<Mutex>;
-    /** @brief Write lock type for exclusive access. */
-    using WriteLock = std::unique_lock<Mutex>;
+    using Mutex = std::mutex;
+
+    /** @brief SharedMutex type for synchronization. */
+    using SharedMutex = std::shared_mutex;
+
+    /** @brief Write lock wrapper with CTAD support. */
+    template<typename MutexType>
+    struct UniqueLock : std::unique_lock<MutexType> {
+        explicit UniqueLock(MutexType& mutex)
+            : std::unique_lock<MutexType>(mutex)
+        {
+        }
+    };
+
+    /** @brief Read lock wrapper with CTAD support. */
+    template<typename MutexType>
+    struct SharedLock : std::shared_lock<MutexType> {
+        explicit SharedLock(MutexType& mutex)
+            : std::shared_lock<MutexType>(mutex)
+        {
+        }
+    };
 };
 
 /**

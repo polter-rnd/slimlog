@@ -112,7 +112,7 @@ auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::add_sink(
 {
     bool added = false;
     {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        const typename ThreadingPolicy::UniqueLock lock(m_mutex);
         added = m_sinks.insert_or_assign(sink, true).second;
     }
     if (added) {
@@ -128,7 +128,7 @@ auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::remove_sink(
 
     bool erased = false;
     {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        const typename ThreadingPolicy::UniqueLock lock(m_mutex);
         erased = m_sinks.erase(sink) > 0;
     }
     if (erased) {
@@ -143,7 +143,7 @@ auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::set_sink_enabled(
 {
     bool found = false;
     {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        const typename ThreadingPolicy::UniqueLock lock(m_mutex);
         if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
             if (itr->second == enabled) {
                 return true;
@@ -162,7 +162,7 @@ template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typena
 auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::sink_enabled(
     const std::shared_ptr<SinkType>& sink) const -> bool
 {
-    const typename ThreadingPolicy::ReadLock lock(m_mutex);
+    const typename ThreadingPolicy::SharedLock lock(m_mutex);
     if (const auto itr = m_sinks.find(sink); itr != m_sinks.end()) {
         return itr->second;
     }
@@ -210,7 +210,7 @@ template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typena
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::parent() -> std::shared_ptr<Logger>
 {
-    const typename ThreadingPolicy::ReadLock lock(m_mutex);
+    const typename ThreadingPolicy::SharedLock lock(m_mutex);
     return m_parent;
 }
 
@@ -220,11 +220,11 @@ auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::set_parent(
 {
     std::shared_ptr<Logger> old_parent;
     {
-        const typename ThreadingPolicy::ReadLock lock(m_mutex);
+        const typename ThreadingPolicy::SharedLock lock(m_mutex);
         old_parent = m_parent;
     }
     {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        const typename ThreadingPolicy::UniqueLock lock(m_mutex);
         m_parent = parent;
     }
 
@@ -243,7 +243,7 @@ template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typena
 auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::add_child(
     const std::shared_ptr<Logger>& child) -> void
 {
-    const typename ThreadingPolicy::WriteLock lock(m_mutex);
+    const typename ThreadingPolicy::UniqueLock lock(m_mutex);
     m_children.push_back(child);
 }
 
@@ -251,7 +251,7 @@ template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typena
 auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::remove_child(
     const std::shared_ptr<Logger>& child) -> void
 {
-    const typename ThreadingPolicy::WriteLock lock(m_mutex);
+    const typename ThreadingPolicy::UniqueLock lock(m_mutex);
     m_children.erase(
         std::remove_if(
             m_children.begin(),
@@ -277,21 +277,21 @@ auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sin
     // Snapshot parent
     std::shared_ptr<Logger> parent;
     {
-        const typename ThreadingPolicy::ReadLock lock(m_mutex);
+        const typename ThreadingPolicy::SharedLock lock(m_mutex);
         parent = m_parent;
     }
 
     // Snapshot propagated sinks
     std::vector<SinkType*> propagated_sinks;
     if (parent && m_propagate) {
-        const typename ThreadingPolicy::ReadLock lock(parent->m_mutex);
+        const typename ThreadingPolicy::SharedLock lock(parent->m_mutex);
         propagated_sinks = parent->m_propagated_sinks;
     }
 
     // Update the current node's propagated sinks, snapshot children
     std::vector<std::shared_ptr<Logger>> children;
     {
-        const typename ThreadingPolicy::WriteLock lock(m_mutex);
+        const typename ThreadingPolicy::UniqueLock lock(m_mutex);
         m_propagated_sinks = propagated_sinks;
         for (const auto& [sink, enabled] : m_sinks) {
             const auto it
