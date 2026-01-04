@@ -288,6 +288,78 @@ const suite<SLIMLOG_CHAR_THREADING_TYPES> Basic("basic", type_only, [](auto& _) 
         });
     });
 
+    // Test add_sink with various template arguments
+    _.test("add_sink", []() {
+        auto log = LoggerType::create();
+        StreamCapturer<Char> cap_out1;
+        StreamCapturer<Char> cap_out2;
+        StreamCapturer<Char> cap_out3;
+
+        const auto message = from_utf8<Char>("Test message");
+
+        // Test FormattableSink (OStreamSink) with default template arguments
+        auto sink1 = log->template add_sink<OStreamSink>(cap_out1);
+        log->info(message);
+        expect(cap_out1.read(), equal_to(message + Char{'\n'}));
+
+        // Test FormattableSink with explicit threading policy
+        auto sink2 = log->template add_sink<OStreamSink, SingleThreadedPolicy>(cap_out2);
+        log->info(message);
+        expect(cap_out2.read(), equal_to(message + Char{'\n'}));
+
+        // Test FormattableSink with explicit threading policy and buffer size
+        auto sink3
+            = log->template add_sink<OStreamSink, MultiThreadedPolicy, DefaultSinkBufferSize>(
+                cap_out3);
+        log->info(message);
+        expect(cap_out3.read(), equal_to(message + Char{'\n'}));
+
+        // Test FormattableSink with explicit allocator
+        StreamCapturer<Char> cap_out4;
+        auto sink4 = log->template add_sink<
+            OStreamSink,
+            SingleThreadedPolicy,
+            DefaultSinkBufferSize,
+            std::allocator<Char>>(cap_out4);
+        log->info(message);
+        expect(cap_out4.read(), equal_to(message + Char{'\n'}));
+
+        // Test CallbackSink with default threading policy
+        Level captured_level{Level::Trace};
+        std::basic_string<Char> captured_message;
+        auto callback = [&](Level level, const Location&, StringView msg) {
+            captured_level = level;
+            captured_message = msg;
+        };
+        auto sink5 = log->template add_sink<CallbackSink>(callback);
+        log->warning(message);
+        expect(captured_level, equal_to(Level::Warning));
+        expect(captured_message, equal_to(message));
+
+        // Test CallbackSink with explicit threading policy
+        auto sink6 = log->template add_sink<CallbackSink, SingleThreadedPolicy>(callback);
+        captured_level = Level::Trace;
+        captured_message.clear();
+        log->error(message);
+        expect(captured_level, equal_to(Level::Error));
+        expect(captured_message, equal_to(message));
+
+        // Test NullSink (1 template parameter)
+        auto sink7 = log->template add_sink<NullSink>();
+        expect(sink7, is_not(nullptr));
+        log->info(message);
+        sink7->flush();
+
+        // Clean up
+        expect(log->remove_sink(sink1), equal_to(true));
+        expect(log->remove_sink(sink2), equal_to(true));
+        expect(log->remove_sink(sink3), equal_to(true));
+        expect(log->remove_sink(sink4), equal_to(true));
+        expect(log->remove_sink(sink5), equal_to(true));
+        expect(log->remove_sink(sink6), equal_to(true));
+        expect(log->remove_sink(sink7), equal_to(true));
+    });
+
     _.test("null_sink", []() {
         auto log = LoggerType::create();
         auto null_sink = log->template add_sink<NullSink>();
@@ -333,7 +405,7 @@ const suite<SLIMLOG_CHAR_THREADING_TYPES> Basic("basic", type_only, [](auto& _) 
         auto callback = [&](Level level, const Location& location, StringView message) {
             captured_level = level;
             captured_location = location;
-            captured_message = message.data(); // Check that string is null-terminated
+            captured_message = message;
         };
 
         auto callback_sink = log->template add_sink<CallbackSink>(callback);
