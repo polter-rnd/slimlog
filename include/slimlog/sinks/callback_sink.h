@@ -23,7 +23,7 @@ namespace SlimLog {
  *
  * @tparam Char Character type for the string.
  */
-template<typename Char>
+template<typename Char, typename ThreadingPolicy = DefaultThreadingPolicy>
 class CallbackSink : public Sink<Char> {
 public:
     using typename Sink<Char>::RecordType;
@@ -76,6 +76,7 @@ public:
 
 private:
     LogCallback m_callback;
+    mutable ThreadingPolicy::Mutex m_mutex;
 };
 
 } // namespace SlimLog
