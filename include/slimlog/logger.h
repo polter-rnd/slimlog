@@ -59,6 +59,12 @@ concept HasConvertString
           } -> std::convertible_to<std::basic_string_view<Char>>;
       };
 
+template<typename T>
+concept IsAllocator = requires(T allocator, typename T::value_type* value) {
+    { allocator.allocate(0) } -> std::same_as<decltype(value)>;
+    { allocator.deallocate(value, 0) } -> std::same_as<void>;
+};
+
 } // namespace Detail
 /** @endcond */
 
@@ -204,42 +210,76 @@ public:
      * @brief Creates and adds a new formattable sink to this logger.
      *
      * @tparam T Sink type template (e.g., OStreamSink).
+     * @tparam SinkThreadingPolicy Threading policy for the sink.
      * @tparam SinkBufferSize Size of the internal buffer for the sink.
      * @tparam SinkAllocator Allocator type for the sink buffer.
-     * @tparam Args Argument types for the sink constructor.
+     * @tparam SinkTemplateArgs Additional template parameters for the sink class (if any).
      * @param args Arguments forwarded to the sink constructor.
      * @return Shared pointer to the created sink.
      */
     template<
-        template<typename, typename, std::size_t, typename> // For clang-format < 19
+        template<typename, typename, std::size_t, typename, typename...> // For clang-format < 19
         typename T,
-        typename SinkThreadingPolicy = ThreadingPolicy,
+        IsThreadingPolicy SinkThreadingPolicy = ThreadingPolicy,
         std::size_t SinkBufferSize = DefaultSinkBufferSize,
-        typename SinkAllocator = Allocator,
-        typename... Args>
-        requires(IsFormattableSink<T<Char, SinkThreadingPolicy, SinkBufferSize, SinkAllocator>>)
-    auto add_sink(Args&&... args) -> // For clang-format < 19
+        Detail::IsAllocator SinkAllocator = Allocator,
+        typename... SinkTemplateArgs>
+        requires IsFormattableSink< // clang-format off
+            T,
+            Char,
+            SinkThreadingPolicy,
+            SinkBufferSize,
+            SinkAllocator,
+            SinkTemplateArgs...>
+    auto add_sink(auto&&... args) -> // clang-format on
         std::shared_ptr<FormattableSink<Char, SinkThreadingPolicy, SinkBufferSize, SinkAllocator>>
     {
-        auto sink = std::make_shared<T<Char, SinkThreadingPolicy, SinkBufferSize, SinkAllocator>>(
-            std::forward<Args>(args)...);
+        auto sink = std::make_shared<
+            T<Char, SinkThreadingPolicy, SinkBufferSize, SinkAllocator, SinkTemplateArgs...>>(
+            std::forward<decltype(args)>(args)...);
         std::ignore = add_sink(sink);
         return sink;
     }
 
     /**
-     * @brief Creates and adds a new sink to this logger.
+     * @brief Creates and adds a new sink with threading policy to this logger.
      *
-     * @tparam T Sink type template (e.g., OStreamSink).
-     * @tparam Args Argument types for the sink constructor.
+     * @tparam T Sink type template (e.g., MySink).
+     * @tparam SinkThreadingPolicy Threading policy for the sink.
+     * @tparam SinkTemplateArgs Additional template parameters for the sink class (if any).
      * @param args Arguments forwarded to the sink constructor.
      * @return Shared pointer to the created sink.
      */
-    template<template<typename> class T, typename... Args>
-        requires(!IsFormattableSink<T<Char>>)
-    auto add_sink(Args&&... args) -> std::shared_ptr<Sink<Char>>
+    template<
+        template<typename, typename, typename...> // For clang-format < 19
+        typename T,
+        IsThreadingPolicy SinkThreadingPolicy = ThreadingPolicy,
+        typename... SinkTemplateArgs>
+        requires IsSink<T, Char, SinkThreadingPolicy, SinkTemplateArgs...>
+    auto add_sink(auto&&... args) -> std::shared_ptr<Sink<Char>>
     {
-        auto sink = std::make_shared<T<Char>>(std::forward<Args>(args)...);
+        auto sink = std::make_shared<T<Char, SinkThreadingPolicy, SinkTemplateArgs...>>(
+            std::forward<decltype(args)>(args)...);
+        std::ignore = add_sink(sink);
+        return sink;
+    }
+
+    /**
+     * @brief Creates and adds a new generic sink to this logger.
+     *
+     * @tparam T Sink type template (e.g., OStreamSink).
+     * @tparam SinkTemplateArgs Additional template parameters for the sink class (if any).
+     * @param args Arguments forwarded to the sink constructor.
+     * @return Shared pointer to the created sink.
+     */
+    template<template<typename, typename...> typename T, typename... SinkTemplateArgs>
+        requires( // clang-format off
+            IsSink<T, Char, SinkTemplateArgs...>
+            && !IsThreadAwareSink<T, Char, SinkTemplateArgs...>) // clang-format on
+    auto add_sink(auto&&... args) -> std::shared_ptr<Sink<Char>>
+    {
+        auto sink
+            = std::make_shared<T<Char, SinkTemplateArgs...>>(std::forward<decltype(args)>(args)...);
         std::ignore = add_sink(sink);
         return sink;
     }

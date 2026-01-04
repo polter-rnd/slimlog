@@ -8,12 +8,15 @@
 #include "slimlog/common.h"
 #include "slimlog/format.h"
 #include "slimlog/pattern.h"
+#include "slimlog/threading.h"
 
 #include <slimlog_export.h>
 
+#include <concepts>
 #include <cstddef>
 #include <memory>
 #include <string_view>
+#include <tuple>
 #include <utility>
 
 // IWYU pragma: no_include <string>
@@ -71,7 +74,8 @@ public:
  * @brief Abstract formattable sink class.
  *
  * A sink that supports custom message formatting.
- * Allocates another buffer for message formatting.
+ * Allocates an internal buffer for formatting log messages.
+ * Ensures thread-safe operations on the format pattern.
  *
  * @tparam Char Character type for the string.
  * @tparam ThreadingPolicy Threading policy for sink operations.
@@ -92,6 +96,7 @@ public:
     using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
     /** @brief Time function type for getting the current time. */
     using TimeFunctionType = Pattern<Char>::TimeFunctionType;
+
     /**
      * @brief Constructs a new Sink object.
      *
@@ -181,15 +186,68 @@ private:
 };
 
 /**
- * @brief Checks if the specified type is a formattable sink.
+ * @brief Checks if a sink template can be instantiated as a sink.
  *
- * @tparam T Type to check.
+ * This concept checks whether a template template parameter can be instantiated
+ * and the result derives from Sink.
+ *
+ * @tparam T Template template parameter to check.
+ * @tparam Char Character type.
+ * @tparam SinkTemplateArgs Additional template arguments for the sink.
  */
-template<class T>
-concept IsFormattableSink = requires(const T& arg) {
-    []<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>(
-        const FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>&) {}(arg);
+template<template<typename, typename...> typename T, typename Char, typename... SinkTemplateArgs>
+concept IsSink = requires {
+    typename T<Char, SinkTemplateArgs...>;
+    requires std::derived_from<T<Char, SinkTemplateArgs...>, Sink<Char>>;
 };
+
+/**
+ * @brief Checks if a sink template can be instantiated as a formattable sink.
+ *
+ * This concept checks whether a template template parameter can accept the standard
+ * FormattableSink template arguments (Char, ThreadingPolicy, BufferSize, Allocator).
+ *
+ * @tparam T Template template parameter to check.
+ * @tparam Char Character type.
+ * @tparam ThreadingPolicy Threading policy type.
+ * @tparam BufferSize Size of the internal buffer.
+ * @tparam Allocator Allocator type.
+ * @tparam SinkTemplateArgs Additional template arguments for the sink.
+ */
+template<
+    template<typename, typename, std::size_t, typename, typename...> // For clang-format < 19
+    typename T,
+    typename Char,
+    typename ThreadingPolicy,
+    std::size_t BufferSize,
+    typename Allocator,
+    typename... SinkTemplateArgs>
+concept IsFormattableSink = requires {
+    typename T<Char, ThreadingPolicy, BufferSize, Allocator, SinkTemplateArgs...>;
+    requires std::derived_from<
+        T<Char, ThreadingPolicy, BufferSize, Allocator, SinkTemplateArgs...>,
+        FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>>;
+};
+
+/**
+ * @brief Checks if a sink template can be instantiated with threading policy.
+ *
+ * This concept checks whether a template template parameter can accept a threading policy
+ * as its second template argument, useful for distinguishing between sinks that are
+ * threading-aware (like CallbackSink) and those that aren't (like NullSink).
+ *
+ * @tparam T Template template parameter to check.
+ * @tparam Char Character type.
+ * @tparam SinkTemplateArgs Additional template arguments for the sink.
+ */
+template<template<typename, typename...> typename T, typename Char, typename... SinkTemplateArgs>
+concept IsThreadAwareSink
+    = (requires {
+          typename T<Char, DefaultThreadingPolicy, SinkTemplateArgs...>;
+          requires IsSink<T, Char, DefaultThreadingPolicy, SinkTemplateArgs...>;
+      })
+    || (sizeof...(SinkTemplateArgs) > 0
+        && IsThreadingPolicy<std::tuple_element_t<0, std::tuple<SinkTemplateArgs...>>>);
 
 } // namespace SlimLog
 

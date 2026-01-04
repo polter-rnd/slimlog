@@ -1,6 +1,8 @@
 [
     # Bug on stdlibc++: std::pair is not from <iterator>
     { symbol: [ "std::pair", "private", "<utility>", "public" ] },
+    #  Bug on stdlibc++: std::tuple is not from <variant>
+    { symbol: [ "std::tuple", "private", "<tuple>", "public" ] },
     # Bug on stdlibc++ with fmtlib: std::vector is not from <format>
     { symbol: [ "std::vector", "private", "<vector>", "public" ] },
     # Bug on stdlibc++ with fmtlib: std::tm is not from <cwchar>

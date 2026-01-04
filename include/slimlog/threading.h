@@ -7,6 +7,7 @@
 #pragma once
 
 #include <atomic>
+#include <concepts>
 #include <mutex>
 #include <shared_mutex>
 
@@ -50,6 +51,15 @@ struct MultiThreadedPolicy final {
     /** @brief Write lock type for exclusive access. */
     using WriteLock = std::unique_lock<Mutex>;
 };
+
+/**
+ * @brief Checks if a type is a valid threading policy.
+ *
+ * @tparam T Type to check.
+ */
+template<typename T>
+concept IsThreadingPolicy
+    = std::same_as<T, SingleThreadedPolicy> || std::same_as<T, MultiThreadedPolicy>;
 
 /**
  * @brief Thread-safe wrapper for values based on the threading policy.
