@@ -1,20 +1,20 @@
 # SlimLog
 
-**SlimLog** is a lightweight, high-performance, and flexible logging library for C++20. Inspired by Python's `logging` module, it features a powerful hierarchical logger model, making it ideal for complex applications with modular architectures.
+**SlimLog** is a lightweight, high-performance and flexible logging library for C++20. Inspired by Python's [logging](https://docs.python.org/3/library/logging.html) module, it features a powerful hierarchical logger model, making it ideal for complex applications with modular architectures.
 
 ## Features
 
 *   **Hierarchical Logging:** Supports parent/child logger relationships with message propagation, similar to Python's `logging` module.
 *   **Type Agnostic:**
-    *   **Char Type:** Fully supports `char`, `wchar_t`, `char8_t`, `char16_t`, and `char32_t` (compiler permitting).
+    *   **Char Type:** Fully supports `char`, `wchar_t`, `char8_t`, `char16_t`, and `char32_t` (if supported by the compiler).
     *   **String Type:** Can handle any string type (e.g., `QString`, `CString`) via `ConvertString` specialization.
-*   **Configurable:** Buffer sizes for log messages and sinks can be tuned via template arguments.
+*   **Configurable:** Buffer sizes and allocators for log messages and sinks can be tuned via template arguments.
 *   **Flexible Formatting:**
     *   Built-in support for **[fmtlib](https://github.com/fmtlib/fmt)** (header-only or linked) for maximum performance.
     *   Fallback to C++20 `std::format` for a dependency-free experience.
-    *   Optimized for contiguous buffers.
+    *   String parsing is optimized for contiguous buffers.
 *   **Extensible Sinks:**
-    *   `OStreamSink`: Log to `std::cout`, `std::cerr`, or any `std::ostream`.
+    *   `OStreamSink`: Log to any `std::ostream` stream, including `std::cout` and `std::cerr`.
     *   `FileSink`: Log to files.
     *   `CallbackSink`: Custom handling via lambdas/functions.
     *   `QMessageLoggerSink`: Integration with Qt's `QMessageLogger`.
@@ -38,23 +38,25 @@ FetchContent_Declare(
     GIT_TAG master
 )
 FetchContent_MakeAvailable(slimlog)
-
-target_link_libraries(your_target PRIVATE slimlog::slimlog)
 ```
-
 **Using find_package:**
 
 ```cmake
 find_package(slimlog REQUIRED)
+```
+
+**And the link it to tour project:**
+```
 target_link_libraries(your_target PRIVATE slimlog::slimlog)
+# or target_link_libraries(your_target PRIVATE slimlog::slimlog-header-only)
 ```
 
 ### Build Options
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `SLIMLOG_FMTLIB` | Use `fmtlib` for formatting (recommended for performance). | `ON` |
-| `SLIMLOG_FMTLIB_HO` | Use `fmtlib` in header-only mode. | `OFF` |
+| `SLIMLOG_FMTLIB` | Use `fmtlib` for formatting (recommended for performance). | `OFF` |
+| `SLIMLOG_FMTLIB_HO` | Use `fmtlib` in header-only mode. | `ON` |
 | `SLIMLOG_TESTS` | Build unit tests. | `OFF` |
 | `SLIMLOG_DOCS` | Build Doxygen documentation. | `OFF` |
 | `SLIMLOG_COVERAGE` | Enable code coverage support (gcov, llvmcov). | `OFF` |
@@ -62,7 +64,7 @@ target_link_libraries(your_target PRIVATE slimlog::slimlog)
 | `SLIMLOG_SANITIZERS` | Enable sanitizers (asan, lsan, msan, tsan, ubsan). | `OFF` |
 | `SLIMLOG_FORMATTERS` | Enable code formatting targets (`format`, `formatcheck`). | `OFF` |
 
-*   **Performance Note:** Using `SLIMLOG_FMTLIB=ON` is recommended as it includes optimizations for contiguous buffers that significantly improve performance compared to standard streams or unoptimized `std::format`.
+*   **Performance Note:** Using `SLIMLOG_FMTLIB_HO=ON` or `SLIMLOG_FMTLIB=ON` is recommended as it includes optimizations for contiguous buffers that significantly improve performance compared to standard streams or unoptimized `std::format`.
 
 ## Usage
 
@@ -75,7 +77,7 @@ target_link_libraries(your_target PRIVATE slimlog::slimlog)
 int main() {
     // Create a logger with a console sink
     auto logger = SlimLog::create_logger(SlimLog::Level::Info);
-    logger->add_sink<SlimLog::OStreamSink>(std::cout);
+    logger->add_sink<SlimLog::OStreamSink>(std::cout, "<{time}> [{level}] {file}:{line} {message}");
 
     logger->info("Hello, {}!", "World");
     logger->error("Something went wrong: error code {}", 404);
@@ -122,7 +124,7 @@ SlimLog is agnostic to the character type used.
 int main() {
     // Wide character logger
     auto wlogger = SlimLog::create_logger<wchar_t>(SlimLog::Level::Info);
-    wlogger->add_sink<SlimLog::OStreamSink<wchar_t>>(std::wcout);
+    wlogger->add_sink<SlimLog::OStreamSink>(std::wcout);
 
     wlogger->info(L"Unicode support: \u2713");
     
@@ -143,7 +145,7 @@ int main() {
     
     logger->add_sink<SlimLog::CallbackSink>([](SlimLog::Level level, const SlimLog::Location& loc, std::string_view msg) {
         // Custom handling logic
-        std::cout << "[Custom] " << msg << "\n";
+        std::cout << "[Custom] " << loc.file_name() << ":" << loc.line() << " " << msg << "\n";
     });
 
     logger->info("Callback test");
@@ -161,7 +163,7 @@ Sinks are the destinations for log messages. SlimLog provides several built-in s
 *   **`QMessageLoggerSink`**: Forwards logs to Qt's logging system.
 *   **`NullSink`**: Discards all messages (useful for testing).
 
-Sinks are designed to be thread-safe by default. They manage their own synchronization, so you don't need to worry about race conditions when multiple loggers write to the same sink.
+Sinks inherit threading policy from logger by default. They manage their own synchronization, so you don't need to worry about race conditions when multiple loggers write to the same sink.
 
 ## Thread Safety
 
@@ -171,7 +173,7 @@ The `ThreadingPolicy` template parameter in the `Logger` class controls the thre
 *   Modifying the logger hierarchy (adding/removing children).
 *   Enabling/disabling propagation.
 
-It **does not** affect the sinks, which handle their own thread safety.
+It **does not** affect the sinks, which handle their own thread safety, however by default they inherit threading policy from the logger.
 
 By default, loggers use `SingleThreadedPolicy`. For multi-threaded applications where you might be modifying the logger configuration from multiple threads, specify the policy when defining the logger type:
 
@@ -184,6 +186,18 @@ using MtLogger = SlimLog::Logger<char, SlimLog::MultiThreadedPolicy>;
 int main() {
     auto logger = MtLogger::create();
     // Safe to modify logger from multiple threads
+}
+```
+
+You always can choose another threading policy for a sink. For example, the logger can use single-threaded policy if you don't intend to change it's parameters concurrently, but the sink can be thread-safe:
+
+```cpp
+#include <slimlog/logger.h>
+#include <slimlog/sinks/ostream_sink.h>
+
+int main() {
+    auto logger = SlimLog::create_logger<char>();
+    logger->add_sink<SlimLog::OStreamSink, SlimLog::MultiThreadedPolicy>(std::cerr); // Will lock a mutex on every message
 }
 ```
 
