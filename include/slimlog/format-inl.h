@@ -97,8 +97,8 @@ void CachedFormatter<T, Char>::format(Out& out, T value) const
     // For std::format there is no way to build a custom format context,
     // so we have to use dummy format string (empty string will be omitted),
     // and pass FormatValue with a reference to CachedFormatter as an argument.
-    static constexpr std::array<Char, 3> Fmt{'{', '}', '\0'};
-    out.vformat(Fmt.data(), out.make_format_args(FormatValue(*this, value)));
+    static constexpr std::array<Char, 2> Fmt{'{', '}'};
+    out.vformat({Fmt.data(), Fmt.size()}, out.make_format_args(FormatValue(*this, value)));
 #endif
 }
 

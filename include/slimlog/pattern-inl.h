@@ -138,8 +138,8 @@ void Pattern<Char>::compile(StringViewType pattern)
 
     bool inside_placeholder = false;
     for (;;) {
-        constexpr std::array<Char, 3> Delimeters{'{', '}', '\0'};
-        const auto pos = pattern.find_first_of(Delimeters.data());
+        constexpr std::array<Char, 2> Delimeters{'{', '}'};
+        const auto pos = pattern.find_first_of({Delimeters.data(), Delimeters.size()});
         const auto len = pattern.size();
 
         if (pos == pattern.npos) {

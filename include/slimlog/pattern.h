@@ -219,12 +219,12 @@ protected:
             /** @brief Field alignment options. */
             enum class Align : std::uint8_t { None, Left, Right, Center };
 
-            StringViewType fill = StringSpecs::DefaultFill.data(); ///< Fill character.
+            StringViewType fill = {DefaultFill.data(), DefaultFill.size()}; ///< Fill character.
             std::size_t width = 0; ///< Field width.
             Align align = Align::None; ///< Field alignment.
 
         private:
-            static constexpr std::array<Char, 2> DefaultFill{' ', '\0'};
+            static constexpr std::array<Char, 1> DefaultFill{' '};
         };
 
         /**
