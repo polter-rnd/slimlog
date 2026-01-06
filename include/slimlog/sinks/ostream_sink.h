@@ -88,6 +88,7 @@ public:
 
 private:
     std::basic_ostream<Char>& m_ostream;
+    mutable ThreadingPolicy::Mutex m_mutex;
 };
 
 } // namespace SlimLog

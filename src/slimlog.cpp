@@ -27,12 +27,12 @@
 // On Windows with MSVC or Clang-cl, no need for explicit export of template classes
 #define SLIMLOG_EXPORT_CLASS
 #else
+// On Linux/Unix, or Windows with vanilla Clang: need explicit export due to hidden visibility
 #define SLIMLOG_EXPORT_CLASS SLIMLOG_EXPORT
 #endif
 
 namespace SlimLog {
 // char
-// On Linux/Unix, or Windows with vanilla Clang: need explicit export due to hidden visibility
 template class SLIMLOG_EXPORT_CLASS Logger<char, SingleThreadedPolicy>;
 template class SLIMLOG_EXPORT_CLASS Logger<char, MultiThreadedPolicy>;
 template class SLIMLOG_EXPORT_CLASS FormattableSink<char, SingleThreadedPolicy>;

@@ -22,6 +22,7 @@ namespace SlimLog {
  * This sink calls a callback function to handle log messages.
  *
  * @tparam Char Character type for the string.
+ * @tparam ThreadingPolicy Threading policy for sink operations.
  */
 template<typename Char, typename ThreadingPolicy = DefaultThreadingPolicy>
 class CallbackSink : public Sink<Char> {
