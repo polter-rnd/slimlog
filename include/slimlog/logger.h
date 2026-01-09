@@ -34,17 +34,14 @@ namespace SlimLog {
 /**
  * @brief Converts a string to a `std::basic_string_view`.
  *
- * This function takes a String object and returns a `std::basic_string_view`
- * of the same character type.
+ * This functor takes referenes to string and buffer, and returns
+ * a `std::basic_string_view` of the same character type.
  *
  * @tparam String String type.
  * @tparam Char Type of the characters in the string.
- * @param str The input string object to be converted.
- * @return Value of type, convertible to `std::basic_string_view<Char>`.
  */
 template<typename String, typename Char>
 struct ConvertString {
-    // auto operator()(const String&) const -> std::basic_string_view<Char> = delete;
     auto operator()(const String&, auto&) const -> std::basic_string_view<Char> = delete;
 };
 
