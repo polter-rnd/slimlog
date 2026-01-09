@@ -149,16 +149,22 @@ if(SLIMLOG_FMTLIB OR SLIMLOG_FMTLIB_HO)
     set(CMAKE_REQUIRED_INCLUDES ${FMT_INCLUDE_DIRS})
     set(CMAKE_REQUIRED_DEFINITIONS -DFMT_HEADER_ONLY)
 
+    check_cxx_symbol_exists("clock_gettime" "ctime" SLIMLOG_HAS_CLOCK_GETTIME)
+    if(SLIMLOG_HAS_CLOCK_GETTIME)
+        target_compile_definitions(slimlog PUBLIC SLIMLOG_HAS_CLOCK_GETTIME)
+        target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_HAS_CLOCK_GETTIME)
+    endif()
+
     foreach(size 8 16 32)
         check_cxx_symbol_exists(
             "fmt::make_format_args<${fmt_format_context}<char${size}_t>, std::chrono::sys_seconds>"
-            "fmt/format.h;fmt/chrono.h;chrono" CHAR${size}_T_FORMATTABLE
+            "fmt/format.h;fmt/chrono.h;chrono" SLIMLOG_CHAR${size}_T_FORMATTABLE
         )
         option(SLIMLOG_CHAR${size}_T "Enable support for char${size}_t"
-               ${$CHAR${size}_T_FORMATTABLE}
+               SLIMLOG_${$CHAR${size}_T_FORMATTABLE}
         )
         if(SLIMLOG_CHAR${size}_T)
-            if(CHAR${size}_T_FORMATTABLE)
+            if(SLIMLOG_CHAR${size}_T_FORMATTABLE)
                 target_compile_definitions(slimlog PUBLIC SLIMLOG_CHAR${size}_T)
                 target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_CHAR${size}_T)
             else()

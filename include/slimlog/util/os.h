@@ -205,8 +205,14 @@ inline void atomic_store_relaxed(T* ptr, T value) noexcept
     static thread_local std::time_t cached_time;
 
     ::timespec curtime{};
-#if defined(__linux__) || defined(__MINGW32__)
-    std::ignore = ::clock_gettime(CLOCK_REALTIME_COARSE, &curtime);
+#if SLIMLOG_HAS_CLOCK_GETTIME
+#ifdef CLOCK_REALTIME_COARSE
+    // On Linux we can use CLOCK_REALTIME_COARSE for better performance
+    std::ignore = clock_gettime(CLOCK_REALTIME_COARSE, &curtime);
+#else
+    // Elsewhere use standard CLOCK_REALTIME which is guaranteed to be available
+    std::ignore = clock_gettime(CLOCK_REALTIME, &curtime);
+#endif
 #else
     std::ignore = ::timespec_get(&curtime, TIME_UTC);
 #endif
