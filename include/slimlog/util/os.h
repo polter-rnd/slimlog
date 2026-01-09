@@ -5,11 +5,8 @@
 
 #pragma once
 
-// Need this for localtime_r() on POSIX and localtime_s() on Windows
-// Also on MinGW 13 there's no std::timespec/std::timespec_get
-#include <time.h> // NOLINT(*-deprecated-headers)
-
 #include <chrono>
+#include <ctime>
 #include <type_traits>
 #include <utility>
 
@@ -223,7 +220,7 @@ inline void atomic_store_relaxed(T* ptr, T value) noexcept
         std::ignore = ::localtime_s(&local_tm, &cached_time);
 #else
         // MSVC is known to use thread-local buffer
-        local_tm = *std::localtime(&cached_time);
+        local_tm = *::localtime(&cached_time);
 #endif
 #else
         std::ignore = ::localtime_r(&cached_time, &local_tm);
