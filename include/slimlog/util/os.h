@@ -5,13 +5,11 @@
 
 #pragma once
 
-#if !defined(_WIN32) || defined(__STDC_WANT_SECURE_LIB__)
-// In addition to <ctime> below for localtime_r() on POSIX and localtime_s() on Windows
-#include <time.h> // IWYU pragma: keep
-#endif
+// Need this for localtime_r() on POSIX and localtime_s() on Windows
+// Also on MinGW 13 there's no std::timespec/std::timespec_get
+#include <time.h> // NOLINT(*-deprecated-headers)
 
 #include <chrono>
-#include <ctime>
 #include <type_traits>
 #include <utility>
 
@@ -209,17 +207,17 @@ inline void atomic_store_relaxed(T* ptr, T value) noexcept
     static thread_local std::chrono::sys_seconds cached_local;
     static thread_local std::time_t cached_time;
 
-    std::timespec curtime{};
-#ifdef __linux__
+    ::timespec curtime{};
+#if defined(__linux__) || defined(__MINGW32__)
     std::ignore = ::clock_gettime(CLOCK_REALTIME_COARSE, &curtime);
 #else
-    std::ignore = std::timespec_get(&curtime, TIME_UTC);
+    std::ignore = ::timespec_get(&curtime, TIME_UTC);
 #endif
 
     if (curtime.tv_sec != cached_time) {
         cached_time = curtime.tv_sec;
 
-        std::tm local_tm{};
+        ::tm local_tm{};
 #ifdef _WIN32
 #ifdef __STDC_WANT_SECURE_LIB__
         std::ignore = ::localtime_s(&local_tm, &cached_time);

@@ -5,8 +5,6 @@
     { symbol: [ "std::tuple", "private", "<tuple>", "public" ] },
     # Bug on stdlibc++ with fmtlib: std::vector is not from <format>
     { symbol: [ "std::vector", "private", "<vector>", "public" ] },
-    # Bug on stdlibc++ with fmtlib: std::tm is not from <cwchar>
-    { symbol: [ "std::tm", "private", "<ctime>", "public" ] },
     # Bug on stdlibc++/libc++: std::ignore is also defined in <utility>
     { symbol: [ "std::ignore", "private", "<utility>", "public" ] },
     # Bug on fmtlib: fmt::format is defined in <fmt/format.h>

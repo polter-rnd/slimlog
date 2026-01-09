@@ -18,6 +18,10 @@
 #include <system_error>
 #include <type_traits>
 
+#ifdef _WIN32
+#include <share.h>
+#endif
+
 namespace SlimLog {
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
