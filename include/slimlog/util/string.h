@@ -240,7 +240,7 @@ public:
     using BaseType::get_allocator;
 
     // Constructor
-    // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved)
+    // NOLINTNEXTLINE(cppcoreguidelines-rvalue-reference-param-not-moved,*-use-equals-default)
     using BaseType::basic_string;
 
     /** @brief Default destructor. */
