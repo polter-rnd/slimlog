@@ -151,7 +151,7 @@ function(add_gcovr_coverage_target)
         list(APPEND gcovr_options --html ${ARG_OUTPUT_DIRECTORY}/html/index.html --html-title
              "Code Coverage for ${PROJECT_NAME}"
         )
-        if(${Gcovr_VERSION_STRING} VERSION_GREATER_EQUAL 6.0)
+        if(Gcovr_VERSION_STRING VERSION_GREATER_EQUAL 6.0)
             list(APPEND gcovr_options --html-nested)
         else()
             list(APPEND gcovr_options --html-details)
@@ -233,7 +233,7 @@ function(target_enable_coverage targetName)
 
     # Coverage works only on GCC/LLVM
     set(coverage_flags "-O0 --coverage")
-    if(${target_compiler} MATCHES "GNU")
+    if(target_compiler MATCHES "GNU")
         # set(coverage_flags "${coverage_flags} -fprofile-abs-path")
     endif()
 
