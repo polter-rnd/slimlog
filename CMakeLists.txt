@@ -80,7 +80,7 @@ if(SLIMLOG_ANALYZERS)
 
     # Static analyzer configuration
     if(SLIMLOG_ANALYZE_CLANG_TIDY)
-        set(CLANG_TIDY_EXTRA_ARGS "--header-filter=${CMAKE_SOURCE_DIR}/(include|src|test)/.*")
+        set(CLANG_TIDY_EXTRA_ARGS "--header-filter=${PROJECT_SOURCE_DIR}/(include|src|test)/.*")
         if(MSVC)
             set(CLANG_TIDY_EXTRA_ARGS ${CLANG_TIDY_EXTRA_ARGS} --extra-arg=/EHsc)
         endif()
@@ -91,8 +91,8 @@ if(SLIMLOG_ANALYZERS)
             --quoted_includes_first
             --no_fwd_decls
             --verbose=3
-            --mapping_file=${CMAKE_SOURCE_DIR}/.iwyu-mappings
-            --check_also=${CMAKE_SOURCE_DIR}/include/*
+            --mapping_file=${PROJECT_SOURCE_DIR}/.iwyu-mappings
+            --check_also=${PROJECT_SOURCE_DIR}/include/*
             --transitive_includes_only
         )
         # Specify all standard include directories so that IWYU will able to check them
@@ -136,7 +136,7 @@ if(SLIMLOG_COVERAGE)
         GCOV COBERTURA HTML
         COVERAGE_TARGET coverage
         COVERAGE_INIT_TARGET coverage-clean
-        GCOVR_EXCLUDE ${CMAKE_SOURCE_DIR}/test
+        GCOVR_EXCLUDE ${PROJECT_SOURCE_DIR}/test ${PROJECT_SOURCE_DIR}/src
     )
 endif()
 

@@ -41,7 +41,7 @@
 #                             will be dependent on it.
 # @param OUTPUT_DIRECTORY     Path to output dir
 #                             (default: `\${PROJECT_BINARY_DIR}/coverage`)
-# @param GCOV_LANGUAGES       List of languages for which coverage should be generated
+# @param LANGUAGES            List of languages for which coverage should be generated
 #                             (default: `\${PROJECT_LANGUAGES}`)
 # @param GCOVR_FILTER         List of patterns to include to coverage
 # @param GCOVR_EXCLUDE        List of patterns to exclude from coverage
@@ -50,7 +50,7 @@
 function(add_gcovr_coverage_target)
     set(options HTML LCOV GCOV COBERTURA COVERALLS SONARQUBE)
     set(oneValueArgs COVERAGE_TARGET COVERAGE_INIT_TARGET CHECK_TARGET OUTPUT_DIRECTORY)
-    set(multiValueArgs GCOV_LANGUAGES GCOVR_EXCLUDE GCOVR_FILTER GCOVR_OPTIONS)
+    set(multiValueArgs LANGUAGES GCOVR_EXCLUDE GCOVR_FILTER GCOVR_OPTIONS)
     cmake_parse_arguments(ARG "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
     if(NOT ARG_COVERAGE_TARGET)
@@ -61,23 +61,22 @@ function(add_gcovr_coverage_target)
         message(FATAL_ERROR "GcovrCodeCoverage init target name is not specified!")
     endif()
 
-    if(NOT ARG_GCOV_LANGUAGES)
-        get_property(ARG_GCOV_LANGUAGES GLOBAL PROPERTY ENABLED_LANGUAGES)
+    if(NOT ARG_LANGUAGES)
+        get_property(ARG_LANGUAGES GLOBAL PROPERTY ENABLED_LANGUAGES)
     endif()
 
     if(NOT ARG_OUTPUT_DIRECTORY)
         set(ARG_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/coverage)
     endif()
 
-    foreach(language ${ARG_GCOV_LANGUAGES})
+    foreach(language ${ARG_LANGUAGES})
         set(language_compiler ${CMAKE_${language}_COMPILER_ID})
         if(NOT compiler_id)
             set(compiler_id ${language_compiler})
             set(compiler_version CMAKE_${language}_COMPILER_VERSION)
         elseif(NOT compiler_id STREQUAL language_compiler)
             message(WARNING "Cannot enable coverage for multiple compilers! "
-                            "Please set GCOV_EXECUTABLE or fill GCOV_LANGUAGES "
-                            "only with languages using the same compiler."
+                            "Please set LANGUAGES only with languages using the same compiler."
             )
             set(ENABLE_COVERAGE
                 OFF
@@ -88,24 +87,10 @@ function(add_gcovr_coverage_target)
     endforeach()
 
     if(compiler_id MATCHES "Clang")
-        find_package(LlvmCov)
-        if(NOT LlvmCov_FOUND)
-            set(ENABLE_COVERAGE
-                OFF
-                PARENT_SCOPE
-            )
-            return()
-        endif()
+        find_package(LlvmCov REQUIRED)
         set(ARG_GCOV_EXECUTABLE "${LlvmCov_EXECUTABLE} gcov")
     elseif(compiler_id MATCHES "GNU")
-        find_package(Gcov)
-        if(NOT Gcov_FOUND)
-            set(ENABLE_COVERAGE
-                OFF
-                PARENT_SCOPE
-            )
-            return()
-        endif()
+        find_package(Gcov REQUIRED)
         set(ARG_GCOV_EXECUTABLE "${Gcov_EXECUTABLE}")
     else()
         message(WARNING "Coverage supported only for GCC or Clang compilers")
@@ -184,14 +169,12 @@ function(add_gcovr_coverage_target)
 
     list(APPEND gcovr_commands COMMAND ${Gcovr_EXECUTABLE} ${gcovr_options} ${gcovr_dirs})
 
-    find_program(FIND_COMMAND find)
-
+    # Cleanup coverage data for all targets
     add_custom_target(
         ${ARG_COVERAGE_INIT_TARGET}
-        # Cleanup gcov counters
-        COMMAND ${FIND_COMMAND} . -name *.gcda -delete
-        COMMAND ${CMAKE_COMMAND} -E rm -rf ${ARG_OUTPUT_DIRECTORY}
-        WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
+        COMMAND ${CMAKE_COMMAND} -E rm -rf "${ARG_OUTPUT_DIRECTORY}"
+        COMMAND ${CMAKE_COMMAND} "-DCLEANUP_DIR=${PROJECT_BINARY_DIR}" "-DCLEANUP_PATTERNS=*.gcda"
+                -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/RecursiveCleanup.cmake"
         VERBATIM
         COMMENT "Resetting code coverage counters"
     )
@@ -233,9 +216,6 @@ function(target_enable_coverage targetName)
 
     # Coverage works only on GCC/LLVM
     set(coverage_flags "-O0 --coverage")
-    if(target_compiler MATCHES "GNU")
-        # set(coverage_flags "${coverage_flags} -fprofile-abs-path")
-    endif()
 
     # Check if compiler supports coverage flags
     if(NOT DEFINED CoverageFlags_DETECTED)
@@ -252,16 +232,17 @@ function(target_enable_coverage targetName)
     # Add compiler options for current target
     separate_arguments(coverage_flags NATIVE_COMMAND "${coverage_flags}")
     target_compile_options(${targetName} PRIVATE ${coverage_flags})
-    target_link_options(${targetName} PRIVATE "--coverage")
+    target_link_options(${targetName} PRIVATE ${coverage_flags})
 
-    find_program(find_command find)
+    # Cleanup coverage data for this target
     get_target_property(target_binary_dir ${targetName} BINARY_DIR)
+    set(target_binary_dir "${target_binary_dir}/CMakeFiles/${targetName}.dir")
+
     add_custom_command(
         TARGET ${targetName}
         POST_BUILD
-        # Cleanup gcov counters for this target
-        COMMAND ${find_command} . -name *.gcda -delete
-        WORKING_DIRECTORY ${target_binary_dir}
+        COMMAND ${CMAKE_COMMAND} "-DCLEANUP_DIR=${target_binary_dir}" "-DCLEANUP_PATTERNS=*.gcda" -P
+                "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/RecursiveCleanup.cmake"
         VERBATIM
         COMMENT "Resetting code coverage counters for target '${targetName}'"
     )
