@@ -9,6 +9,8 @@
 
 // NOLINTNEXTLINE(misc-header-include-cycle)
 #include "slimlog/sinks/file_sink.h" // IWYU pragma: associated
+#include "slimlog/threading.h"
+#include "slimlog/util/os.h"
 
 #include <array>
 #include <bit>
@@ -18,32 +20,24 @@
 #include <system_error>
 #include <type_traits>
 
-#ifdef _WIN32
-#include <share.h>
-#endif
-
 namespace slimlog {
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 auto FileSink<Char, ThreadingPolicy, BufferSize, Allocator>::open(std::string_view filename) -> void
 {
-#ifdef _WIN32
-    FILE* fp = _fsopen(std::string(filename).c_str(), "ab", _SH_DENYWR);
-    m_fp = {fp, std::fclose};
-#else
-    m_fp = {std::fopen(std::string(filename).c_str(), "ab"), std::fclose};
-#endif
-    if (!m_fp) {
+    // Open file in append binary mode with shared read access
+    m_fp = util::os::fopen_shared(std::string(filename).c_str(), "ab");
+    if (!m_fp) [[unlikely]] {
         throw std::system_error({errno, std::system_category()}, "Error opening log file");
     }
 
     // Seek to end of file
-    if (std::fseek(m_fp.get(), 0, SEEK_END) != 0) {
+    if (std::fseek(m_fp.get(), 0, SEEK_END) != 0) [[unlikely]] {
         throw std::system_error({errno, std::system_category()}, "Error seeking log file");
     }
 
     // Write BOM only if the file is empty
-    if (std::ftell(m_fp.get()) == 0 && !write_bom()) {
+    if (std::ftell(m_fp.get()) == 0 && !write_bom()) [[unlikely]] {
         throw std::system_error({errno, std::system_category()}, "Error writing BOM to log file");
     }
 }
@@ -57,14 +51,14 @@ auto FileSink<Char, ThreadingPolicy, BufferSize, Allocator>::write_bom() -> bool
         static constexpr std::array<std::uint8_t, 2> LeBom = {0xFF, 0xFE}; // UTF-16LE
         static constexpr std::array<std::uint8_t, 2> BeBom = {0xFE, 0xFF}; // UTF-16BE
         const auto& bom = (std::endian::native == std::endian::little) ? LeBom : BeBom;
-        return std::fwrite(bom.data(), bom.size(), 1, m_fp.get()) == 1;
+        return util::os::fwrite_nolock(bom.data(), bom.size(), 1, m_fp.get()) == 1;
     } else if constexpr (
         std::is_same_v<Char, char32_t> || (sizeof(Char) == 4 && std::is_same_v<Char, wchar_t>)) {
         // UTF-32 BOM
         static constexpr std::array<std::uint8_t, 4> LeBom = {0xFF, 0xFE, 0x00, 0x00}; // UTF-32LE
         static constexpr std::array<std::uint8_t, 4> BeBom = {0x00, 0x00, 0xFE, 0xFF}; // UTF-32BE
         const auto& bom = (std::endian::native == std::endian::little) ? LeBom : BeBom;
-        return std::fwrite(bom.data(), bom.size(), 1, m_fp.get()) == 1;
+        return util::os::fwrite_nolock(bom.data(), bom.size(), 1, m_fp.get()) == 1;
     } else {
         return true;
     }
@@ -77,8 +71,15 @@ auto FileSink<Char, ThreadingPolicy, BufferSize, Allocator>::message(const Recor
     FormatBufferType buffer;
     this->format(buffer, record);
     buffer.push_back(static_cast<Char>('\n'));
-    if (const auto size = buffer.size() * sizeof(Char);
-        std::fwrite(buffer.data(), 1, size, m_fp.get()) != size) {
+
+    const std::size_t expected = buffer.size() * sizeof(Char);
+    std::size_t written = 0;
+    if constexpr (std::is_same_v<ThreadingPolicy, SingleThreadedPolicy>) {
+        written = util::os::fwrite_nolock(buffer.data(), 1, expected, m_fp.get());
+    } else {
+        written = std::fwrite(buffer.data(), 1, expected, m_fp.get());
+    }
+    if (written != expected) [[unlikely]] {
         throw std::system_error({errno, std::system_category()}, "Failed writing to log file");
     }
 }
@@ -86,7 +87,7 @@ auto FileSink<Char, ThreadingPolicy, BufferSize, Allocator>::message(const Recor
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 auto FileSink<Char, ThreadingPolicy, BufferSize, Allocator>::flush() -> void
 {
-    if (std::fflush(m_fp.get()) != 0) {
+    if (std::fflush(m_fp.get()) != 0) [[unlikely]] {
         throw std::system_error({errno, std::system_category()}, "Failed flush to log file");
     }
 }

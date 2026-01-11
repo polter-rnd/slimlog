@@ -76,7 +76,8 @@ const suite<SLIMLOG_CHAR_TYPES> Multithread("multithread", type_only, [](auto& _
         auto log = Logger<Char, MultiThreadedPolicy>::create();
 
         FileCapturer<Char> cap_file(log_filename);
-        auto file_sink = std::make_shared<FileSink<Char>>(cap_file.path().string());
+        auto file_sink
+            = std::make_shared<FileSink<Char, MultiThreadedPolicy>>(cap_file.path().string());
         log->add_sink(file_sink);
 
         // For char and wchar_t, also log to console

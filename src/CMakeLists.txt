@@ -155,6 +155,12 @@ if(SLIMLOG_FMTLIB OR SLIMLOG_FMTLIB_HO)
         target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_HAS_CLOCK_GETTIME)
     endif()
 
+    check_cxx_symbol_exists("fwrite_unlocked" "cstdio" SLIMLOG_HAS_FWRITE_UNLOCKED)
+    if(SLIMLOG_HAS_FWRITE_UNLOCKED)
+        target_compile_definitions(slimlog PUBLIC SLIMLOG_HAS_FWRITE_UNLOCKED)
+        target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_HAS_FWRITE_UNLOCKED)
+    endif()
+
     foreach(size 8 16 32)
         check_cxx_symbol_exists(
             "fmt::make_format_args<${fmt_format_context}<char${size}_t>, std::chrono::sys_seconds>"
