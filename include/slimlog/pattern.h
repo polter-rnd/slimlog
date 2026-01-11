@@ -85,6 +85,17 @@ public:
         compile(pattern);
     }
 
+    /** @brief Default destructor. */
+    ~Pattern() = default;
+    /** @brief Default copy constructor. */
+    Pattern(const Pattern&) = default;
+    /** @brief Default move constructor. */
+    Pattern(Pattern&&) = default;
+    /** @brief Default copy assignment operator. */
+    auto operator=(const Pattern&) -> Pattern& = default;
+    /** @brief Default move assignment operator. */
+    auto operator=(Pattern&&) -> Pattern& = default;
+
     /**
      * @brief Checks if the pattern is empty.
      *
@@ -181,6 +192,19 @@ protected:
      * @brief Structure for managing log level names.
      */
     struct Levels {
+        /** @brief Default destructor. */
+        ~Levels() = default;
+        /** @brief Default constructor. */
+        Levels() = default;
+        /** @brief Default copy constructor. */
+        Levels(const Levels&) = default;
+        /** @brief Default move constructor. */
+        Levels(Levels&&) = default;
+        /** @brief Default copy assignment operator. */
+        auto operator=(const Levels&) -> Levels& = default;
+        /** @brief Default move assignment operator. */
+        auto operator=(Levels&&) -> Levels& = default;
+
         /**
          * @brief Retrieves the name of the specified log level.
          *

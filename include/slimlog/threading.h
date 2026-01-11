@@ -28,6 +28,7 @@ struct SingleThreadedPolicy final {
     /** @brief Dummy write lock. */
     template<typename MutexType>
     struct UniqueLock {
+        /** @brief Constructs a new dummy UniqueLock object. */
         explicit UniqueLock(MutexType& /*unused*/)
         {
         }
@@ -36,6 +37,7 @@ struct SingleThreadedPolicy final {
     /** @brief Dummy read lock. */
     template<typename MutexType>
     struct SharedLock {
+        /** @brief Constructs a new dummy SharedLock object. */
         explicit SharedLock(MutexType& /*unused*/)
         {
         }
@@ -57,6 +59,10 @@ struct MultiThreadedPolicy final {
     /** @brief Write lock wrapper with CTAD support. */
     template<typename MutexType>
     struct UniqueLock : std::unique_lock<MutexType> {
+        /**
+         * @brief Constructs a new UniqueLock object.
+         * @param mutex Mutex to lock for exclusive access.
+         */
         explicit UniqueLock(MutexType& mutex)
             : std::unique_lock<MutexType>(mutex)
         {
@@ -66,6 +72,10 @@ struct MultiThreadedPolicy final {
     /** @brief Read lock wrapper with CTAD support. */
     template<typename MutexType>
     struct SharedLock : std::shared_lock<MutexType> {
+        /**
+         * @brief Constructs a new SharedLock object.
+         * @param mutex Mutex to lock for shared access.
+         */
         explicit SharedLock(MutexType& mutex)
             : std::shared_lock<MutexType>(mutex)
         {
