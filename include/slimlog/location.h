@@ -20,21 +20,6 @@ namespace slimlog {
 #define SLIMLOG_SOURCE_LINE __builtin_LINE()
 #endif
 
-namespace detail {
-static consteval auto source_basename(const char* path = SLIMLOG_SOURCE_FILE) -> const char*
-{
-    const char* filename = path;
-    while (*path != '\0') {
-        if (*path == '\\' || *path == '/') {
-            filename = path + 1;
-        }
-        ++path;
-    }
-    return filename;
-}
-} // namespace detail
-/** @endcond */
-
 /**
  * @brief Represents a specific location in the source code.
  *
@@ -52,12 +37,12 @@ public:
      * @return A Location object representing the current source location.
      */
     [[nodiscard]] static constexpr auto current(
-        const char* file = detail::source_basename(),
+        const char* file = SLIMLOG_SOURCE_FILE,
         const char* function = SLIMLOG_SOURCE_FUNCTION,
         int line = SLIMLOG_SOURCE_LINE) noexcept
     {
         Location loc;
-        loc.m_file = file;
+        loc.m_file = source_basename(file);
         loc.m_function = function;
         loc.m_line = line;
         return loc;
@@ -94,6 +79,18 @@ public:
     }
 
 private:
+    static constexpr auto source_basename(const char* path) -> const char*
+    {
+        const char* filename = path;
+        while (*path != '\0') {
+            if (*path == '\\' || *path == '/') {
+                filename = path + 1;
+            }
+            ++path;
+        }
+        return filename;
+    }
+
     const char* m_file{nullptr};
     const char* m_function{nullptr};
     int m_line{};
