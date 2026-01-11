@@ -9,7 +9,7 @@
 
 #include <utility>
 
-namespace SlimLog {
+namespace slimlog {
 
 /**
  * @brief Null sink for testing and benchmarking.
@@ -55,4 +55,4 @@ public:
     }
 };
 
-} // namespace SlimLog
+} // namespace slimlog

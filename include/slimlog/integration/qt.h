@@ -17,7 +17,7 @@
 #include <QString>
 #include <QUtf8StringView>
 
-namespace SlimLog::Detail {
+namespace slimlog::detail {
 
 /** @cond */
 template<typename OutputIt, typename Char>
@@ -63,7 +63,7 @@ protected:
                 *(*m_out)++ = static_cast<char32_t>(codepoint);
             }
         } else {
-            static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported character type");
+            static_assert(util::types::AlwaysFalse<Char>{}, "Unsupported character type");
         }
         return len;
     }
@@ -136,7 +136,7 @@ auto format_qt_type(const T& value, auto out_it)
         return out_it;
     }
 }
-} // namespace SlimLog::Detail
+} // namespace slimlog::detail
 /** @endcond */
 
 // Namespace selection for formatter specializations
@@ -153,10 +153,10 @@ auto format_qt_type(const T& value, auto out_it)
 #define SLIMLOG_CONVERT_STRING(QtType, UseAddress)                                                 \
     class QtType;                                                                                  \
     template<typename Char>                                                                        \
-    struct SlimLog::ConvertString<QtType, Char> {                                                  \
+    struct slimlog::ConvertString<QtType, Char> {                                                  \
         std::basic_string_view<Char> operator()(const QtType& str, auto& buffer) const             \
         {                                                                                          \
-            Detail::format_qt_type<QtType, Char, UseAddress>(str, std::back_inserter(buffer));     \
+            detail::format_qt_type<QtType, Char, UseAddress>(str, std::back_inserter(buffer));     \
             return {buffer.data(), buffer.size()};                                                 \
         }                                                                                          \
     };
@@ -164,11 +164,11 @@ auto format_qt_type(const T& value, auto out_it)
 // Helper macro to generate the ConvertString specialization for template types
 #define SLIMLOG_CONVERT_STRING_TMPL(TemplateName, TemplateArgs, ParamDecl, UseAddress)             \
     template<SLIMLOG_EXPAND ParamDecl, typename Char>                                              \
-    struct SlimLog::ConvertString<TemplateName<SLIMLOG_EXPAND TemplateArgs>, Char> {               \
+    struct slimlog::ConvertString<TemplateName<SLIMLOG_EXPAND TemplateArgs>, Char> {               \
         std::basic_string_view<Char> operator()(                                                   \
             const TemplateName<SLIMLOG_EXPAND TemplateArgs>& str, auto& buffer) const              \
         {                                                                                          \
-            Detail::format_qt_type<TemplateName<SLIMLOG_EXPAND TemplateArgs>, Char, UseAddress>(   \
+            detail::format_qt_type<TemplateName<SLIMLOG_EXPAND TemplateArgs>, Char, UseAddress>(   \
                 str, std::back_inserter(buffer));                                                  \
             return {buffer.data(), buffer.size()};                                                 \
         }                                                                                          \
@@ -183,7 +183,7 @@ auto format_qt_type(const T& value, auto out_it)
         template<typename FormatContext>                                                           \
         auto format(const QtType& value, FormatContext& ctx) const                                 \
         {                                                                                          \
-            return SlimLog::Detail::format_qt_type<QtType, Char>(value, ctx.out());                \
+            return slimlog::detail::format_qt_type<QtType, Char>(value, ctx.out());                \
         }                                                                                          \
     };
 
@@ -196,7 +196,7 @@ auto format_qt_type(const T& value, auto out_it)
         template<typename FormatContext>                                                           \
         auto format(const QtType& value, FormatContext& ctx) const                                 \
         {                                                                                          \
-            return SlimLog::Detail::format_qt_type<QtType, Char, true>(value, ctx.out());          \
+            return slimlog::detail::format_qt_type<QtType, Char, true>(value, ctx.out());          \
         }                                                                                          \
     };
 
@@ -210,7 +210,7 @@ auto format_qt_type(const T& value, auto out_it)
         auto format(                                                                               \
             const TemplateName<SLIMLOG_EXPAND TemplateArgs>& value, FormatContext& ctx) const      \
         {                                                                                          \
-            return SlimLog::Detail::                                                               \
+            return slimlog::detail::                                                               \
                 format_qt_type<TemplateName<SLIMLOG_EXPAND TemplateArgs>, Char>(value, ctx.out()); \
         }                                                                                          \
     };
@@ -230,7 +230,7 @@ struct SLIMLOG_FORMATTER_NAMESPACE::formatter<T, Char>
     template<typename FormatContext>
     auto format(const T& value, FormatContext& ctx) const
     {
-        return SlimLog::Detail::format_qt_type<T, Char, true>(value, ctx.out());
+        return slimlog::detail::format_qt_type<T, Char, true>(value, ctx.out());
     }
 };
 /** @endcond */

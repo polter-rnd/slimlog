@@ -10,7 +10,7 @@
 // NOLINTNEXTLINE(misc-header-include-cycle)
 #include "slimlog/sinks/callback_sink.h" // IWYU pragma: associated
 
-namespace SlimLog {
+namespace slimlog {
 
 template<typename Char, typename ThreadingPolicy>
 auto CallbackSink<Char, ThreadingPolicy>::message(const RecordType& record) -> void
@@ -35,4 +35,4 @@ auto CallbackSink<Char, ThreadingPolicy>::flush() -> void
     // No buffering, so nothing to flush
 }
 
-} // namespace SlimLog
+} // namespace slimlog

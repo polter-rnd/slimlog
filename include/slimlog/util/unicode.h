@@ -16,7 +16,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace SlimLog::Util::Unicode {
+namespace slimlog::util::unicode {
 
 /**
  * @brief Calculates the length of a Unicode code point starting from the given pointer.
@@ -174,7 +174,7 @@ constexpr auto count_codepoints(const Char* begin, std::size_t len) -> std::size
             // For UTF-16, check for surrogate pairs
             std::size_t codepoints = 0;
             for (const auto* end = begin + len; begin != end; ++codepoints) {
-                begin += Util::Unicode::code_point_length(begin);
+                begin += util::unicode::code_point_length(begin);
             }
             return codepoints;
         } else {
@@ -379,4 +379,4 @@ auto from_utf8(T&& str) -> std::basic_string<Char>
     }
 }
 
-} // namespace SlimLog::Util::Unicode
+} // namespace slimlog::util::unicode

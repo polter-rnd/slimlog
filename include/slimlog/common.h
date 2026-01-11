@@ -11,7 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace SlimLog {
+namespace slimlog {
 
 /**
  * @brief Default threading policy for logger sinks.
@@ -56,4 +56,4 @@ struct Record {
     Level level = {}; ///< Log level.
 };
 
-} // namespace SlimLog
+} // namespace slimlog

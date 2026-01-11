@@ -14,7 +14,7 @@
 #include <functional>
 #include <utility>
 
-namespace SlimLog {
+namespace slimlog {
 
 /**
  * @brief Callback-based sink.
@@ -80,7 +80,7 @@ private:
     mutable ThreadingPolicy::Mutex m_mutex;
 };
 
-} // namespace SlimLog
+} // namespace slimlog
 
 #ifdef SLIMLOG_HEADER_ONLY
 #include "slimlog/sinks/callback_sink-inl.h" // IWYU pragma: keep

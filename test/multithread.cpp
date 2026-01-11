@@ -30,7 +30,7 @@
 namespace {
 
 using namespace mettle;
-using namespace SlimLog;
+using namespace slimlog;
 
 // Helper for multithreaded tests
 auto run_concurrent_test(int num_threads, int iterations, auto test_func) -> void

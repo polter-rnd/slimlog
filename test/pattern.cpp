@@ -1,4 +1,3 @@
-// SlimLog
 #include "slimlog/pattern.h"
 
 #include "slimlog/common.h"
@@ -26,7 +25,7 @@
 namespace {
 
 using namespace mettle;
-using namespace SlimLog;
+using namespace slimlog;
 
 // Helper to create test record
 template<typename Char>
@@ -121,7 +120,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
         fields.line = record.line;
         fields.function
             = from_utf8<Char>(std::string_view(record.function.data(), record.function.size()));
-        fields.thread_id = Util::OS::thread_id();
+        fields.thread_id = util::os::thread_id();
         fields.time = time_mock().first;
         fields.nsec = time_mock().second;
         fields.message = record.message;
@@ -456,7 +455,7 @@ const suite<SLIMLOG_CHAR_TYPES> PatternTests("pattern", type_only, [](auto& _) {
                     auto record = create_test_record<Char>(Level::Info, {}, {});
                     PatternFields<Char> fields;
                     fields.level = from_utf8<Char>("INFO");
-                    fields.thread_id = Util::OS::thread_id();
+                    fields.thread_id = util::os::thread_id();
                     fields.time = base_time;
                     fields.nsec = nsec_value;
 

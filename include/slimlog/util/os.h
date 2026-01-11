@@ -45,7 +45,7 @@
 #endif
 #endif
 
-namespace SlimLog::Util::OS {
+namespace slimlog::util::os {
 
 /**
  * @brief Retrieves the current thread ID across different platforms.
@@ -245,4 +245,4 @@ inline void atomic_store_relaxed(T* ptr, T value) noexcept
     return std::make_pair(cached_local, static_cast<std::size_t>(curtime.tv_nsec));
 }
 
-} // namespace SlimLog::Util::OS
+} // namespace slimlog::util::os

@@ -119,12 +119,12 @@ auto inline time_mock() -> std::pair<std::chrono::sys_seconds, std::size_t>
 /**
  * @brief Creates a basic string with the specified character type from UTF-8 input.
  *
- * See @ref SlimLog::Util::Unicode::from_utf8 for details.
+ * See @ref slimlog::util::unicode::from_utf8 for details.
  */
 template<typename Char, typename T>
 auto from_utf8(T&& str) -> std::basic_string<Char>
 {
-    return SlimLog::Util::Unicode::from_utf8<Char>(std::forward<T>(str));
+    return slimlog::util::unicode::from_utf8<Char>(std::forward<T>(str));
 }
 
 /**

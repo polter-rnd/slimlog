@@ -1,4 +1,3 @@
-// SlimLog
 #include "slimlog/util/unicode.h"
 
 #include <mettle.hpp>
@@ -13,7 +12,7 @@
 namespace {
 
 using namespace mettle;
-using namespace SlimLog::Util::Unicode;
+using namespace slimlog::util::unicode;
 
 // Constexpr test helpers - these will only compile if the functions are truly constexpr
 constexpr auto test_constexpr_code_point_length() -> bool

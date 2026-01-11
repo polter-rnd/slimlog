@@ -29,7 +29,7 @@
 // IWYU pragma: no_include <string>
 // IWYU pragma: no_include <chrono>
 
-namespace SlimLog {
+namespace slimlog {
 
 /**
  * @brief Converts a string to a `std::basic_string_view`.
@@ -46,7 +46,7 @@ struct ConvertString {
 };
 
 /** @cond */
-namespace Detail {
+namespace detail {
 
 template<typename String, typename Char>
 concept HasConvertString
@@ -62,7 +62,7 @@ concept IsAllocator = requires(T allocator, typename T::value_type* value) {
     { allocator.deallocate(value, 0) } -> std::same_as<void>;
 };
 
-} // namespace Detail
+} // namespace detail
 /** @endcond */
 
 /**
@@ -219,7 +219,7 @@ public:
         typename T,
         IsThreadingPolicy SinkThreadingPolicy = ThreadingPolicy,
         std::size_t SinkBufferSize = DefaultSinkBufferSize,
-        Detail::IsAllocator SinkAllocator = Allocator,
+        detail::IsAllocator SinkAllocator = Allocator,
         typename... SinkTemplateArgs>
         requires IsFormattableSink< // clang-format off
             T,
@@ -393,22 +393,22 @@ public:
                     message = callback(std::forward<Args>(args)...);
                 } else if constexpr (std::is_convertible_v<RetType, StringViewType>) {
                     message = StringViewType{callback(std::forward<Args>(args)...)};
-                } else if constexpr (Detail::HasConvertString<RetType, Char>) {
+                } else if constexpr (detail::HasConvertString<RetType, Char>) {
                     message = ConvertString<RetType, Char>{}(
                         callback(std::forward<Args>(args)...), buffer);
                 } else {
                     static_assert(
-                        Util::Types::AlwaysFalse<Char>{}, "Unsupported callback return type");
+                        util::types::AlwaysFalse<Char>{}, "Unsupported callback return type");
                 }
             }
         } else if constexpr (std::is_assignable_v<StringViewType, T>) {
             message = callback;
         } else if constexpr (std::is_convertible_v<T, StringViewType>) {
             message = StringViewType{callback};
-        } else if constexpr (Detail::HasConvertString<T, Char>) {
+        } else if constexpr (detail::HasConvertString<T, Char>) {
             message = StringViewType{ConvertString<T, Char>{}(callback, buffer)};
         } else {
-            static_assert(Util::Types::AlwaysFalse<Char>{}, "Unsupported string type");
+            static_assert(util::types::AlwaysFalse<Char>{}, "Unsupported string type");
         }
 
         const Record<Char> record{
@@ -877,7 +877,7 @@ Logger(
     const Char (&)[N], // NOLINT(*-avoid-c-arrays)
     Level = Level::Info) -> Logger<Char>;
 
-} // namespace SlimLog
+} // namespace slimlog
 
 #ifdef SLIMLOG_HEADER_ONLY
 #include "slimlog/logger-inl.h" // IWYU pragma: keep

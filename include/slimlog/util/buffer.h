@@ -22,7 +22,7 @@
 #include "slimlog/util/types.h"
 #endif
 
-namespace SlimLog::Util {
+namespace slimlog::util {
 
 #ifdef SLIMLOG_FMTLIB
 /**
@@ -194,7 +194,7 @@ public:
     {
         while (begin != end) {
             auto free_cap = m_capacity - m_size;
-            auto count = Util::Types::to_unsigned(end - begin);
+            auto count = util::types::to_unsigned(end - begin);
             if (free_cap < count) {
                 m_grow(*this, m_size + count);
                 free_cap = m_capacity - m_size;
@@ -522,4 +522,4 @@ private:
     Allocator m_allocator;
 };
 
-} // namespace SlimLog::Util
+} // namespace slimlog::util

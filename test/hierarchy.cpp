@@ -1,4 +1,3 @@
-// SlimLog
 #include "slimlog/logger.h"
 #include "slimlog/sinks/ostream_sink.h"
 
@@ -19,7 +18,7 @@
 namespace {
 
 using namespace mettle;
-using namespace SlimLog;
+using namespace slimlog;
 
 const suite<SLIMLOG_CHAR_THREADING_TYPES> Hierarchy("hierarchy", type_only, [](auto& _) {
     using Char = typename mettle::fixture_type_t<decltype(_)>::Char;

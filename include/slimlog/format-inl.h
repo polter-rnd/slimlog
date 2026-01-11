@@ -24,7 +24,7 @@
 #include <array>
 #endif
 
-namespace SlimLog {
+namespace slimlog {
 
 #ifndef SLIMLOG_FMTLIB
 template<typename T, Formattable<T> Char>
@@ -102,4 +102,4 @@ void CachedFormatter<T, Char>::format(Out& out, T value) const
 #endif
 }
 
-} // namespace SlimLog
+} // namespace slimlog

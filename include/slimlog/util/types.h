@@ -11,7 +11,7 @@
 #include <utility>
 #include <variant>
 
-namespace SlimLog::Util::Types {
+namespace slimlog::util::types {
 
 /**
  * @brief Helper type to create an overloaded function object.
@@ -40,7 +40,7 @@ struct Overloaded : Ts... {
  *
  * Example usage:
  * ```cpp
- * static_assert(Util::Types::AlwaysFalse<T>{}, "Assertion failed");
+ * static_assert(util::types::AlwaysFalse<T>{}, "Assertion failed");
  * ```
  */
 template<typename>
@@ -112,4 +112,4 @@ static constexpr void variant_for_each_type(const Func& func)
     }(std::make_index_sequence<std::variant_size_v<Variant>>{});
 }
 
-} // namespace SlimLog::Util::Types
+} // namespace slimlog::util::types

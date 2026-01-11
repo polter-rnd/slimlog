@@ -22,7 +22,7 @@
 #include <share.h>
 #endif
 
-namespace SlimLog {
+namespace slimlog {
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 auto FileSink<Char, ThreadingPolicy, BufferSize, Allocator>::open(std::string_view filename) -> void
@@ -91,4 +91,4 @@ auto FileSink<Char, ThreadingPolicy, BufferSize, Allocator>::flush() -> void
     }
 }
 
-} // namespace SlimLog
+} // namespace slimlog

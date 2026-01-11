@@ -10,7 +10,7 @@
 // NOLINTNEXTLINE(misc-header-include-cycle)
 #include "slimlog/sink.h" // IWYU pragma: associated
 
-namespace SlimLog {
+namespace slimlog {
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 auto FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::set_time_func(
@@ -36,4 +36,4 @@ auto FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::format(
     m_pattern.template format<ThreadingPolicy>(result, record);
 }
 
-} // namespace SlimLog
+} // namespace slimlog

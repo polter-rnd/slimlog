@@ -11,7 +11,7 @@
 #include <mutex>
 #include <shared_mutex>
 
-namespace SlimLog {
+namespace slimlog {
 
 /**
  * @brief Policy for single-threaded data manipulation.
@@ -195,4 +195,4 @@ private:
     std::atomic<T> m_value;
 };
 
-} // namespace SlimLog
+} // namespace slimlog

@@ -116,7 +116,7 @@ double percentile(std::vector<double>& vectorIn, int percent)
 
 void do_test()
 {
-    namespace Log = SlimLog;
+    namespace Log = slimlog;
 
     // auto& devnull = std::wcout;
     null_out_stream<wchar_t> devnull;
@@ -183,7 +183,7 @@ void do_test()
 
 void do_test2()
 {
-    namespace Log = SlimLog;
+    namespace Log = slimlog;
 
     // auto& devnull = std::cout;
     null_out_stream<char> devnull;
@@ -220,7 +220,7 @@ void do_test2()
     std::cout << "median: " << percentile(results, 50) << "\n";
 }
 
-namespace SlimLog {
+namespace slimlog {
 #if ENABLE_MYSTRING
 template<typename String, typename Char>
 struct ConvertString;
@@ -233,17 +233,17 @@ struct ConvertString<mystr, Char> {
     }
 };
 #endif
-} // namespace SlimLog
+} // namespace slimlog
 
 auto main(int /*argc*/, char* /*argv*/[]) -> int
 {
-    namespace Util = SlimLog::Util;
-    namespace Log = SlimLog;
+    namespace util = slimlog::util;
+    namespace Log = slimlog;
 
 #if 1
     try {
         // replace the C++ global locale and the "C" locale with the user-preferred locale
-        const Util::Locale::ScopedGlobalLocale myloc("");
+        const util::Locale::ScopedGlobalLocale myloc("");
 
         std::cout << "*** This is simple test for the logger ***\n";
         std::cout << "==========================================\n";

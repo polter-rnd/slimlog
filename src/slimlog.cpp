@@ -31,7 +31,7 @@
 #define SLIMLOG_EXPORT_CLASS SLIMLOG_EXPORT
 #endif
 
-namespace SlimLog {
+namespace slimlog {
 // char
 template class SLIMLOG_EXPORT_CLASS Logger<char, SingleThreadedPolicy>;
 template class SLIMLOG_EXPORT_CLASS Logger<char, MultiThreadedPolicy>;
@@ -145,4 +145,4 @@ template SLIMLOG_EXPORT void Pattern<char32_t>::format<MultiThreadedPolicy>(
 template class CachedFormatter<std::size_t, char32_t>;
 template class CachedFormatter<std::chrono::sys_seconds, char32_t>;
 #endif
-} // namespace SlimLog
+} // namespace slimlog

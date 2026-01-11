@@ -1,4 +1,3 @@
-// SlimLog
 #include "slimlog/format.h"
 #include "slimlog/logger.h"
 #include "slimlog/sinks/callback_sink.h"
@@ -40,7 +39,7 @@
 namespace {
 
 using namespace mettle;
-using namespace SlimLog;
+using namespace slimlog;
 
 const suite<SLIMLOG_CHAR_THREADING_TYPES> Basic("basic", type_only, [](auto& _) {
     using Char = typename mettle::fixture_type_t<decltype(_)>::Char;
@@ -442,7 +441,7 @@ const suite<SLIMLOG_CHAR_THREADING_TYPES> Basic("basic", type_only, [](auto& _) 
         PatternFields<Char> fields;
         fields.category = from_utf8<Char>("default");
         fields.level = from_utf8<Char>("INFO");
-        fields.thread_id = Util::OS::thread_id();
+        fields.thread_id = util::os::thread_id();
         fields.function = from_utf8<Char>(__builtin_FUNCTION());
         fields.file = from_utf8<Char>("basic.cpp");
         fields.time = time_mock().first;

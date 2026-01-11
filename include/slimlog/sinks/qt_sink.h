@@ -14,7 +14,7 @@
 // Qt includes
 #include <QMessageLogger>
 
-namespace SlimLog {
+namespace slimlog {
 
 /**
  * @brief Log sink integrated with QMessageLogger.
@@ -86,4 +86,4 @@ private:
     const char* m_qt_log_category;
 };
 
-} // namespace SlimLog
+} // namespace slimlog

@@ -1,4 +1,3 @@
-// SlimLog
 #include "slimlog/util/string.h"
 #include "slimlog/util/unicode.h"
 
@@ -16,7 +15,7 @@
 namespace {
 
 using namespace mettle;
-using namespace SlimLog;
+using namespace slimlog;
 
 // Constexpr test helpers
 constexpr auto test_constexpr_constructors() -> bool
@@ -174,7 +173,7 @@ const suite<SLIMLOG_CHAR_TYPES> CachedStrings("strings", type_only, [](auto& _) 
         auto str_data = from_utf8<Char>("Hello 😀 World");
         auto str2_data = str_data;
         const auto str_codepoints
-            = Util::Unicode::count_codepoints(str_data.data(), str_data.size());
+            = util::unicode::count_codepoints(str_data.data(), str_data.size());
 
         // Constructor from std::basic_string
         const CachedString<Char> str2(str_data);
@@ -212,7 +211,7 @@ const suite<SLIMLOG_CHAR_TYPES> CachedStrings("strings", type_only, [](auto& _) 
         auto str_data = from_utf8<Char>("Hello 😀 World");
         auto str2_data = str_data;
         const auto str_codepoints
-            = Util::Unicode::count_codepoints(str_data.data(), str_data.size());
+            = util::unicode::count_codepoints(str_data.data(), str_data.size());
 
         // Copy assignment - preserves cached codepoints
         CachedString<Char> str1(str_data);
@@ -328,11 +327,11 @@ const suite<SLIMLOG_CHAR_TYPES> CachedStrings("strings", type_only, [](auto& _) 
     _.test("to_string_view", []() {
         const auto str1_data = from_utf8<Char>("Test String");
         const auto str1_codepoints
-            = Util::Unicode::count_codepoints(str1_data.data(), str1_data.size());
+            = util::unicode::count_codepoints(str1_data.data(), str1_data.size());
 
         const auto str2_data = from_utf8<Char>("New String2");
         const auto str2_codepoints
-            = Util::Unicode::count_codepoints(str2_data.data(), str2_data.size());
+            = util::unicode::count_codepoints(str2_data.data(), str2_data.size());
 
         CachedString<Char> str1(str1_data);
         expect(std::basic_string_view<Char>(str1), equal_to(str1_data));

@@ -1,4 +1,3 @@
-// SlimLog
 #include "slimlog/util/buffer.h"
 
 // Test helpers
@@ -30,7 +29,7 @@
 namespace {
 
 using namespace mettle;
-using namespace SlimLog::Util;
+using namespace slimlog::util;
 
 // Custom allocator that limits the maximum allocation size
 template<typename T, std::size_t MaxSize = 1000>

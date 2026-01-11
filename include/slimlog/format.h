@@ -39,7 +39,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace SlimLog {
+namespace slimlog {
 
 #ifdef SLIMLOG_FMTLIB
 #if FMT_VERSION < 110100
@@ -178,9 +178,9 @@ concept Formattable = requires(const Char* fmt, Args... args) {
  * @tparam Allocator Allocator for the buffer data.
  */
 template<Formattable Char, std::size_t BufferSize, typename Allocator = std::allocator<Char>>
-class FormatBuffer final : public Util::MemoryBuffer<Char, BufferSize, Allocator> {
+class FormatBuffer final : public util::MemoryBuffer<Char, BufferSize, Allocator> {
 public:
-    using Util::MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;
+    using util::MemoryBuffer<Char, BufferSize, Allocator>::MemoryBuffer;
 
     /**
      * @brief Formats a log message with compile-time argument checks.
@@ -277,7 +277,7 @@ public:
             return std::make_wformat_args(args...);
         } else {
             static_assert(
-                Util::Types::AlwaysFalse<Char>{},
+                util::types::AlwaysFalse<Char>{},
                 "std::vformat_to() supports only `char` or `wchar_t` character types");
         }
 #endif
@@ -366,19 +366,19 @@ private:
 #endif
 };
 
-} // namespace SlimLog
+} // namespace slimlog
 
 #ifndef SLIMLOG_FMTLIB
 /** @cond */
-template<typename T, SlimLog::Formattable<T> Char>
-struct std::formatter<SlimLog::FormatValue<T, Char>, Char> { // NOLINT(cert-dcl58-cpp)
-    constexpr auto parse(SlimLog::FormatParseContext<Char>& context)
+template<typename T, slimlog::Formattable<T> Char>
+struct std::formatter<slimlog::FormatValue<T, Char>, Char> { // NOLINT(cert-dcl58-cpp)
+    constexpr auto parse(slimlog::FormatParseContext<Char>& context)
     {
         return context.begin();
     }
 
     template<typename Context>
-    auto format(const SlimLog::FormatValue<T, Char>& wrapper, Context& context) const
+    auto format(const slimlog::FormatValue<T, Char>& wrapper, Context& context) const
     {
         return wrapper.format(context);
     }

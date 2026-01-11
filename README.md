@@ -76,8 +76,8 @@ target_link_libraries(your_target PRIVATE slimlog::slimlog)
 
 int main() {
     // Create a logger with a console sink
-    auto logger = SlimLog::create_logger(SlimLog::Level::Info);
-    logger->add_sink<SlimLog::OStreamSink>(std::cout, "<{time}> [{level}] {file}:{line} {message}");
+    auto logger = slimlog::create_logger(slimlog::Level::Info);
+    logger->add_sink<slimlog::OStreamSink>(std::cout, "<{time}> [{level}] {file}:{line} {message}");
 
     logger->info("Hello, {}!", "World");
     logger->error("Something went wrong: error code {}", 404);
@@ -96,11 +96,11 @@ SlimLog's killer feature is its hierarchy model. Child loggers can propagate mes
 
 int main() {
     // Root logger setup
-    auto root = SlimLog::create_logger("root", SlimLog::Level::Warning);
-    root->add_sink<SlimLog::OStreamSink>(std::cerr); // Log warnings and errors to stderr
+    auto root = slimlog::create_logger("root", slimlog::Level::Warning);
+    root->add_sink<slimlog::OStreamSink>(std::cerr); // Log warnings and errors to stderr
 
     // Child logger for a specific module
-    auto network_logger = SlimLog::create_logger(root, "network", SlimLog::Level::Debug);
+    auto network_logger = slimlog::create_logger(root, "network", slimlog::Level::Debug);
     
     // This message is propagated to 'root' but filtered out because root level is Warning
     // However, if we added a sink to network_logger, it would show up there.
@@ -123,8 +123,8 @@ SlimLog is agnostic to the character type used.
 
 int main() {
     // Wide character logger
-    auto wlogger = SlimLog::create_logger<wchar_t>(SlimLog::Level::Info);
-    wlogger->add_sink<SlimLog::OStreamSink>(std::wcout);
+    auto wlogger = slimlog::create_logger<wchar_t>(slimlog::Level::Info);
+    wlogger->add_sink<slimlog::OStreamSink>(std::wcout);
 
     wlogger->info(L"Unicode support: \u2713");
     
@@ -141,9 +141,9 @@ Useful for integrating with other systems or custom processing.
 #include <slimlog/sinks/callback_sink.h>
 
 int main() {
-    auto logger = SlimLog::create_logger();
+    auto logger = slimlog::create_logger();
     
-    logger->add_sink<SlimLog::CallbackSink>([](SlimLog::Level level, const SlimLog::Location& loc, std::string_view msg) {
+    logger->add_sink<slimlog::CallbackSink>([](slimlog::Level level, const slimlog::Location& loc, std::string_view msg) {
         // Custom handling logic
         std::cout << "[Custom] " << loc.file_name() << ":" << loc.line() << " " << msg << "\n";
     });
@@ -181,7 +181,7 @@ By default, loggers use `SingleThreadedPolicy`. For multi-threaded applications 
 #include <slimlog/logger.h>
 #include <slimlog/threading.h>
 
-using MtLogger = SlimLog::Logger<char, SlimLog::MultiThreadedPolicy>;
+using MtLogger = slimlog::Logger<char, slimlog::MultiThreadedPolicy>;
 
 int main() {
     auto logger = MtLogger::create();
@@ -196,8 +196,8 @@ You always can choose another threading policy for a sink. For example, the logg
 #include <slimlog/sinks/ostream_sink.h>
 
 int main() {
-    auto logger = SlimLog::create_logger<char>();
-    logger->add_sink<SlimLog::OStreamSink, SlimLog::MultiThreadedPolicy>(std::cerr); // Will lock a mutex on every message
+    auto logger = slimlog::create_logger<char>();
+    logger->add_sink<slimlog::OStreamSink, slimlog::MultiThreadedPolicy>(std::cerr); // Will lock a mutex on every message
 }
 ```
 

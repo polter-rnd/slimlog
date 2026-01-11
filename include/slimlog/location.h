@@ -5,7 +5,7 @@
 
 #pragma once
 
-namespace SlimLog {
+namespace slimlog {
 
 /** @cond */
 // MSVC supports source_location starting from version 16.6 (MSVC-PR-229114)
@@ -20,7 +20,7 @@ namespace SlimLog {
 #define SLIMLOG_SOURCE_LINE __builtin_LINE()
 #endif
 
-namespace Detail {
+namespace detail {
 static consteval auto source_basename(const char* path = SLIMLOG_SOURCE_FILE) -> const char*
 {
     const char* filename = path;
@@ -32,7 +32,7 @@ static consteval auto source_basename(const char* path = SLIMLOG_SOURCE_FILE) ->
     }
     return filename;
 }
-} // namespace Detail
+} // namespace detail
 /** @endcond */
 
 /**
@@ -52,7 +52,7 @@ public:
      * @return A Location object representing the current source location.
      */
     [[nodiscard]] static constexpr auto current(
-        const char* file = Detail::source_basename(),
+        const char* file = detail::source_basename(),
         const char* function = SLIMLOG_SOURCE_FUNCTION,
         int line = SLIMLOG_SOURCE_LINE) noexcept
     {
@@ -99,4 +99,4 @@ private:
     int m_line{};
 };
 
-} // namespace SlimLog
+} // namespace slimlog

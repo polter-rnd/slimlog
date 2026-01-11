@@ -10,7 +10,7 @@
 // NOLINTNEXTLINE(misc-header-include-cycle)
 #include "slimlog/sinks/ostream_sink.h" // IWYU pragma: associated
 
-namespace SlimLog {
+namespace slimlog {
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 auto OStreamSink<Char, ThreadingPolicy, BufferSize, Allocator>::message(const RecordType& record)
@@ -31,4 +31,4 @@ auto OStreamSink<Char, ThreadingPolicy, BufferSize, Allocator>::flush() -> void
     m_ostream.flush();
 }
 
-} // namespace SlimLog
+} // namespace slimlog

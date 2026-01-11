@@ -16,7 +16,7 @@
 #include <climits>
 #include <limits>
 
-namespace SlimLog {
+namespace slimlog {
 
 template<typename Char>
 auto Pattern<Char>::Levels::get(Level level) const -> CachedStringView<Char>
@@ -83,7 +83,7 @@ auto Pattern<Char>::format(BufferType& out, const Record<Char>& record) -> void
 
     for (const auto& item : m_placeholders) {
         std::visit(
-            Util::Types::Overloaded{
+            util::types::Overloaded{
                 [&out](const StringViewType& text) { out.append(text); },
                 [&out, &record, this](const LevelFormatter& formatter) {
                     formatter.template format<ThreadingPolicy>(out, m_levels.get(record.level));
@@ -103,7 +103,7 @@ auto Pattern<Char>::format(BufferType& out, const Record<Char>& record) -> void
                     formatter.format(out, time_point.second);
                 },
                 [&out](const ThreadFormatter& formatter) {
-                    formatter.format(out, Util::OS::thread_id());
+                    formatter.format(out, util::os::thread_id());
                 },
                 [&out, &record](const auto& formatter) {
                     using FormatterType = std::decay_t<decltype(formatter)>;
@@ -154,11 +154,11 @@ void Pattern<Char>::compile(StringViewType pattern)
             break;
         }
 
-        const auto chr = Util::Unicode::to_ascii(pattern[pos]);
+        const auto chr = util::unicode::to_ascii(pattern[pos]);
 
         // Handle escaped braces
         if (!inside_placeholder && pos < len - 1
-            && chr == Util::Unicode::to_ascii(pattern[pos + 1])) {
+            && chr == util::unicode::to_ascii(pattern[pos + 1])) {
             m_pattern.append(pattern.substr(0, pos + 1));
             pattern = pattern.substr(pos + 2);
             append_text(pos + 1);
@@ -186,7 +186,7 @@ void Pattern<Char>::compile(StringViewType pattern)
                     }
                 }
             };
-            Util::Types::variant_for_each_type<FormatterVariant>(find_placeholder);
+            util::types::variant_for_each_type<FormatterVariant>(find_placeholder);
 
             if (delta == 0) {
                 throw FormatError("format error: unknown pattern placeholder found");
@@ -248,17 +248,17 @@ Pattern<Char>::StringFormatter::StringFormatter(StringViewType value)
         const auto* begin = value.data();
         const auto* end = begin + value.size();
         const auto* fmt = parse_align(begin, end, specs);
-        if (auto chr = Util::Unicode::to_ascii(*fmt); chr != '}') {
+        if (auto chr = util::unicode::to_ascii(*fmt); chr != '}') {
             const int width = parse_nonnegative_int(fmt, end - 1, -1);
             if (width == -1) {
                 throw FormatError("format field width is too big");
             }
-            chr = Util::Unicode::to_ascii(*fmt);
+            chr = util::unicode::to_ascii(*fmt);
             switch (chr) {
             case '}':
                 break;
             case 's':
-                if (Util::Unicode::to_ascii(fmt[1]) != '}') {
+                if (util::unicode::to_ascii(fmt[1]) != '}') {
                     throw FormatError("missing '}' in format string");
                 }
                 break;
@@ -306,7 +306,7 @@ constexpr auto Pattern<Char>::StringFormatter::parse_align(
     const Char* begin, const Char* end, StringSpecs& specs) -> const Char*
 {
     auto align = StringSpecs::Align::None;
-    auto* ptr = begin + Util::Unicode::code_point_length(begin);
+    auto* ptr = begin + util::unicode::code_point_length(begin);
     if (end - ptr <= 0) {
         // Can happen if invalid code point claims more bytes than available
         // in the string, so we just reset pointer to the beginning
@@ -315,7 +315,7 @@ constexpr auto Pattern<Char>::StringFormatter::parse_align(
     }
 
     for (;;) {
-        switch (Util::Unicode::to_ascii(*ptr)) {
+        switch (util::unicode::to_ascii(*ptr)) {
         case '<':
             align = StringSpecs::Align::Left;
             break;
@@ -328,7 +328,7 @@ constexpr auto Pattern<Char>::StringFormatter::parse_align(
         }
         if (align != StringSpecs::Align::None) {
             if (ptr != begin) {
-                specs.fill = StringViewType(begin, Util::Types::to_unsigned(ptr - begin));
+                specs.fill = StringViewType(begin, util::types::to_unsigned(ptr - begin));
                 begin = ptr + 1;
             } else {
                 ++begin;
@@ -363,7 +363,7 @@ constexpr void Pattern<Char>::StringFormatter::write_string(
         }
 
         dst.reserve(dst.size() + dest_size);
-        const auto written = Util::Unicode::from_utf8(dst.end(), dest_size, src.data(), src.size());
+        const auto written = util::unicode::from_utf8(dst.end(), dest_size, src.data(), src.size());
         dst.resize(dst.size() + written);
     } else {
         dst.append(src);
@@ -375,7 +375,7 @@ template<typename ThreadingPolicy, typename BufferType, typename T>
 constexpr void Pattern<Char>::StringFormatter::write_string_padded(
     BufferType& dst, const CachedStringView<T>& src) const
 {
-    const auto spec_width = Util::Types::to_unsigned(m_specs.width);
+    const auto spec_width = util::types::to_unsigned(m_specs.width);
     const auto codepoints = src.template codepoints<ThreadingPolicy>();
     const auto padding = spec_width > codepoints ? spec_width - codepoints : 0;
 
@@ -439,4 +439,4 @@ constexpr void Pattern<Char>::StringFormatter::write_string_padded(
     }
 }
 
-} // namespace SlimLog
+} // namespace slimlog

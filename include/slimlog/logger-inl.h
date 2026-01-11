@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <unordered_set>
 
-namespace SlimLog {
+namespace slimlog {
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 Logger<Char, ThreadingPolicy, BufferSize, Allocator>::Logger(
@@ -329,4 +329,4 @@ auto Logger<Char, ThreadingPolicy, BufferSize, Allocator>::update_propagated_sin
     }
 }
 
-} // namespace SlimLog
+} // namespace slimlog

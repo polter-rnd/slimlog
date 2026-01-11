@@ -17,7 +17,7 @@
 #include <type_traits>
 #include <utility>
 
-namespace SlimLog {
+namespace slimlog {
 
 /**
  * @brief Non-owning string view type with cached codepoints.
@@ -129,17 +129,17 @@ protected:
     {
         if constexpr (std::is_same_v<ThreadingPolicy, MultiThreadedPolicy>) {
             // Multi-threaded: use atomic operations for thread-safe access
-            auto current = Util::OS::atomic_load_relaxed(codepoints_ptr);
+            auto current = util::os::atomic_load_relaxed(codepoints_ptr);
             if (current == BaseType::npos) {
-                const auto calculated = Util::Unicode::count_codepoints(data, size);
-                Util::OS::atomic_store_relaxed(codepoints_ptr, calculated);
+                const auto calculated = util::unicode::count_codepoints(data, size);
+                util::os::atomic_store_relaxed(codepoints_ptr, calculated);
                 current = calculated;
             }
             return current;
         } else {
             // Single-threaded: use simple non-atomic access
             if (*codepoints_ptr == BaseType::npos) {
-                *codepoints_ptr = Util::Unicode::count_codepoints(data, size);
+                *codepoints_ptr = util::unicode::count_codepoints(data, size);
             }
             return *codepoints_ptr;
         }
@@ -483,4 +483,4 @@ CachedString(const StringViewLike&, std::size_t, std::size_t, Allocator = Alloca
         typename StringViewLike::traits_type,
         Allocator>;
 
-} // namespace SlimLog
+} // namespace slimlog

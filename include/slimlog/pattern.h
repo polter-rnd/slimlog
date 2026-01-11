@@ -24,10 +24,10 @@
 #include <variant>
 #include <vector>
 
-namespace SlimLog {
+namespace slimlog {
 
 /** @cond */
-namespace Detail {
+namespace detail {
 
 template<typename T>
 concept IsPair = requires {
@@ -38,7 +38,7 @@ concept IsPair = requires {
     pair.second;
 };
 
-} // namespace Detail
+} // namespace detail
 /** @endcond */
 
 /**
@@ -152,7 +152,7 @@ public:
      * @param container Container of level-name pairs.
      */
     template<typename Container>
-        requires(!Detail::IsPair<std::remove_cvref_t<Container>>)
+        requires(!detail::IsPair<std::remove_cvref_t<Container>>)
     auto set_levels(Container&& container) -> void
     {
         for (const auto& pair : std::forward<Container>(container)) {
@@ -176,7 +176,7 @@ public:
      * @param pairs Variadic list of level-name pairs.
      */
     template<typename... Pairs>
-        requires(Detail::IsPair<std::remove_cvref_t<Pairs>> && ...)
+        requires(detail::IsPair<std::remove_cvref_t<Pairs>> && ...)
     auto set_levels(Pairs&&... pairs) -> void
     {
         (
@@ -561,11 +561,11 @@ private:
     std::basic_string<Char> m_pattern;
     std::vector<FormatterVariant> m_placeholders;
     Levels m_levels;
-    TimeFunctionType m_time_func = Util::OS::local_time;
+    TimeFunctionType m_time_func = util::os::local_time;
     bool m_has_time = false;
 };
 
-} // namespace SlimLog
+} // namespace slimlog
 
 #ifdef SLIMLOG_HEADER_ONLY
 #include "slimlog/pattern-inl.h" // IWYU pragma: keep

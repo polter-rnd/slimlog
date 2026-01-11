@@ -21,7 +21,7 @@
 
 // IWYU pragma: no_include <string>
 
-namespace SlimLog {
+namespace slimlog {
 
 /**
  * @brief Base abstract sink class.
@@ -249,7 +249,7 @@ concept IsThreadAwareSink
     || (sizeof...(SinkTemplateArgs) > 0
         && IsThreadingPolicy<std::tuple_element_t<0, std::tuple<SinkTemplateArgs...>>>);
 
-} // namespace SlimLog
+} // namespace slimlog
 
 #ifdef SLIMLOG_HEADER_ONLY
 #include "slimlog/sink-inl.h" // IWYU pragma: keep

@@ -15,7 +15,7 @@
 #include <string_view>
 #include <utility>
 
-namespace SlimLog {
+namespace slimlog {
 
 /**
  * @brief Output file-based sink.
@@ -83,7 +83,7 @@ protected:
 private:
     std::unique_ptr<FILE, int (*)(FILE*)> m_fp = {nullptr, nullptr};
 };
-} // namespace SlimLog
+} // namespace slimlog
 
 #ifdef SLIMLOG_HEADER_ONLY
 #include "slimlog/sinks/file_sink-inl.h" // IWYU pragma: keep
