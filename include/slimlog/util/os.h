@@ -6,7 +6,9 @@
 #pragma once
 
 #include <chrono>
+#include <cstdio>
 #include <ctime>
+#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -26,6 +28,7 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#include <share.h> // for _SH_DENYWR
 #include <windows.h> // for GetCurrentThreadId
 #else
 #include <unistd.h>
@@ -243,6 +246,49 @@ inline void atomic_store_relaxed(T* ptr, T value) noexcept
     }
 
     return std::make_pair(cached_local, static_cast<std::size_t>(curtime.tv_nsec));
+}
+
+/**
+ * @brief Wrapper for fopen with shared read access on Windows.
+ *
+ * On Windows, uses _fsopen to open files with shared read access.
+ * On other platforms, falls back to standard fopen.
+ *
+ * @param filename Path to the file.
+ * @param mode Mode string for opening the file.
+ * @return A unique_ptr managing the opened FILE*.
+ */
+[[nodiscard]] inline auto fopen_shared(const char* filename, const char* mode)
+    -> std::unique_ptr<FILE, int (*)(FILE*)>
+{
+#ifdef _WIN32
+    return {_fsopen(filename, mode, _SH_DENYWR), std::fclose};
+#else
+    return {std::fopen(filename, mode), std::fclose};
+#endif
+}
+
+/**
+ * @brief Wrapper for fwrite with unlocked version if available.
+ *
+ * Uses platform-specific unlocked fwrite for better performance in single-threaded scenarios.
+ *
+ * @param ptr Pointer to the data to write.
+ * @param size Size of each element to write.
+ * @param count Number of elements to write.
+ * @param stream Output file stream.
+ * @return Number of elements successfully written.
+ */
+[[nodiscard]] inline auto fwrite_nolock(
+    const void* ptr, std::size_t size, std::size_t count, FILE* stream) -> std::size_t
+{
+#if SLIMLOG_HAS_FWRITE_UNLOCKED
+    return ::fwrite_unlocked(ptr, size, count, stream);
+#elif defined(_WIN32)
+    return _fwrite_nolock(ptr, size, count, stream);
+#else
+    return std::fwrite(ptr, size, count, stream);
+#endif
 }
 
 } // namespace slimlog::util::os
