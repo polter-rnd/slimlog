@@ -116,7 +116,7 @@ const suite<SLIMLOG_CHAR_TYPES> Multithread("multithread", type_only, [](auto& _
         // Verify file contains expected number of lines
         const auto file_output = cap_file.read();
         const auto line_count = std::count_if(
-            file_output.begin(), file_output.end(), [](Char chr) { return chr == '\n'; });
+            file_output.begin(), file_output.end(), [](auto chr) { return chr == Char{'\n'}; });
         expect(line_count, equal_to(NumThreads * IterationsPerThread));
     });
 
