@@ -92,11 +92,11 @@ auto Pattern<Char>::format(BufferType& out, const Record<Char>& record) -> void
                     formatter.format(out, time_point.first);
                 },
                 [&out, &time_point](const MsecFormatter& formatter) {
-                    constexpr std::size_t MsecInNsec = 1000000;
+                    constexpr std::size_t MsecInNsec = 1'000'000;
                     formatter.format(out, time_point.second / MsecInNsec);
                 },
                 [&out, &time_point](const UsecFormatter& formatter) {
-                    constexpr std::size_t UsecInNsec = 1000;
+                    constexpr std::size_t UsecInNsec = 1'000;
                     formatter.format(out, time_point.second / UsecInNsec);
                 },
                 [&out, &time_point](const NsecFormatter& formatter) {

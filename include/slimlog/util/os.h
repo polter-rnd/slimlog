@@ -210,7 +210,9 @@ inline void atomic_store_relaxed(T* ptr, T value) noexcept
  */
 [[nodiscard]] inline auto local_time() -> std::pair<std::chrono::sys_seconds, std::size_t>
 {
-    static thread_local std::chrono::sys_seconds cached_local;
+    namespace chrono = std::chrono;
+
+    static thread_local chrono::sys_seconds cached_local;
     static thread_local std::time_t cached_time;
 
     ::timespec curtime{};
@@ -219,11 +221,18 @@ inline void atomic_store_relaxed(T* ptr, T value) noexcept
     // On Linux we can use CLOCK_REALTIME_COARSE for better performance
     std::ignore = ::clock_gettime(CLOCK_REALTIME_COARSE, &curtime);
 #else
-    // Elsewhere use standard CLOCK_REALTIME which is guaranteed to be available
+    // Elsewhere use standard CLOCK_REALTIME if available
     std::ignore = ::clock_gettime(CLOCK_REALTIME, &curtime);
 #endif
-#else
+#elif SLIMLOG_HAS_TIMESPEC_GET
     std::ignore = ::timespec_get(&curtime, TIME_UTC);
+#else
+    // Fallback to std::chrono if neither clock_gettime nor timespec_get is available
+    constexpr int NsecInSec = 1'000'000'000;
+    const auto now = chrono::system_clock::now();
+    const auto duration = now.time_since_epoch();
+    curtime.tv_sec = chrono::duration_cast<chrono::seconds>(duration).count();
+    curtime.tv_nsec = chrono::duration_cast<chrono::nanoseconds>(duration).count() % NsecInSec;
 #endif
 
     if (curtime.tv_sec != cached_time) {
@@ -242,13 +251,13 @@ inline void atomic_store_relaxed(T* ptr, T value) noexcept
 #endif
 
         constexpr int TmEpoch = 1900;
-        cached_local = std::chrono::sys_days( // For clang-format < 19
-                           std::chrono::year_month_day(
-                               std::chrono::year(local_tm.tm_year + TmEpoch),
-                               std::chrono::month(local_tm.tm_mon),
-                               std::chrono::day(local_tm.tm_mday)))
-            + std::chrono::hours(local_tm.tm_hour) + std::chrono::minutes(local_tm.tm_min)
-            + std::chrono::seconds(local_tm.tm_sec);
+        cached_local = chrono::sys_days( // For clang-format < 19
+                           chrono::year_month_day(
+                               chrono::year(local_tm.tm_year + TmEpoch),
+                               chrono::month(local_tm.tm_mon),
+                               chrono::day(local_tm.tm_mday)))
+            + chrono::hours(local_tm.tm_hour) + chrono::minutes(local_tm.tm_min)
+            + chrono::seconds(local_tm.tm_sec);
     }
 
     return std::make_pair(cached_local, static_cast<std::size_t>(curtime.tv_nsec));

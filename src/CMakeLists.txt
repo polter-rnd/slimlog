@@ -107,6 +107,25 @@ target_include_directories(
 )
 
 # ---------------------------------------------------------------------------------------
+# Check for platform-specific symbols
+# ---------------------------------------------------------------------------------------
+include(CheckCXXSymbolExists)
+set(symbol_checks "clock_gettime|ctime|CLOCK_GETTIME" "timespec_get|ctime|TIMESPEC_GET"
+                  "fwrite_unlocked|cstdio|FWRITE_UNLOCKED"
+)
+foreach(check IN LISTS symbol_checks)
+    string(REPLACE "|" ";" check_items "${check}")
+    list(GET check_items 0 symbol)
+    list(GET check_items 1 header)
+    list(GET check_items 2 suffix)
+    check_cxx_symbol_exists("${symbol}" "${header}" SLIMLOG_HAS_${suffix})
+    if(SLIMLOG_HAS_${suffix})
+        target_compile_definitions(slimlog PUBLIC SLIMLOG_HAS_${suffix})
+        target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_HAS_${suffix})
+    endif()
+endforeach()
+
+# ---------------------------------------------------------------------------------------
 # Use fmt package if required
 # ---------------------------------------------------------------------------------------
 if(SLIMLOG_FMTLIB OR SLIMLOG_FMTLIB_HO)
@@ -125,7 +144,6 @@ if(SLIMLOG_FMTLIB OR SLIMLOG_FMTLIB_HO)
     endif()
 
     # Check which unicode types are supported
-    include(CheckCXXSymbolExists)
     if(${fmt_VERSION} VERSION_GREATER_EQUAL 11.0.0)
         set(fmt_format_context "fmt::buffered_context")
     else()
@@ -138,18 +156,6 @@ if(SLIMLOG_FMTLIB OR SLIMLOG_FMTLIB_HO)
     get_target_property(FMT_INCLUDE_DIRS fmt::fmt INTERFACE_INCLUDE_DIRECTORIES)
     set(CMAKE_REQUIRED_INCLUDES ${FMT_INCLUDE_DIRS})
     set(CMAKE_REQUIRED_DEFINITIONS -DFMT_HEADER_ONLY)
-
-    check_cxx_symbol_exists("clock_gettime" "ctime" SLIMLOG_HAS_CLOCK_GETTIME)
-    if(SLIMLOG_HAS_CLOCK_GETTIME)
-        target_compile_definitions(slimlog PUBLIC SLIMLOG_HAS_CLOCK_GETTIME)
-        target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_HAS_CLOCK_GETTIME)
-    endif()
-
-    check_cxx_symbol_exists("fwrite_unlocked" "cstdio" SLIMLOG_HAS_FWRITE_UNLOCKED)
-    if(SLIMLOG_HAS_FWRITE_UNLOCKED)
-        target_compile_definitions(slimlog PUBLIC SLIMLOG_HAS_FWRITE_UNLOCKED)
-        target_compile_definitions(slimlog-header-only INTERFACE SLIMLOG_HAS_FWRITE_UNLOCKED)
-    endif()
 
     foreach(size 8 16 32)
         check_cxx_symbol_exists(
@@ -176,7 +182,6 @@ if(SLIMLOG_FMTLIB OR SLIMLOG_FMTLIB_HO)
     set(PKG_CONFIG_REQUIRES fmt)
 else()
     # If fmtlib is not available, check for C++20 std::format()
-    include(CheckCXXSymbolExists)
     check_cxx_symbol_exists(
         "std::make_format_args<std::format_context, std::chrono::sys_seconds>" "format;chrono"
         HAS_CXX20_FORMAT
