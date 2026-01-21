@@ -22,6 +22,17 @@
 *   **Thread Safety:** Configurable threading policy (`SingleThreadedPolicy` or `MultiThreadedPolicy`).
 *   **Minimalistic:** Clean, modern C++20 codebase. Can be used as a header-only library or built as a static/shared library.
 
+## Minimum Supported Compiler Versions
+
+| Compiler | std/fmt           | fmt only          |
+|----------|-------------------|-------------------|
+| **MSVC** | 19.29 (VS 16.11)  | 19.29 (VS 16.10)  |
+| **GCC**  | 13.1              | 11.1              |
+| **Clang**| 17.0.0            | 14.0.0            |
+| **ICX**  | 2024.0.0          | 2022.2.0          |
+
+> **Note:** "std/fmt" means that it's possible to build both using `<fmt/format.h>` and `<format>` from standard C++ library, while "fmt only" means that standard C++ library lacks necessary features for `<format>` compatibility.
+
 ## Installation
 
 ### CMake
