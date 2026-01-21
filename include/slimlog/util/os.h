@@ -45,6 +45,10 @@
 #elif defined(__APPLE__)
 #include <AvailabilityMacros.h> // for MAC_OS_X_VERSION_MAX_ALLOWED
 #include <pthread.h> // for pthread_threadid_np
+#elif defined(__QNXNTO__)
+#include <pthread.h> // for pthread_self
+#else
+#include <thread> // for std::this_thread::get_id
 #endif
 #endif
 
@@ -109,6 +113,8 @@ namespace slimlog::util::os {
         ::pthread_threadid_np(nullptr, &tid);
 #endif
         cached_tid = static_cast<std::size_t>(tid);
+#elif defined(__QNXNTO__)
+        cached_tid = static_cast<std::size_t>(::pthread_self());
 #else // Default to standard C++11 (other Unix)
         cached_tid
             = static_cast<std::size_t>(std::hash<std::thread::id>()(std::this_thread::get_id()));
@@ -211,10 +217,10 @@ inline void atomic_store_relaxed(T* ptr, T value) noexcept
 #if SLIMLOG_HAS_CLOCK_GETTIME
 #ifdef CLOCK_REALTIME_COARSE
     // On Linux we can use CLOCK_REALTIME_COARSE for better performance
-    std::ignore = clock_gettime(CLOCK_REALTIME_COARSE, &curtime);
+    std::ignore = ::clock_gettime(CLOCK_REALTIME_COARSE, &curtime);
 #else
     // Elsewhere use standard CLOCK_REALTIME which is guaranteed to be available
-    std::ignore = clock_gettime(CLOCK_REALTIME, &curtime);
+    std::ignore = ::clock_gettime(CLOCK_REALTIME, &curtime);
 #endif
 #else
     std::ignore = ::timespec_get(&curtime, TIME_UTC);
