@@ -16,7 +16,7 @@ template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typena
 auto FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::set_time_func(
     TimeFunctionType time_func) -> void
 {
-    const typename ThreadingPolicy::UniqueLock lock(m_mutex);
+    const typename ThreadingPolicy::template UniqueLock<decltype(m_mutex)> lock(m_mutex);
     m_pattern.set_time_func(time_func);
 }
 
@@ -24,7 +24,7 @@ template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typena
 auto FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::set_pattern(
     StringViewType pattern) -> void
 {
-    const typename ThreadingPolicy::UniqueLock lock(m_mutex);
+    const typename ThreadingPolicy::template UniqueLock<decltype(m_mutex)> lock(m_mutex);
     m_pattern.set_pattern(pattern);
 }
 
@@ -32,7 +32,7 @@ template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typena
 auto FormattableSink<Char, ThreadingPolicy, BufferSize, Allocator>::format(
     FormatBufferType& result, const RecordType& record) -> void
 {
-    const typename ThreadingPolicy::SharedLock lock(m_mutex);
+    const typename ThreadingPolicy::template SharedLock<decltype(m_mutex)> lock(m_mutex);
     m_pattern.template format<ThreadingPolicy>(result, record);
 }
 

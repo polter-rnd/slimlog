@@ -20,14 +20,14 @@ auto OStreamSink<Char, ThreadingPolicy, BufferSize, Allocator>::message(const Re
     this->format(buffer, record);
     buffer.push_back('\n');
 
-    const typename ThreadingPolicy::UniqueLock lock(m_mutex);
+    const typename ThreadingPolicy::template UniqueLock<decltype(m_mutex)> lock(m_mutex);
     m_ostream.write(buffer.begin(), buffer.size());
 }
 
 template<typename Char, typename ThreadingPolicy, std::size_t BufferSize, typename Allocator>
 auto OStreamSink<Char, ThreadingPolicy, BufferSize, Allocator>::flush() -> void
 {
-    const typename ThreadingPolicy::UniqueLock lock(m_mutex);
+    const typename ThreadingPolicy::template UniqueLock<decltype(m_mutex)> lock(m_mutex);
     m_ostream.flush();
 }
 

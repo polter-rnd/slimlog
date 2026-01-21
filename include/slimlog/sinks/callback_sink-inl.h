@@ -16,7 +16,7 @@ template<typename Char, typename ThreadingPolicy>
 auto CallbackSink<Char, ThreadingPolicy>::message(const RecordType& record) -> void
 {
     if (m_callback) {
-        const typename ThreadingPolicy::UniqueLock lock(m_mutex);
+        const typename ThreadingPolicy::template UniqueLock<decltype(m_mutex)> lock(m_mutex);
         // We can safely convert record.filename and record.function to const char*
         // because they're guaranteed to contain null-terminated strings initially.
         m_callback(

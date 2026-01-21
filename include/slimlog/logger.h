@@ -365,7 +365,7 @@ public:
             return;
         }
 
-        const typename ThreadingPolicy::SharedLock lock(m_mutex);
+        const typename ThreadingPolicy::template SharedLock<decltype(m_mutex)> lock(m_mutex);
         // Early exit if there are no sinks to propagate to
         if (m_propagated_sinks.empty()) [[unlikely]] {
             return;
@@ -651,7 +651,7 @@ private:
     std::vector<std::weak_ptr<Logger>> m_children;
     std::vector<SinkType*> m_propagated_sinks;
     std::shared_ptr<Logger> m_parent;
-    mutable ThreadingPolicy::SharedMutex m_mutex;
+    mutable typename ThreadingPolicy::SharedMutex m_mutex;
     AtomicWrapper<Level, ThreadingPolicy> m_level;
     AtomicWrapper<bool, ThreadingPolicy> m_propagate;
     static constexpr std::array<Char, 7> DefaultCategory{'d', 'e', 'f', 'a', 'u', 'l', 't'};

@@ -35,6 +35,10 @@ struct Overloaded : Ts... {
     using Ts::operator()...;
 };
 
+/** @brief Deduction guide for Overloaded. */
+template<class... Ts>
+Overloaded(Ts...) -> Overloaded<Ts...>;
+
 /**
  * @brief Defines a type that is always false for unconditional static assertions.
  *

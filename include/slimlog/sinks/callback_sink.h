@@ -75,7 +75,7 @@ public:
 
 private:
     LogCallback m_callback;
-    mutable ThreadingPolicy::Mutex m_mutex;
+    mutable typename ThreadingPolicy::Mutex m_mutex;
 };
 
 } // namespace slimlog

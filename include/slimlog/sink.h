@@ -93,7 +93,7 @@ public:
     /** @brief Buffer type used for log message formatting. */
     using FormatBufferType = FormatBuffer<Char, BufferSize, Allocator>;
     /** @brief Time function type for getting the current time. */
-    using TimeFunctionType = Pattern<Char>::TimeFunctionType;
+    using TimeFunctionType = typename Pattern<Char>::TimeFunctionType;
 
     /**
      * @brief Constructs a new Sink object.
@@ -165,7 +165,7 @@ public:
     template<typename... Pairs>
     auto set_levels(Pairs&&... pairs) -> void
     {
-        const typename ThreadingPolicy::UniqueLock lock(m_mutex);
+        const typename ThreadingPolicy::template UniqueLock<decltype(m_mutex)> lock(m_mutex);
         m_pattern.set_levels(std::forward<Pairs>(pairs)...);
     }
 
@@ -180,7 +180,7 @@ protected:
 
 private:
     Pattern<Char> m_pattern;
-    mutable ThreadingPolicy::SharedMutex m_mutex;
+    mutable typename ThreadingPolicy::SharedMutex m_mutex;
 };
 
 /**
