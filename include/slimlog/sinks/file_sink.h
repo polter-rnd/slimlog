@@ -8,8 +8,6 @@
 #include "slimlog/common.h"
 #include "slimlog/sink.h"
 
-#include <slimlog_export.h>
-
 #include <cstdio>
 #include <memory>
 #include <string_view>

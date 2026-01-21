@@ -5,10 +5,9 @@
 
 #pragma once
 
+#include "slimlog/common.h"
 #include "slimlog/location.h"
 #include "slimlog/util/buffer.h"
-
-#include <slimlog_export.h>
 
 #ifdef SLIMLOG_FMTLIB
 #if __has_include(<fmt/base.h>)

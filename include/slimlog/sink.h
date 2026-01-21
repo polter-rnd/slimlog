@@ -10,8 +10,6 @@
 #include "slimlog/pattern.h"
 #include "slimlog/threading.h"
 
-#include <slimlog_export.h>
-
 #include <concepts>
 #include <cstddef>
 #include <memory>

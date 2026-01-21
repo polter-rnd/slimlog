@@ -13,8 +13,6 @@
 #include "slimlog/util/string.h"
 #include "slimlog/util/types.h"
 
-#include <slimlog_export.h>
-
 #include <array>
 #include <concepts>
 #include <cstddef>

@@ -60,17 +60,7 @@ target_include_directories(
 
 # Generate a header with export macros
 include(GenerateExportHeader)
-set(export_custom_content
-    [[
-#ifdef SLIMLOG_HEADER_ONLY
-#  undef SLIMLOG_EXPORT
-#  define SLIMLOG_EXPORT
-#  undef SLIMLOG_NO_EXPORT
-#  define SLIMLOG_NO_EXPORT
-#endif
-]]
-)
-generate_export_header(slimlog CUSTOM_CONTENT_FROM_VARIABLE export_custom_content)
+generate_export_header(slimlog)
 
 if(SLIMLOG_SANITIZERS AND COMMAND target_enable_sanitizers)
     target_enable_sanitizers(

@@ -6,8 +6,6 @@
 #include "slimlog/sinks/null_sink.h"
 #include "slimlog/sinks/ostream_sink.h"
 
-#include <slimlog_export.h>
-
 #ifndef SLIMLOG_HEADER_ONLY
 // IWYU pragma: begin_keep
 #include "slimlog/format-inl.h"

@@ -11,8 +11,6 @@
 #include "slimlog/util/os.h"
 #include "slimlog/util/string.h"
 
-#include <slimlog_export.h>
-
 #include <array>
 #include <chrono>
 #include <cstddef>

@@ -9,8 +9,6 @@
 #include "slimlog/location.h"
 #include "slimlog/sink.h"
 
-#include <slimlog_export.h>
-
 #include <functional>
 #include <utility>
 

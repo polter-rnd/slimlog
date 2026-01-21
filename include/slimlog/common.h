@@ -11,6 +11,13 @@
 #include <cstddef>
 #include <cstdint>
 
+#ifndef SLIMLOG_HEADER_ONLY
+#include "slimlog_export.h" // IWYU pragma: export
+#else
+#define SLIMLOG_EXPORT
+#define SLIMLOG_NO_EXPORT
+#endif
+
 namespace slimlog {
 
 /**
