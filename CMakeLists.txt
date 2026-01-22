@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.23...3.26)
+cmake_minimum_required(VERSION 3.14)
 
 if(SLIMLOG_TESTS)
     list(APPEND VCPKG_MANIFEST_FEATURES "testing")

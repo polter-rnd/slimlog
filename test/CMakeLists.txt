@@ -1,22 +1,20 @@
 include(FetchContent)
 set(FETCHCONTENT_BASE_DIR ${PROJECT_BINARY_DIR}/deps)
 
-fetchcontent_declare(
-    mettle
-    GIT_REPOSITORY https://github.com/polter-rnd/mettle.git
-    EXCLUDE_FROM_ALL # don't build by default
-    FIND_PACKAGE_ARGS # try find_package() first
-)
-fetchcontent_makeavailable(mettle)
+find_package(mettle CONFIG QUIET)
+if(NOT mettle_FOUND)
+    fetchcontent_declare(mettle GIT_REPOSITORY https://github.com/polter-rnd/mettle.git)
+    fetchcontent_makeavailable(mettle)
+endif()
 
 set(FMT_SYSTEM_HEADERS TRUE)
-fetchcontent_declare(
-    fmt
-    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-    EXCLUDE_FROM_ALL # don't build by default
-    FIND_PACKAGE_ARGS # try find_package() first
-)
-fetchcontent_makeavailable(fmt)
+
+find_package(fmt CONFIG QUIET)
+if(NOT fmt_FOUND)
+    # If system fmt not found, fetch it
+    fetchcontent_declare(fmt GIT_REPOSITORY https://github.com/fmtlib/fmt.git)
+    fetchcontent_makeavailable(fmt)
+endif()
 
 if(SLIMLOG_SANITIZERS
    AND COMMAND target_enable_sanitizers

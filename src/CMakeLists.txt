@@ -17,26 +17,7 @@ add_library(slimlog::slimlog ALIAS slimlog)
 file(GLOB PUBLIC_HEADERS ${PROJECT_SOURCE_DIR}/include/slimlog/*.h
      ${PROJECT_SOURCE_DIR}/include/slimlog/sinks/*.h ${PROJECT_SOURCE_DIR}/include/slimlog/util/*.h
 )
-
-target_sources(
-    slimlog
-    PUBLIC FILE_SET
-           public_headers
-           TYPE
-           HEADERS
-           BASE_DIRS
-           ${PROJECT_SOURCE_DIR}/include
-           FILES
-           ${PUBLIC_HEADERS}
-           FILE_SET
-           generated_headers
-           TYPE
-           HEADERS
-           BASE_DIRS
-           ${CMAKE_CURRENT_BINARY_DIR}
-           FILES
-           ${CMAKE_CURRENT_BINARY_DIR}/slimlog_export.h
-)
+target_sources(slimlog PRIVATE $<BUILD_INTERFACE:${PUBLIC_HEADERS}>)
 
 # Compiler / language configuration.
 set_target_properties(
@@ -197,11 +178,17 @@ endif()
 install(
     TARGETS slimlog slimlog-header-only
     EXPORT slimlog-targets
-    FILE_SET public_headers FILE_SET generated_headers
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# Install header files manually for CMake <3.23 compatibility
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# Install generated header
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/slimlog_export.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
 # ---------------------------------------------------------------------------------------
 # Install CMake config files
 # ---------------------------------------------------------------------------------------
